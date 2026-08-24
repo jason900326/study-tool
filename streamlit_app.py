@@ -209,47 +209,34 @@ elif st.session_state.page == "quiz":
     current = st.session_state.question_index
     question = questions[current]
 
-    # -----------------------------------------------------
-    # 上一題 / 題號 / 下一題
-    # -----------------------------------------------------
 
-    left, center, right = st.columns([1, 6, 1])
+# -----------------------------------------------------
+# 上方：題號 + 結束測驗
+# -----------------------------------------------------
 
-    with left:
+title_col, finish_col = st.columns([7, 1])
 
-        if current > 0:
+with title_col:
+    st.markdown(
+        f"""
+        <div style="
+            padding-top: 8px;
+            font-size: 18px;
+            font-weight: 600;
+        ">
+            Question {current + 1} / {len(questions)}
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
-            if st.button(
-                "← 上一題",
-                use_container_width=True
-            ):
-                st.session_state.question_index -= 1
-                st.rerun()
-
-    with center:
-
-        st.markdown(
-            f"""
-            <div style="
-                text-align: center;
-                padding-top: 8px;
-            ">
-                Question {current + 1} / {len(questions)}
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-
-    with right:
-
-        if current < len(questions) - 1:
-
-            if st.button(
-                "下一題 →",
-                use_container_width=True
-            ):
-                st.session_state.question_index += 1
-                st.rerun()
+with finish_col:
+    if st.button(
+        "結束測驗",
+        use_container_width=True,
+        key=f"finish_top_{current}"
+    ):
+        finish_quiz_dialog()
 
     st.progress(
         (current + 1) / len(questions)
@@ -312,15 +299,62 @@ elif st.session_state.page == "quiz":
     elif uncertain:
         st.caption("❓ 已標記為不確定")
 
-    st.divider()
+   # -----------------------------------------------------
+# 下方：上一題 / 下一題
+# -----------------------------------------------------
 
-    # -----------------------------------------------------
-    # 結束測驗
-    # -----------------------------------------------------
+st.divider()
 
-    if st.button("結束測驗"):
-        finish_quiz_dialog()
+# 第一題：只有下一題
+if current == 0:
 
+    nav_left, nav_right = st.columns([1, 1])
+
+    with nav_right:
+        if st.button(
+            "下一題 →",
+            use_container_width=True,
+            key=f"next_{current}"
+        ):
+            st.session_state.question_index += 1
+            st.rerun()
+
+# 最後一題：只有上一題
+elif current == len(questions) - 1:
+
+    nav_left, nav_right = st.columns([1, 1])
+
+    with nav_left:
+        if st.button(
+            "← 上一題",
+            use_container_width=True,
+            key=f"prev_{current}"
+        ):
+            st.session_state.question_index -= 1
+            st.rerun()
+
+# 中間題目：上一題 / 下一題並列
+else:
+
+    nav_left, nav_right = st.columns([1, 1])
+
+    with nav_left:
+        if st.button(
+            "← 上一題",
+            use_container_width=True,
+            key=f"prev_{current}"
+        ):
+            st.session_state.question_index -= 1
+            st.rerun()
+
+    with nav_right:
+        if st.button(
+            "下一題 →",
+            use_container_width=True,
+            key=f"next_{current}"
+        ):
+            st.session_state.question_index += 1
+            st.rerun()
 
 # =========================================================
 # 結果頁（暫時）
