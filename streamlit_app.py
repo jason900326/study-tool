@@ -85,6 +85,9 @@ default_states = {
     "generated_questions": None,
     "question_generation_error": None,
     "question_generation_stats": None,
+
+    # 全站字體大小
+    "font_size": 18,
 }
 
 for key, value in default_states.items():
@@ -765,6 +768,104 @@ def get_questions():
 
 
 # =========================================================
+# 字體大小控制
+# =========================================================
+
+FONT_SIZE_MIN = 14
+FONT_SIZE_MAX = 26
+FONT_SIZE_STEP = 2
+
+
+def decrease_font_size():
+    st.session_state.font_size = max(
+        FONT_SIZE_MIN,
+        st.session_state.font_size - FONT_SIZE_STEP,
+    )
+
+
+def increase_font_size():
+    st.session_state.font_size = min(
+        FONT_SIZE_MAX,
+        st.session_state.font_size + FONT_SIZE_STEP,
+    )
+
+
+def apply_font_size():
+    """
+    套用全站字體大小。
+    文字、按鈕、選項、sidebar 都會跟著調整。
+    """
+
+    size = st.session_state.font_size
+
+    st.markdown(
+        f"""
+        <style>
+
+        /* 一般文字 */
+        .stApp p,
+        .stApp li,
+        .stApp label,
+        .stApp span,
+        .stApp div[data-testid="stMarkdownContainer"] p,
+        .stApp div[data-testid="stMarkdownContainer"] li {{
+            font-size: {size}px !important;
+            line-height: 1.65 !important;
+        }}
+
+        /* 按鈕 */
+        .stApp button p,
+        .stApp button div,
+        .stApp button span {{
+            font-size: {size}px !important;
+        }}
+
+        /* radio / checkbox */
+        .stApp div[role="radiogroup"] label p,
+        .stApp div[data-testid="stCheckbox"] label p {{
+            font-size: {size}px !important;
+        }}
+
+        /* 輸入欄位 */
+        .stApp input,
+        .stApp textarea {{
+            font-size: {size}px !important;
+        }}
+
+        /* caption */
+        .stApp div[data-testid="stCaptionContainer"] p {{
+            font-size: {max(FONT_SIZE_MIN, size - 2)}px !important;
+        }}
+
+        /* 標題依比例放大 */
+        .stApp h1 {{
+            font-size: {size + 18}px !important;
+        }}
+
+        .stApp h2 {{
+            font-size: {size + 12}px !important;
+        }}
+
+        .stApp h3 {{
+            font-size: {size + 8}px !important;
+        }}
+
+        /* metric */
+        .stApp div[data-testid="stMetricValue"] {{
+            font-size: {size + 10}px !important;
+        }}
+
+        .stApp div[data-testid="stMetricLabel"] p {{
+            font-size: {size}px !important;
+        }}
+
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+# =========================================================
 # Sidebar
 # =========================================================
 
@@ -794,6 +895,52 @@ def show_sidebar():
 
         st.divider()
 
+        # =================================================
+        # 字體大小
+        # =================================================
+
+        st.markdown("### 字體大小")
+
+        font_col1, font_col2, font_col3 = st.columns(
+            [1, 1.4, 1]
+        )
+
+        with font_col1:
+            st.button(
+                "A−",
+                on_click=decrease_font_size,
+                disabled=(
+                    st.session_state.font_size
+                    <= FONT_SIZE_MIN
+                ),
+                use_container_width=True,
+            )
+
+        with font_col2:
+            st.markdown(
+                f"<div style='text-align:center; padding-top:8px;'>"
+                f"{st.session_state.font_size}px"
+                f"</div>",
+                unsafe_allow_html=True,
+            )
+
+        with font_col3:
+            st.button(
+                "A+",
+                on_click=increase_font_size,
+                disabled=(
+                    st.session_state.font_size
+                    >= FONT_SIZE_MAX
+                ),
+                use_container_width=True,
+            )
+
+        st.caption(
+            f"可調範圍：{FONT_SIZE_MIN}px ～ {FONT_SIZE_MAX}px"
+        )
+
+        st.divider()
+
         connected, error = test_database_connection()
 
         if connected:
@@ -805,7 +952,7 @@ def show_sidebar():
             with st.expander("查看錯誤"):
                 st.code(error)
 
-        st.caption("Prototype v0.7")
+        st.caption("Prototype v0.8")
 
 
 # =========================================================
@@ -1916,6 +2063,10 @@ def show_result():
 
     st.title("測驗完成")
 
+    # =====================================================
+    # 計算分數
+    # =====================================================
+
     correct_count = 0
 
     for i, question in enumerate(
@@ -1953,8 +2104,10 @@ def show_result():
         f"（{percentage}%）"
     )
 
-    st.divider()
-    st.subheader("答題結果")
+    # =====================================================
+    # 只整理需要檢討的題目
+    # 不再另外顯示「答題結果」
+    # =====================================================
 
     review_questions = []
 
@@ -1985,38 +2138,10 @@ def show_result():
         )
 
         if (
-            is_correct
-            and not uncertain
+            (not is_correct)
+            or uncertain
         ):
-            st.write(
-                f"**第 {i + 1} 題**　✅"
-            )
-
-        elif (
-            is_correct
-            and uncertain
-        ):
-            st.write(
-                f"**第 {i + 1} 題**　✅ ❓"
-            )
             review_questions.append(i)
-
-        elif user_answer is not None:
-            st.write(
-                f"**第 {i + 1} 題**　❌"
-            )
-            review_questions.append(i)
-
-        elif uncertain:
-            st.write(
-                f"**第 {i + 1} 題**　❓"
-            )
-            review_questions.append(i)
-
-        else:
-            st.write(
-                f"**第 {i + 1} 題**　未作答"
-            )
 
     if review_questions:
         st.divider()
@@ -2287,6 +2412,7 @@ def show_mistake_bank():
 # Router
 # =========================================================
 
+apply_font_size()
 show_sidebar()
 
 if st.session_state.page == "home":
