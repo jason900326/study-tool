@@ -26,13 +26,17 @@ if "question_index" not in st.session_state:
 if "answers" not in st.session_state:
     st.session_state.answers = {}
 
-# 儲存 ❓ 狀態
+# 儲存 ❓
 if "uncertain_answers" not in st.session_state:
     st.session_state.uncertain_answers = {}
 
+# 儲存錯誤原因 Label
+if "error_labels" not in st.session_state:
+    st.session_state.error_labels = {}
+
 
 # =========================================================
-# 假題目資料
+# Prototype 假題目資料
 # =========================================================
 
 questions = [
@@ -44,8 +48,39 @@ questions = [
             "沒有 LPS",
             "沒有 periplasm"
         ],
-        "answer": 1
+        "answer": 1,
+
+        "concept": "Gram-positive / Gram-negative cell envelope",
+
+        "review_type": "table",
+
+        "review_points": [
+            "Gram-negative bacteria 具有 outer membrane。",
+            "Gram-negative bacteria 的 peptidoglycan layer 較薄。",
+            "LPS 位於 Gram-negative bacteria 的 outer membrane。"
+        ],
+
+        "comparison": {
+            "特徵": [
+                "Peptidoglycan",
+                "Outer membrane",
+                "LPS"
+            ],
+            "Gram-positive": [
+                "厚",
+                "無",
+                "無"
+            ],
+            "Gram-negative": [
+                "薄",
+                "有",
+                "有"
+            ]
+        },
+
+        "source": "Prototype PDF · Page 8"
     },
+
     {
         "question": "Gram stain 中的主要脫色步驟使用何者？",
         "options": [
@@ -54,8 +89,22 @@ questions = [
             "Alcohol / acetone",
             "Safranin"
         ],
-        "answer": 2
+        "answer": 2,
+
+        "concept": "Gram staining procedure",
+
+        "review_type": "bullets",
+
+        "review_points": [
+            "Crystal violet 是 primary stain。",
+            "Iodine 是 mordant。",
+            "Alcohol / acetone 是 decolorizer。",
+            "Safranin 是 counterstain。"
+        ],
+
+        "source": "Prototype PDF · Page 9"
     },
+
     {
         "question": "Vancomycin 主要作用在哪個細菌結構？",
         "options": [
@@ -64,7 +113,19 @@ questions = [
             "30S ribosome",
             "Cytoplasmic membrane"
         ],
-        "answer": 1
+        "answer": 1,
+
+        "concept": "Vancomycin mechanism of action",
+
+        "review_type": "bullets",
+
+        "review_points": [
+            "Vancomycin 屬於 glycopeptide。",
+            "作用位置與 bacterial cell wall synthesis 有關。",
+            "其作用與 peptidoglycan precursor 的 D-Ala-D-Ala 有關。"
+        ],
+
+        "source": "Prototype PDF · Page 30"
     }
 ]
 
@@ -88,7 +149,23 @@ def save_uncertain(question_index):
     widget_key = f"uncertain_{question_index}"
 
     if widget_key in st.session_state:
-        st.session_state.uncertain_answers[question_index] = (
+
+        value = st.session_state[widget_key]
+
+        st.session_state.uncertain_answers[question_index] = value
+
+        # 按下 ❓ 時，自動建立「觀念不熟」Label
+        if value:
+            if question_index not in st.session_state.error_labels:
+                st.session_state.error_labels[question_index] = "觀念不熟"
+
+
+def save_error_label(question_index):
+
+    widget_key = f"error_label_{question_index}"
+
+    if widget_key in st.session_state:
+        st.session_state.error_labels[question_index] = (
             st.session_state[widget_key]
         )
 
@@ -107,13 +184,13 @@ def finish_quiz_dialog():
         answer = st.session_state.answers.get(i)
         uncertain = st.session_state.uncertain_answers.get(i, False)
 
-        # 沒選答案也沒按 ❓ 才算未作答
+        # 沒有選答案，也沒有按 ❓
         if answer is None and not uncertain:
             unanswered.append(i + 1)
 
-    # -----------------------------------------------------
-    # 有未作答題目
-    # -----------------------------------------------------
+    # =====================================================
+    # 有未作答
+    # =====================================================
 
     if unanswered:
 
@@ -146,12 +223,13 @@ def finish_quiz_dialog():
                 "仍然結束",
                 use_container_width=True
             ):
+
                 st.session_state.page = "result"
                 st.rerun()
 
-    # -----------------------------------------------------
-    # 所有題目皆已完成
-    # -----------------------------------------------------
+    # =====================================================
+    # 全部完成
+    # =====================================================
 
     else:
 
@@ -161,6 +239,7 @@ def finish_quiz_dialog():
             "查看結果",
             use_container_width=True
         ):
+
             st.session_state.page = "result"
             st.rerun()
 
@@ -221,21 +300,26 @@ def show_home():
             st.session_state.page = "quiz"
             st.session_state.question_index = 0
 
-            # 開始新測驗時清空舊資料
+            # 清空上一輪資料
             st.session_state.answers = {}
             st.session_state.uncertain_answers = {}
+            st.session_state.error_labels = {}
 
-            # 清掉舊 widget state
+            # 清除 widgets
             for i in range(len(questions)):
 
                 radio_key = f"radio_{i}"
                 uncertain_key = f"uncertain_{i}"
+                label_key = f"error_label_{i}"
 
                 if radio_key in st.session_state:
                     del st.session_state[radio_key]
 
                 if uncertain_key in st.session_state:
                     del st.session_state[uncertain_key]
+
+                if label_key in st.session_state:
+                    del st.session_state[label_key]
 
             st.rerun()
 
@@ -250,7 +334,7 @@ def show_quiz():
     question = questions[current]
 
     # =====================================================
-    # 上方：題號 + 右上角結束測驗
+    # 上方
     # =====================================================
 
     top_left, top_right = st.columns([7, 1.4])
@@ -280,7 +364,7 @@ def show_quiz():
             finish_quiz_dialog()
 
     # =====================================================
-    # 進度條
+    # Progress
     # =====================================================
 
     st.progress(
@@ -295,10 +379,6 @@ def show_quiz():
 
     st.subheader(question["question"])
 
-    # -----------------------------------------------------
-    # 如果之前已經答過，把答案帶回畫面
-    # -----------------------------------------------------
-
     radio_key = f"radio_{current}"
 
     if radio_key not in st.session_state:
@@ -307,10 +387,6 @@ def show_quiz():
 
         if saved_answer is not None:
             st.session_state[radio_key] = saved_answer
-
-    # -----------------------------------------------------
-    # 選項
-    # -----------------------------------------------------
 
     st.radio(
         "請選擇答案",
@@ -322,7 +398,7 @@ def show_quiz():
     )
 
     # =====================================================
-    # ❓ 不確定
+    # ❓
     # =====================================================
 
     uncertain_key = f"uncertain_{current}"
@@ -346,7 +422,7 @@ def show_quiz():
     )
 
     # =====================================================
-    # 顯示目前狀態
+    # 狀態
     # =====================================================
 
     answer_exists = (
@@ -362,34 +438,25 @@ def show_quiz():
 
     if answer_exists and uncertain:
 
-        st.caption(
-            "已作答 · ❓ 不確定"
-        )
+        st.caption("已作答 · ❓ 不確定")
 
     elif answer_exists:
 
-        st.caption(
-            "已作答"
-        )
+        st.caption("已作答")
 
     elif uncertain:
 
-        st.caption(
-            "❓ 已標記為不確定"
-        )
+        st.caption("❓ 已標記為不確定")
 
     # =====================================================
-    # 下方 Navigation
+    # Navigation
     # =====================================================
 
     st.divider()
 
     total_questions = len(questions)
 
-    # -----------------------------------------------------
-    # Q1：只有下一題
-    # -----------------------------------------------------
-
+    # Q1
     if current == 0:
 
         empty_col, next_col = st.columns(2)
@@ -405,10 +472,7 @@ def show_quiz():
                 st.session_state.question_index += 1
                 st.rerun()
 
-    # -----------------------------------------------------
-    # 最後一題：只有上一題
-    # -----------------------------------------------------
-
+    # 最後一題
     elif current == total_questions - 1:
 
         prev_col, empty_col = st.columns(2)
@@ -424,10 +488,7 @@ def show_quiz():
                 st.session_state.question_index -= 1
                 st.rerun()
 
-    # -----------------------------------------------------
-    # 中間題目：上一題 + 下一題
-    # -----------------------------------------------------
-
+    # 中間題
     else:
 
         prev_col, next_col = st.columns(2)
@@ -456,6 +517,188 @@ def show_quiz():
 
 
 # =========================================================
+# 錯題檢討 Component
+# =========================================================
+
+def show_review_item(question_index):
+
+    question = questions[question_index]
+
+    user_answer = (
+        st.session_state.answers.get(question_index)
+    )
+
+    uncertain = (
+        st.session_state.uncertain_answers.get(
+            question_index,
+            False
+        )
+    )
+
+    correct_answer = (
+        question["options"][question["answer"]]
+    )
+
+    is_correct = (
+        user_answer == correct_answer
+    )
+
+    # =====================================================
+    # 標題
+    # =====================================================
+
+    if is_correct and uncertain:
+
+        title = f"第 {question_index + 1} 題　✅ ❓"
+
+    elif user_answer is None and uncertain:
+
+        title = f"第 {question_index + 1} 題　❓"
+
+    else:
+
+        title = f"第 {question_index + 1} 題　❌"
+
+    # =====================================================
+    # Expander
+    # =====================================================
+
+    with st.expander(
+        title,
+        expanded=False
+    ):
+
+        st.markdown(
+            f"### {question['question']}"
+        )
+
+        # -------------------------------------------------
+        # 答案比較
+        # -------------------------------------------------
+
+        answer_col1, answer_col2 = st.columns(2)
+
+        with answer_col1:
+
+            st.markdown("**你的答案**")
+
+            if user_answer is None:
+                st.write("未選擇答案")
+            else:
+                st.write(user_answer)
+
+        with answer_col2:
+
+            st.markdown("**正確答案**")
+            st.write(correct_answer)
+
+        st.divider()
+
+        # -------------------------------------------------
+        # Concept
+        # -------------------------------------------------
+
+        st.markdown("### 核心觀念")
+
+        st.write(
+            question["concept"]
+        )
+
+        # -------------------------------------------------
+        # Review 內容
+        # -------------------------------------------------
+
+        if question["review_type"] == "table":
+
+            comparison = question["comparison"]
+
+            rows = []
+
+            for i in range(
+                len(comparison["特徵"])
+            ):
+
+                rows.append(
+                    {
+                        "特徵": comparison["特徵"][i],
+                        "Gram-positive":
+                            comparison["Gram-positive"][i],
+                        "Gram-negative":
+                            comparison["Gram-negative"][i]
+                    }
+                )
+
+            st.table(rows)
+
+        else:
+
+            for point in question["review_points"]:
+                st.markdown(f"- {point}")
+
+        # -------------------------------------------------
+        # PDF Source
+        # -------------------------------------------------
+
+        st.markdown("### 📖 教材根據")
+
+        st.caption(
+            question["source"]
+        )
+
+        # -------------------------------------------------
+        # Label
+        # -------------------------------------------------
+
+        st.divider()
+
+        st.markdown(
+            "**你認為這次需要檢討的原因是？**"
+        )
+
+        label_options = [
+            "粗心大意",
+            "觀念不熟",
+            "完全沒看過"
+        ]
+
+        saved_label = (
+            st.session_state.error_labels.get(
+                question_index
+            )
+        )
+
+        if saved_label in label_options:
+            label_index = label_options.index(saved_label)
+        else:
+            label_index = None
+
+        label_key = f"error_label_{question_index}"
+
+        st.radio(
+            "錯誤分類",
+            label_options,
+            index=label_index,
+            horizontal=True,
+            key=label_key,
+            on_change=save_error_label,
+            args=(question_index,),
+            label_visibility="collapsed"
+        )
+
+        selected_label = (
+            st.session_state.error_labels.get(
+                question_index
+            )
+        )
+
+        if selected_label:
+
+            st.caption(
+                f"已標記：{selected_label}"
+            )
+
+
+# =========================================================
 # 結果頁
 # =========================================================
 
@@ -464,7 +707,7 @@ def show_result():
     st.title("測驗完成")
 
     # =====================================================
-    # 計算分數
+    # Score
     # =====================================================
 
     correct_count = 0
@@ -488,10 +731,6 @@ def show_result():
         correct_count / total_questions * 100
     )
 
-    # =====================================================
-    # 顯示分數
-    # =====================================================
-
     st.subheader(
         f"{correct_count} / {total_questions}（{percentage}%）"
     )
@@ -503,6 +742,8 @@ def show_result():
     # =====================================================
 
     st.subheader("答題結果")
+
+    review_questions = []
 
     for i, question in enumerate(questions):
 
@@ -526,7 +767,7 @@ def show_result():
         )
 
         # -------------------------------------------------
-        # 答對
+        # 正確 + 有把握
         # -------------------------------------------------
 
         if is_correct and not uncertain:
@@ -536,7 +777,7 @@ def show_result():
             )
 
         # -------------------------------------------------
-        # 答對 + ❓
+        # 正確 + ❓
         # -------------------------------------------------
 
         elif is_correct and uncertain:
@@ -544,6 +785,8 @@ def show_result():
             st.write(
                 f"**第 {i + 1} 題**　✅ ❓"
             )
+
+            review_questions.append(i)
 
         # -------------------------------------------------
         # 答錯
@@ -555,8 +798,10 @@ def show_result():
                 f"**第 {i + 1} 題**　❌"
             )
 
+            review_questions.append(i)
+
         # -------------------------------------------------
-        # 沒有答案，但按了 ❓
+        # 沒回答 + ❓
         # -------------------------------------------------
 
         elif uncertain:
@@ -565,8 +810,10 @@ def show_result():
                 f"**第 {i + 1} 題**　❓"
             )
 
+            review_questions.append(i)
+
         # -------------------------------------------------
-        # 完全未作答
+        # 未作答
         # -------------------------------------------------
 
         else:
@@ -575,11 +822,37 @@ def show_result():
                 f"**第 {i + 1} 題**　未作答"
             )
 
-    st.divider()
+    # =====================================================
+    # 需要檢討
+    # =====================================================
+
+    if review_questions:
+
+        st.divider()
+
+        st.subheader("需要檢討")
+
+        st.caption(
+            "答錯或曾標記 ❓ 的題目會出現在這裡。"
+        )
+
+        for question_index in review_questions:
+
+            show_review_item(
+                question_index
+            )
+
+    else:
+
+        st.success(
+            "這次沒有需要檢討的題目。"
+        )
 
     # =====================================================
     # 回首頁
     # =====================================================
+
+    st.divider()
 
     if st.button(
         "回首頁",
@@ -593,7 +866,7 @@ def show_result():
 
 
 # =========================================================
-# Page Router
+# Router
 # =========================================================
 
 if st.session_state.page == "home":
