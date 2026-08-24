@@ -8,7 +8,8 @@ import streamlit as st
 st.set_page_config(
     page_title="Study Tool",
     page_icon="📚",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="collapsed"
 )
 
 
@@ -31,7 +32,6 @@ if "uncertain_answers" not in st.session_state:
 if "error_labels" not in st.session_state:
     st.session_state.error_labels = {}
 
-# 錯題庫
 if "mistake_bank" not in st.session_state:
     st.session_state.mistake_bank = []
 
@@ -122,6 +122,41 @@ questions = [
 
 
 # =========================================================
+# Sidebar
+# =========================================================
+
+def show_sidebar():
+
+    with st.sidebar:
+
+        st.title("📚 Study Tool")
+
+        if st.button(
+            "首頁",
+            use_container_width=True
+        ):
+            st.session_state.page = "home"
+            st.rerun()
+
+        if st.button(
+            "錯題庫",
+            use_container_width=True
+        ):
+            st.session_state.page = "mistakes"
+            st.rerun()
+
+        st.button(
+            "弱點分析",
+            use_container_width=True,
+            disabled=True
+        )
+
+        st.divider()
+
+        st.caption("Prototype v0.1")
+
+
+# =========================================================
 # 儲存答案
 # =========================================================
 
@@ -161,7 +196,7 @@ def save_error_label(question_index):
 
 
 # =========================================================
-# 把本次錯題寫入錯題庫
+# 錯題寫入錯題庫
 # =========================================================
 
 def save_current_mistakes():
@@ -169,21 +204,32 @@ def save_current_mistakes():
     for i, question in enumerate(questions):
 
         user_answer = st.session_state.answers.get(i)
-        uncertain = st.session_state.uncertain_answers.get(i, False)
-        correct_answer = question["options"][question["answer"]]
 
-        is_correct = user_answer == correct_answer
+        uncertain = st.session_state.uncertain_answers.get(
+            i,
+            False
+        )
 
-        # 只有答錯或按過 ❓ 才進錯題庫
-        needs_review = (not is_correct) or uncertain
+        correct_answer = (
+            question["options"][question["answer"]]
+        )
+
+        is_correct = (
+            user_answer == correct_answer
+        )
+
+        # 答錯 或 按過 ❓ 才進錯題庫
+        needs_review = (
+            (not is_correct) or uncertain
+        )
 
         if not needs_review:
             continue
 
-        # 避免同一題重複加入
         existing = None
 
         for item in st.session_state.mistake_bank:
+
             if item["question_index"] == i:
                 existing = item
                 break
@@ -193,18 +239,34 @@ def save_current_mistakes():
             "subject": question["subject"],
             "concept": question["concept"],
             "question": question["question"],
+
+            # 保存所有選項
+            "options": question["options"],
+
             "user_answer": user_answer,
             "correct_answer": correct_answer,
+
             "uncertain": uncertain,
             "is_correct": is_correct,
-            "label": st.session_state.error_labels.get(i),
+
+            "label": (
+                st.session_state.error_labels.get(i)
+            ),
+
             "source": question["source"]
         }
 
         if existing is None:
-            st.session_state.mistake_bank.append(item_data)
+
+            st.session_state.mistake_bank.append(
+                item_data
+            )
+
         else:
-            existing.update(item_data)
+
+            existing.update(
+                item_data
+            )
 
 
 # =========================================================
@@ -218,16 +280,32 @@ def finish_quiz_dialog():
 
     for i in range(len(questions)):
 
-        answer = st.session_state.answers.get(i)
-        uncertain = st.session_state.uncertain_answers.get(i, False)
+        answer = (
+            st.session_state.answers.get(i)
+        )
+
+        uncertain = (
+            st.session_state.uncertain_answers.get(
+                i,
+                False
+            )
+        )
 
         if answer is None and not uncertain:
+
             unanswered.append(i + 1)
+
+    # =====================================================
+    # 有未作答題目
+    # =====================================================
 
     if unanswered:
 
         question_list = "、".join(
-            [f"第 {number} 題" for number in unanswered]
+            [
+                f"第 {number} 題"
+                for number in unanswered
+            ]
         )
 
         st.warning(
@@ -247,6 +325,7 @@ def finish_quiz_dialog():
                 "返回測驗",
                 use_container_width=True
             ):
+
                 st.rerun()
 
         with col2:
@@ -259,11 +338,18 @@ def finish_quiz_dialog():
                 save_current_mistakes()
 
                 st.session_state.page = "result"
+
                 st.rerun()
+
+    # =====================================================
+    # 所有題目皆完成
+    # =====================================================
 
     else:
 
-        st.success("所有題目皆已完成。")
+        st.success(
+            "所有題目皆已完成。"
+        )
 
         if st.button(
             "查看結果",
@@ -273,6 +359,7 @@ def finish_quiz_dialog():
             save_current_mistakes()
 
             st.session_state.page = "result"
+
             st.rerun()
 
 
@@ -282,7 +369,9 @@ def finish_quiz_dialog():
 
 def show_home():
 
-    st.title("📚 把教材變成你的測驗")
+    st.title(
+        "📚 把教材變成你的測驗"
+    )
 
     st.write(
         "上傳你的課堂講義，系統會整理教材內容，"
@@ -290,17 +379,6 @@ def show_home():
     )
 
     st.divider()
-
-    top_col1, top_col2 = st.columns([5, 1])
-
-    with top_col2:
-
-        if st.button(
-            "錯題庫",
-            use_container_width=True
-        ):
-            st.session_state.page = "mistakes"
-            st.rerun()
 
     uploaded_file = st.file_uploader(
         "上傳 PDF",
@@ -313,13 +391,17 @@ def show_home():
             f"已成功上傳：{uploaded_file.name}"
         )
 
-        st.subheader("教材分析")
+        st.subheader(
+            "教材分析"
+        )
 
         st.info(
             "目前為 Prototype：以下分析結果暫時使用測試資料。"
         )
 
-        st.write("偵測到 **18 個核心概念**")
+        st.write(
+            "偵測到 **18 個核心概念**"
+        )
 
         st.markdown(
             """
@@ -333,7 +415,9 @@ def show_home():
 """
         )
 
-        st.write("建議測驗題數：**18 題**")
+        st.write(
+            "建議測驗題數：**18 題**"
+        )
 
         if st.button(
             "開始測驗",
@@ -341,26 +425,46 @@ def show_home():
         ):
 
             st.session_state.page = "quiz"
+
             st.session_state.question_index = 0
 
             st.session_state.answers = {}
+
             st.session_state.uncertain_answers = {}
+
             st.session_state.error_labels = {}
 
-            for i in range(len(questions)):
+            # 清除舊 widget state
+            for i in range(
+                len(questions)
+            ):
 
-                radio_key = f"radio_{i}"
-                uncertain_key = f"uncertain_{i}"
-                label_key = f"error_label_{i}"
+                radio_key = (
+                    f"radio_{i}"
+                )
+
+                uncertain_key = (
+                    f"uncertain_{i}"
+                )
+
+                label_key = (
+                    f"error_label_{i}"
+                )
 
                 if radio_key in st.session_state:
-                    del st.session_state[radio_key]
+                    del st.session_state[
+                        radio_key
+                    ]
 
                 if uncertain_key in st.session_state:
-                    del st.session_state[uncertain_key]
+                    del st.session_state[
+                        uncertain_key
+                    ]
 
                 if label_key in st.session_state:
-                    del st.session_state[label_key]
+                    del st.session_state[
+                        label_key
+                    ]
 
             st.rerun()
 
@@ -371,10 +475,21 @@ def show_home():
 
 def show_quiz():
 
-    current = st.session_state.question_index
-    question = questions[current]
+    current = (
+        st.session_state.question_index
+    )
 
-    top_left, top_right = st.columns([7, 1.4])
+    question = (
+        questions[current]
+    )
+
+    # =====================================================
+    # 上方：題號 + 結束測驗
+    # =====================================================
+
+    top_left, top_right = st.columns(
+        [7, 1.4]
+    )
 
     with top_left:
 
@@ -398,24 +513,45 @@ def show_quiz():
             use_container_width=True,
             key=f"finish_top_{current}"
         ):
+
             finish_quiz_dialog()
 
+    # =====================================================
+    # 進度條
+    # =====================================================
+
     st.progress(
-        (current + 1) / len(questions)
+        (current + 1)
+        / len(questions)
     )
 
     st.divider()
 
-    st.subheader(question["question"])
+    # =====================================================
+    # 題目
+    # =====================================================
 
-    radio_key = f"radio_{current}"
+    st.subheader(
+        question["question"]
+    )
+
+    radio_key = (
+        f"radio_{current}"
+    )
 
     if radio_key not in st.session_state:
 
-        saved_answer = st.session_state.answers.get(current)
+        saved_answer = (
+            st.session_state.answers.get(
+                current
+            )
+        )
 
         if saved_answer is not None:
-            st.session_state[radio_key] = saved_answer
+
+            st.session_state[
+                radio_key
+            ] = saved_answer
 
     st.radio(
         "請選擇答案",
@@ -426,18 +562,28 @@ def show_quiz():
         args=(current,)
     )
 
-    uncertain_key = f"uncertain_{current}"
+    # =====================================================
+    # ❓
+    # =====================================================
+
+    uncertain_key = (
+        f"uncertain_{current}"
+    )
 
     if uncertain_key not in st.session_state:
 
         saved_uncertain = (
-            st.session_state.uncertain_answers.get(
+            st.session_state
+            .uncertain_answers
+            .get(
                 current,
                 False
             )
         )
 
-        st.session_state[uncertain_key] = saved_uncertain
+        st.session_state[
+            uncertain_key
+        ] = saved_uncertain
 
     st.checkbox(
         "❓ 我不確定",
@@ -446,29 +592,61 @@ def show_quiz():
         args=(current,)
     )
 
-    answer_exists = current in st.session_state.answers
+    # =====================================================
+    # 狀態
+    # =====================================================
 
-    uncertain = st.session_state.uncertain_answers.get(
-        current,
-        False
+    answer_exists = (
+        current
+        in st.session_state.answers
+    )
+
+    uncertain = (
+        st.session_state
+        .uncertain_answers
+        .get(
+            current,
+            False
+        )
     )
 
     if answer_exists and uncertain:
-        st.caption("已作答 · ❓ 不確定")
+
+        st.caption(
+            "已作答 · ❓ 不確定"
+        )
 
     elif answer_exists:
-        st.caption("已作答")
+
+        st.caption(
+            "已作答"
+        )
 
     elif uncertain:
-        st.caption("❓ 已標記為不確定")
+
+        st.caption(
+            "❓ 已標記為不確定"
+        )
+
+    # =====================================================
+    # Navigation
+    # =====================================================
 
     st.divider()
 
-    total_questions = len(questions)
+    total_questions = len(
+        questions
+    )
+
+    # -----------------------------------------------------
+    # 第一題
+    # -----------------------------------------------------
 
     if current == 0:
 
-        empty_col, next_col = st.columns(2)
+        empty_col, next_col = (
+            st.columns(2)
+        )
 
         with next_col:
 
@@ -479,11 +657,18 @@ def show_quiz():
             ):
 
                 st.session_state.question_index += 1
+
                 st.rerun()
+
+    # -----------------------------------------------------
+    # 最後一題
+    # -----------------------------------------------------
 
     elif current == total_questions - 1:
 
-        prev_col, empty_col = st.columns(2)
+        prev_col, empty_col = (
+            st.columns(2)
+        )
 
         with prev_col:
 
@@ -494,11 +679,18 @@ def show_quiz():
             ):
 
                 st.session_state.question_index -= 1
+
                 st.rerun()
+
+    # -----------------------------------------------------
+    # 中間題
+    # -----------------------------------------------------
 
     else:
 
-        prev_col, next_col = st.columns(2)
+        prev_col, next_col = (
+            st.columns(2)
+        )
 
         with prev_col:
 
@@ -509,6 +701,7 @@ def show_quiz():
             ):
 
                 st.session_state.question_index -= 1
+
                 st.rerun()
 
         with next_col:
@@ -520,36 +713,73 @@ def show_quiz():
             ):
 
                 st.session_state.question_index += 1
+
                 st.rerun()
 
 
 # =========================================================
-# 錯題檢討 Component
+# 檢討 Component
 # =========================================================
 
-def show_review_item(question_index):
+def show_review_item(
+    question_index
+):
 
-    question = questions[question_index]
-
-    user_answer = st.session_state.answers.get(question_index)
-
-    uncertain = st.session_state.uncertain_answers.get(
-        question_index,
-        False
+    question = (
+        questions[question_index]
     )
 
-    correct_answer = question["options"][question["answer"]]
+    user_answer = (
+        st.session_state.answers.get(
+            question_index
+        )
+    )
 
-    is_correct = user_answer == correct_answer
+    uncertain = (
+        st.session_state
+        .uncertain_answers
+        .get(
+            question_index,
+            False
+        )
+    )
+
+    correct_answer = (
+        question["options"][
+            question["answer"]
+        ]
+    )
+
+    is_correct = (
+        user_answer
+        == correct_answer
+    )
+
+    # =====================================================
+    # Title
+    # =====================================================
 
     if is_correct and uncertain:
-        title = f"第 {question_index + 1} 題　✅ ❓"
+
+        title = (
+            f"第 {question_index + 1} 題　✅ ❓"
+        )
 
     elif user_answer is None and uncertain:
-        title = f"第 {question_index + 1} 題　❓"
+
+        title = (
+            f"第 {question_index + 1} 題　❓"
+        )
 
     else:
-        title = f"第 {question_index + 1} 題　❌"
+
+        title = (
+            f"第 {question_index + 1} 題　❌"
+        )
+
+    # =====================================================
+    # Expander
+    # =====================================================
 
     with st.expander(
         title,
@@ -560,62 +790,125 @@ def show_review_item(question_index):
             f"### {question['question']}"
         )
 
-        answer_col1, answer_col2 = st.columns(2)
+        # -------------------------------------------------
+        # 答案
+        # -------------------------------------------------
+
+        answer_col1, answer_col2 = (
+            st.columns(2)
+        )
 
         with answer_col1:
 
-            st.markdown("**你的答案**")
+            st.markdown(
+                "**你的答案**"
+            )
 
             if user_answer is None:
-                st.write("未選擇答案")
+
+                st.write(
+                    "未選擇答案"
+                )
+
             else:
-                st.write(user_answer)
+
+                st.write(
+                    user_answer
+                )
 
         with answer_col2:
 
-            st.markdown("**正確答案**")
-            st.write(correct_answer)
+            st.markdown(
+                "**正確答案**"
+            )
+
+            st.write(
+                correct_answer
+            )
 
         st.divider()
 
-        st.markdown("### 核心觀念")
+        # -------------------------------------------------
+        # 核心觀念
+        # -------------------------------------------------
+
+        st.markdown(
+            "### 核心觀念"
+        )
 
         st.write(
             question["concept"]
         )
 
-        if question["review_type"] == "table":
+        # -------------------------------------------------
+        # 表格 / Bullet
+        # -------------------------------------------------
 
-            comparison = question["comparison"]
+        if (
+            question["review_type"]
+            == "table"
+        ):
+
+            comparison = (
+                question["comparison"]
+            )
 
             rows = []
 
             for i in range(
-                len(comparison["特徵"])
+                len(
+                    comparison["特徵"]
+                )
             ):
 
                 rows.append(
                     {
-                        "特徵": comparison["特徵"][i],
+                        "特徵":
+                            comparison["特徵"][i],
+
                         "Gram-positive":
-                            comparison["Gram-positive"][i],
+                            comparison[
+                                "Gram-positive"
+                            ][i],
+
                         "Gram-negative":
-                            comparison["Gram-negative"][i]
+                            comparison[
+                                "Gram-negative"
+                            ][i]
                     }
                 )
 
-            st.table(rows)
+            st.table(
+                rows
+            )
 
         else:
 
-            for point in question["review_points"]:
-                st.markdown(f"- {point}")
+            for point in (
+                question[
+                    "review_points"
+                ]
+            ):
 
-        st.markdown("### 📖 教材根據")
+                st.markdown(
+                    f"- {point}"
+                )
+
+        # -------------------------------------------------
+        # Source
+        # -------------------------------------------------
+
+        st.markdown(
+            "### 📖 教材根據"
+        )
 
         st.caption(
             question["source"]
         )
+
+        # -------------------------------------------------
+        # Label
+        # -------------------------------------------------
 
         st.divider()
 
@@ -630,17 +923,28 @@ def show_review_item(question_index):
         ]
 
         saved_label = (
-            st.session_state.error_labels.get(
+            st.session_state
+            .error_labels
+            .get(
                 question_index
             )
         )
 
         if saved_label in label_options:
-            label_index = label_options.index(saved_label)
+
+            label_index = (
+                label_options.index(
+                    saved_label
+                )
+            )
+
         else:
+
             label_index = None
 
-        label_key = f"error_label_{question_index}"
+        label_key = (
+            f"error_label_{question_index}"
+        )
 
         st.radio(
             "錯誤分類",
@@ -654,7 +958,9 @@ def show_review_item(question_index):
         )
 
         selected_label = (
-            st.session_state.error_labels.get(
+            st.session_state
+            .error_labels
+            .get(
                 question_index
             )
         )
@@ -672,23 +978,47 @@ def show_review_item(question_index):
 
 def show_result():
 
-    st.title("測驗完成")
+    st.title(
+        "測驗完成"
+    )
+
+    # =====================================================
+    # Score
+    # =====================================================
 
     correct_count = 0
 
-    for i, question in enumerate(questions):
+    for i, question in enumerate(
+        questions
+    ):
 
-        user_answer = st.session_state.answers.get(i)
+        user_answer = (
+            st.session_state.answers.get(
+                i
+            )
+        )
 
-        correct_answer = question["options"][question["answer"]]
+        correct_answer = (
+            question["options"][
+                question["answer"]
+            ]
+        )
 
-        if user_answer == correct_answer:
+        if (
+            user_answer
+            == correct_answer
+        ):
+
             correct_count += 1
 
-    total_questions = len(questions)
+    total_questions = (
+        len(questions)
+    )
 
     percentage = round(
-        correct_count / total_questions * 100
+        correct_count
+        / total_questions
+        * 100
     )
 
     st.subheader(
@@ -697,36 +1027,79 @@ def show_result():
 
     st.divider()
 
-    st.subheader("答題結果")
+    # =====================================================
+    # 答題結果
+    # =====================================================
+
+    st.subheader(
+        "答題結果"
+    )
 
     review_questions = []
 
-    for i, question in enumerate(questions):
+    for i, question in enumerate(
+        questions
+    ):
 
-        user_answer = st.session_state.answers.get(i)
-
-        uncertain = st.session_state.uncertain_answers.get(
-            i,
-            False
+        user_answer = (
+            st.session_state.answers.get(
+                i
+            )
         )
 
-        correct_answer = question["options"][question["answer"]]
+        uncertain = (
+            st.session_state
+            .uncertain_answers
+            .get(
+                i,
+                False
+            )
+        )
 
-        is_correct = user_answer == correct_answer
+        correct_answer = (
+            question["options"][
+                question["answer"]
+            ]
+        )
 
-        if is_correct and not uncertain:
+        is_correct = (
+            user_answer
+            == correct_answer
+        )
+
+        # -------------------------------------------------
+        # 正確
+        # -------------------------------------------------
+
+        if (
+            is_correct
+            and not uncertain
+        ):
 
             st.write(
                 f"**第 {i + 1} 題**　✅"
             )
 
-        elif is_correct and uncertain:
+        # -------------------------------------------------
+        # 正確 + ❓
+        # -------------------------------------------------
+
+        elif (
+            is_correct
+            and uncertain
+        ):
 
             st.write(
                 f"**第 {i + 1} 題**　✅ ❓"
             )
 
-            review_questions.append(i)
+            review_questions.append(
+                i
+            )
+
+        # -------------------------------------------------
+        # 錯誤
+        # -------------------------------------------------
 
         elif user_answer is not None:
 
@@ -734,7 +1107,13 @@ def show_result():
                 f"**第 {i + 1} 題**　❌"
             )
 
-            review_questions.append(i)
+            review_questions.append(
+                i
+            )
+
+        # -------------------------------------------------
+        # 沒答案 + ❓
+        # -------------------------------------------------
 
         elif uncertain:
 
@@ -742,7 +1121,9 @@ def show_result():
                 f"**第 {i + 1} 題**　❓"
             )
 
-            review_questions.append(i)
+            review_questions.append(
+                i
+            )
 
         else:
 
@@ -750,17 +1131,25 @@ def show_result():
                 f"**第 {i + 1} 題**　未作答"
             )
 
+    # =====================================================
+    # 檢討
+    # =====================================================
+
     if review_questions:
 
         st.divider()
 
-        st.subheader("需要檢討")
+        st.subheader(
+            "需要檢討"
+        )
 
         st.caption(
             "答錯或曾標記 ❓ 的題目會出現在這裡。"
         )
 
-        for question_index in review_questions:
+        for question_index in (
+            review_questions
+        ):
 
             show_review_item(
                 question_index
@@ -772,9 +1161,15 @@ def show_result():
             "這次沒有需要檢討的題目。"
         )
 
+    # =====================================================
+    # Bottom nav
+    # =====================================================
+
     st.divider()
 
-    nav1, nav2 = st.columns(2)
+    nav1, nav2 = (
+        st.columns(2)
+    )
 
     with nav1:
 
@@ -785,7 +1180,10 @@ def show_result():
 
             save_current_mistakes()
 
-            st.session_state.page = "mistakes"
+            st.session_state.page = (
+                "mistakes"
+            )
+
             st.rerun()
 
     with nav2:
@@ -797,7 +1195,10 @@ def show_result():
 
             save_current_mistakes()
 
-            st.session_state.page = "home"
+            st.session_state.page = (
+                "home"
+            )
+
             st.session_state.question_index = 0
 
             st.rerun()
@@ -809,7 +1210,13 @@ def show_result():
 
 def show_mistake_bank():
 
-    st.title("📘 錯題庫")
+    st.title(
+        "📘 錯題庫"
+    )
+
+    # =====================================================
+    # 空狀態
+    # =====================================================
 
     if not st.session_state.mistake_bank:
 
@@ -817,42 +1224,43 @@ def show_mistake_bank():
             "目前還沒有錯題紀錄。"
         )
 
-        if st.button(
-            "回首頁"
-        ):
-            st.session_state.page = "home"
-            st.rerun()
-
         return
 
     # =====================================================
     # 統計
     # =====================================================
 
-    total = len(st.session_state.mistake_bank)
+    total = len(
+        st.session_state.mistake_bank
+    )
 
     careless = 0
     unfamiliar = 0
     unseen = 0
-    uncertain_count = 0
 
-    for item in st.session_state.mistake_bank:
+    for item in (
+        st.session_state.mistake_bank
+    ):
 
-        label = item.get("label")
+        label = (
+            item.get("label")
+        )
 
         if label == "粗心大意":
+
             careless += 1
 
         elif label == "觀念不熟":
+
             unfamiliar += 1
 
         elif label == "完全沒看過":
+
             unseen += 1
 
-        if item.get("uncertain"):
-            uncertain_count += 1
-
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2, col3, col4 = (
+        st.columns(4)
+    )
 
     col1.metric(
         "需複習",
@@ -877,95 +1285,206 @@ def show_mistake_bank():
     st.divider()
 
     # =====================================================
-    # 按 Subject 分類
+    # Subject 分類
     # =====================================================
 
     subjects = {}
 
-    for item in st.session_state.mistake_bank:
+    for item in (
+        st.session_state.mistake_bank
+    ):
 
-        subject = item["subject"]
+        subject = (
+            item["subject"]
+        )
 
         if subject not in subjects:
-            subjects[subject] = []
 
-        subjects[subject].append(item)
+            subjects[
+                subject
+            ] = []
 
-    for subject, subject_items in subjects.items():
+        subjects[
+            subject
+        ].append(
+            item
+        )
+
+    # =====================================================
+    # 每個 Subject
+    # =====================================================
+
+    for (
+        subject,
+        subject_items
+    ) in subjects.items():
 
         st.subheader(
             f"{subject} · {len(subject_items)} 題"
         )
 
-        # -----------------------------------------------
+        # =================================================
         # Concept 分組
-        # -----------------------------------------------
+        # =================================================
 
         concepts = {}
 
-        for item in subject_items:
+        for item in (
+            subject_items
+        ):
 
-            concept = item["concept"]
+            concept = (
+                item["concept"]
+            )
 
             if concept not in concepts:
-                concepts[concept] = []
 
-            concepts[concept].append(item)
+                concepts[
+                    concept
+                ] = []
 
-        for concept, concept_items in concepts.items():
+            concepts[
+                concept
+            ].append(
+                item
+            )
+
+        # =================================================
+        # 每個 Concept
+        # =================================================
+
+        for (
+            concept,
+            concept_items
+        ) in concepts.items():
 
             with st.expander(
                 f"{concept} · {len(concept_items)} 題",
                 expanded=False
             ):
 
-                for item in concept_items:
+                for item in (
+                    concept_items
+                ):
 
-                    question_index = item["question_index"]
+                    # =====================================
+                    # 題目
+                    # =====================================
 
                     st.markdown(
-                        f"**{item['question']}**"
+                        f"### {item['question']}"
                     )
+
+                    # =====================================
+                    # 狀態
+                    # =====================================
 
                     status_parts = []
 
                     if item["is_correct"]:
-                        status_parts.append("✅")
+
+                        status_parts.append(
+                            "✅"
+                        )
+
                     else:
-                        status_parts.append("❌")
+
+                        status_parts.append(
+                            "❌"
+                        )
 
                     if item["uncertain"]:
-                        status_parts.append("❓")
+
+                        status_parts.append(
+                            "❓"
+                        )
 
                     if item["label"]:
+
                         status_parts.append(
                             f"🏷️ {item['label']}"
                         )
 
                     st.write(
-                        "　".join(status_parts)
+                        "　".join(
+                            status_parts
+                        )
                     )
 
-                    answer_col1, answer_col2 = st.columns(2)
+                    st.write("")
 
-                    with answer_col1:
+                    # =====================================
+                    # 所有選項
+                    # =====================================
 
-                        st.caption("你的答案")
+                    option_labels = [
+                        "A",
+                        "B",
+                        "C",
+                        "D"
+                    ]
 
-                        if item["user_answer"] is None:
-                            st.write("未選擇")
-                        else:
-                            st.write(
-                                item["user_answer"]
+                    for (
+                        option_label,
+                        option_text
+                    ) in zip(
+                        option_labels,
+                        item["options"]
+                    ):
+
+                        markers = []
+
+                        if (
+                            option_text
+                            == item["correct_answer"]
+                        ):
+
+                            markers.append(
+                                "✅ 正確答案"
                             )
 
-                    with answer_col2:
+                        if (
+                            option_text
+                            == item["user_answer"]
+                        ):
 
-                        st.caption("正確答案")
+                            markers.append(
+                                "← 你的答案"
+                            )
 
-                        st.write(
-                            item["correct_answer"]
+                        marker_text = ""
+
+                        if markers:
+
+                            marker_text = (
+                                "　"
+                                + "　".join(
+                                    markers
+                                )
+                            )
+
+                        st.markdown(
+                            f"**{option_label}.** "
+                            f"{option_text}"
+                            f"{marker_text}"
                         )
+
+                    # =====================================
+                    # 沒有作答但按 ❓
+                    # =====================================
+
+                    if (
+                        item["user_answer"]
+                        is None
+                    ):
+
+                        st.caption(
+                            "本題沒有選擇答案。"
+                        )
+
+                    # =====================================
+                    # Source
+                    # =====================================
 
                     st.caption(
                         f"教材來源：{item['source']}"
@@ -973,35 +1492,37 @@ def show_mistake_bank():
 
                     st.divider()
 
-    # =====================================================
-    # 回首頁
-    # =====================================================
-
-    if st.button(
-        "回首頁",
-        use_container_width=True
-    ):
-
-        st.session_state.page = "home"
-        st.rerun()
-
 
 # =========================================================
 # Router
 # =========================================================
 
-if st.session_state.page == "home":
+show_sidebar()
+
+if (
+    st.session_state.page
+    == "home"
+):
 
     show_home()
 
-elif st.session_state.page == "quiz":
+elif (
+    st.session_state.page
+    == "quiz"
+):
 
     show_quiz()
 
-elif st.session_state.page == "result":
+elif (
+    st.session_state.page
+    == "result"
+):
 
     show_result()
 
-elif st.session_state.page == "mistakes":
+elif (
+    st.session_state.page
+    == "mistakes"
+):
 
     show_mistake_bank()
