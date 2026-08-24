@@ -84,6 +84,7 @@ default_states = {
     "uploaded_file_hash": None,
     "generated_questions": None,
     "question_generation_error": None,
+    "question_generation_stats": None,
 }
 
 for key, value in default_states.items():
@@ -263,12 +264,31 @@ def generate_questions_with_ai(
     document_text,
     analysis,
     question_count=5,
+    existing_questions=None,
 ):
+    """
+    一次批量產生指定數量的題目。
+    補題時會把已通過題目的摘要告訴 AI，
+    降低重複出題機率。
+    """
+
     client = get_openai_client()
+
+    if existing_questions is None:
+        existing_questions = []
 
     knowledge_units = [
         unit["name"]
         for unit in analysis["knowledge_units"]
+    ]
+
+    existing_summary = [
+        {
+            "question": item.get("question", ""),
+            "concept": item.get("concept", ""),
+            "source_page": item.get("source_page"),
+        }
+        for item in existing_questions
     ]
 
     schema = {
@@ -344,23 +364,32 @@ def generate_questions_with_ai(
 
 請產生剛好 {question_count} 題單選題。
 
-【規則】
-1. 所有題目、答案、解釋只能根據教材。
-2. 不可用外部知識補充答案。
-3. 每題只能有一個明確正確答案。
-4. 每題必須有四個不同選項。
-5. distractors 要合理，但不能讓兩個答案都成立。
+這些題目將直接用於學生測驗，因此正確性比題目數量更重要。
+
+【最重要規則】
+
+1. 所有題目、答案、解釋都只能根據提供的教材。
+2. 絕對不可以用外部知識補充答案。
+3. 每題必須只有一個明確正確答案。
+4. 每題一定要有四個不同的選項。
+5. distractors 必須合理，但不能造成兩個答案都成立。
 6. correct_index 使用 0、1、2、3。
 7. concept 優先使用以下 Knowledge Units：
+
 {json.dumps(knowledge_units, ensure_ascii=False)}
-8. source_page 必須是教材實際 Page 編號。
+
+8. source_page 必須是教材中實際提供的 Page 編號。
 9. source_quote 必須逐字摘自該頁教材。
 10. source_quote 必須足以支持正確答案。
 11. 不要改寫 source_quote。
-12. 無法產生無歧義題目時，換另一個概念。
-13. explanation 不可加入教材外資訊。
-14. review_points 為 2～4 個簡短教材重點。
-15. 優先涵蓋不同 Knowledge Units。
+12. 如果某個概念無法從教材中產生無歧義題目，就換另一個概念。
+13. explanation 必須解釋為什麼正確答案成立，但不能加入教材外資訊。
+14. review_points 應為 2～4 個簡短、可複習的教材重點。
+15. 優先涵蓋不同 Knowledge Units，避免大量題目測同一件事。
+16. 不要重複已經通過的題目，也不要只是把原題換句話說。
+
+【已經通過、不可重複的題目】
+{json.dumps(existing_summary, ensure_ascii=False)}
 """
 
     response = client.responses.create(
@@ -380,190 +409,11 @@ def generate_questions_with_ai(
         }
     )
 
-    result = json.loads(response.output_text)
-    return result["questions"]
-
-
-
-# =========================================================
-# AI 第二層題目驗證
-# =========================================================
-
-def verify_questions_with_ai(
-    questions,
-):
-    """
-    第二層驗證只傳：
-    - 題目
-    - 四個選項
-    - AI 指定的正確答案
-    - PDF 原文證據
-
-    不再傳整份 PDF，降低成本。
-
-    驗證原則：
-    1. 正確答案必須能直接由 source_quote 支持。
-    2. 不可以依賴 source_quote 以外的知識。
-    3. 題目必須只有一個明確正確答案。
-    4. 如果證據不足、語意含糊或有多個可能答案，一律 reject。
-    """
-
-    if not questions:
-        return [], []
-
-    client = get_openai_client()
-
-    verification_items = []
-
-    for index, question in enumerate(
-        questions,
-        start=1,
-    ):
-        correct_answer = (
-            question["options"][
-                question["answer"]
-            ]
-        )
-
-        verification_items.append({
-            "id": index,
-            "question": question["question"],
-            "options": question["options"],
-            "claimed_correct_answer": correct_answer,
-            "source_quote": question["source_quote"],
-        })
-
-    schema = {
-        "type": "object",
-        "properties": {
-            "results": {
-                "type": "array",
-                "minItems": len(verification_items),
-                "maxItems": len(verification_items),
-                "items": {
-                    "type": "object",
-                    "properties": {
-                        "id": {
-                            "type": "integer",
-                            "minimum": 1
-                        },
-                        "approved": {
-                            "type": "boolean"
-                        },
-                        "reason": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "id",
-                        "approved",
-                        "reason"
-                    ],
-                    "additionalProperties": False
-                }
-            }
-        },
-        "required": [
-            "results"
-        ],
-        "additionalProperties": False
-    }
-
-    instructions = """
-你是一個嚴格的教材題目審核器。
-
-你會收到：
-- 題目
-- 四個選項
-- 系統宣稱的正確答案
-- 從教材原文逐字擷取的 source_quote
-
-你只能使用 source_quote 判斷，不可使用任何外部知識。
-
-每題只有在以下條件全部成立時 approved=true：
-
-1. source_quote 本身足以直接支持 claimed_correct_answer。
-2. 不需要教材其他頁、常識或外部知識才能得出答案。
-3. 題幹語意明確。
-4. 四個選項中只有 claimed_correct_answer 一個可以成立。
-5. 題目沒有把「可能、主要、唯一、總是」等語意強度搞混。
-6. source_quote 與題目實際測驗的概念一致。
-
-以下任一情況都必須 approved=false：
-- source_quote 只與主題相關，但不足以證明答案。
-- 需要推測。
-- 可能有兩個答案。
-- 題幹問得比 source_quote 能支持的範圍更廣。
-- claimed_correct_answer 與 source_quote 不一致。
-- source_quote 本身不足以排除其他選項。
-
-reason 請簡短說明核准或拒絕的關鍵理由。
-寧可拒絕可疑題目，也不要放行可能教錯學生的題目。
-"""
-
-    response = client.responses.create(
-        model="gpt-5.6-luna",
-        instructions=instructions,
-        input=json.dumps(
-            verification_items,
-            ensure_ascii=False,
-        ),
-        text={
-            "format": {
-                "type": "json_schema",
-                "name": "quiz_verification",
-                "strict": True,
-                "schema": schema
-            }
-        }
-    )
-
     result = json.loads(
         response.output_text
     )
 
-    result_lookup = {
-        item["id"]: item
-        for item in result["results"]
-    }
-
-    approved_questions = []
-    rejected_questions = []
-
-    for index, question in enumerate(
-        questions,
-        start=1,
-    ):
-        verification = result_lookup.get(
-            index
-        )
-
-        if (
-            verification
-            and verification["approved"]
-        ):
-            approved_questions.append(
-                question
-            )
-
-        else:
-            reason = (
-                verification["reason"]
-                if verification
-                else "驗證器沒有回傳結果"
-            )
-
-            rejected_questions.append({
-                "number": index,
-                "reasons": [
-                    f"第二層 AI 驗證未通過：{reason}"
-                ]
-            })
-
-    return (
-        approved_questions,
-        rejected_questions,
-    )
+    return result["questions"]
 
 
 # =========================================================
@@ -573,6 +423,207 @@ reason 請簡短說明核准或拒絕的關鍵理由。
 def normalize_text(text):
     text = str(text)
     return re.sub(r"\s+", "", text)
+
+
+def question_fingerprint(
+    question_text
+):
+    """
+    免費的 deterministic 去重：
+    移除空白與常見標點後比較題幹。
+    """
+
+    normalized = normalize_text(
+        question_text
+    )
+
+    normalized = re.sub(
+        r"[，。！？；：、,.!?;:()（）\\[\\]【】「」『』\\\"'`]",
+        "",
+        normalized
+    )
+
+    return normalized.lower()
+
+
+def remove_duplicate_questions(
+    candidate_questions,
+    existing_questions=None,
+):
+    """
+    避免補題時把已通過的題目重新塞回來。
+    """
+
+    if existing_questions is None:
+        existing_questions = []
+
+    seen = {
+        question_fingerprint(
+            item.get("question", "")
+        )
+        for item in existing_questions
+    }
+
+    unique_questions = []
+    rejected = []
+
+    for index, question in enumerate(
+        candidate_questions,
+        start=1,
+    ):
+        fingerprint = question_fingerprint(
+            question.get("question", "")
+        )
+
+        if (
+            not fingerprint
+            or fingerprint in seen
+        ):
+            rejected.append({
+                "number": index,
+                "reasons": [
+                    "題目與已通過題目重複"
+                ]
+            })
+            continue
+
+        seen.add(fingerprint)
+        unique_questions.append(
+            question
+        )
+
+    return unique_questions, rejected
+
+
+def generate_and_refill_quiz(
+    document_text,
+    analysis,
+    pages,
+    filename,
+    target_count=5,
+    max_refill_rounds=2,
+):
+    """
+    成本控制策略：
+
+    1. 第一次一次產生 target_count 題。
+    2. 只用 Python 做驗證。
+    3. 若不足，只針對缺額再批量補題。
+    4. 最多補題 max_refill_rounds 輪。
+    5. 還是不足就直接使用已通過題目，不無限重試。
+
+    沒有逐題 AI 二次驗證。
+    """
+
+    accepted = []
+    all_rejections = []
+    generation_rounds = []
+
+    total_rounds = (
+        1
+        + max_refill_rounds
+    )
+
+    for round_number in range(
+        1,
+        total_rounds + 1,
+    ):
+        missing_count = (
+            target_count
+            - len(accepted)
+        )
+
+        if missing_count <= 0:
+            break
+
+        request_count = (
+            target_count
+            if round_number == 1
+            else missing_count
+        )
+
+        raw_questions = (
+            generate_questions_with_ai(
+                document_text,
+                analysis,
+                question_count=request_count,
+                existing_questions=accepted,
+            )
+        )
+
+        (
+            non_duplicate_questions,
+            duplicate_rejections,
+        ) = (
+            remove_duplicate_questions(
+                raw_questions,
+                existing_questions=accepted,
+            )
+        )
+
+        (
+            valid_questions,
+            validation_rejections,
+        ) = (
+            validate_generated_questions(
+                non_duplicate_questions,
+                pages,
+                filename,
+                analysis["subject"],
+            )
+        )
+
+        remaining_slots = (
+            target_count
+            - len(accepted)
+        )
+
+        newly_accepted = (
+            valid_questions[
+                :remaining_slots
+            ]
+        )
+
+        accepted.extend(
+            newly_accepted
+        )
+
+        round_rejections = (
+            duplicate_rejections
+            + validation_rejections
+        )
+
+        all_rejections.extend(
+            [
+                {
+                    "round": round_number,
+                    "number": item["number"],
+                    "reasons": item["reasons"],
+                }
+                for item
+                in round_rejections
+            ]
+        )
+
+        generation_rounds.append({
+            "round": round_number,
+            "requested": request_count,
+            "accepted": len(
+                newly_accepted
+            ),
+            "rejected": len(
+                round_rejections
+            ),
+            "total_accepted": len(
+                accepted
+            ),
+        })
+
+    return (
+        accepted[:target_count],
+        all_rejections,
+        generation_rounds,
+    )
 
 
 def validate_generated_questions(
@@ -720,7 +771,7 @@ def show_sidebar():
             with st.expander("查看錯誤"):
                 st.code(error)
 
-        st.caption("Prototype v0.5")
+        st.caption("Prototype v0.6")
 
 
 # =========================================================
@@ -1138,6 +1189,8 @@ def show_home():
         st.session_state.generated_questions = None
         st.session_state.question_generation_error = None
 
+        st.session_state.question_generation_stats = None
+
     st.success(
         f"已成功上傳：{uploaded_file.name}"
     )
@@ -1299,7 +1352,7 @@ def show_home():
 
         st.caption(
             "Prototype 先產生 5 題，"
-            "每一題都必須通過「來源存在」與「答案確實被原文支持」兩層驗證。"
+            "先一次產生 5 題；若 Python 驗證淘汰題目，只批量補足缺額，最多補 2 輪。"
         )
 
         if st.button(
@@ -1308,50 +1361,30 @@ def show_home():
         ):
             try:
                 with st.spinner(
-                    "正在根據教材出題並進行兩層驗證..."
+                    "正在根據教材出題、驗證並批量補足缺額..."
                 ):
-                    raw_questions = (
-                        generate_questions_with_ai(
+
+                    (
+                        final_questions,
+                        all_rejections,
+                        generation_rounds,
+                    ) = (
+                        generate_and_refill_quiz(
                             document_text,
                             analysis,
-                            question_count=5,
-                        )
-                    )
-
-                    # 第一層：
-                    # Python 驗證頁碼、quote 是否真的存在、
-                    # 選項數量與重複選項
-                    (
-                        grounded_questions,
-                        grounding_rejections,
-                    ) = (
-                        validate_generated_questions(
-                            raw_questions,
                             pages,
                             uploaded_file.name,
-                            analysis["subject"],
-                        )
-                    )
-
-                    # 第二層：
-                    # AI 只看題目 + 選項 + 正確答案 + 原文證據，
-                    # 判斷「這段原文是否真的足以支持答案」
-                    (
-                        verified_questions,
-                        semantic_rejections,
-                    ) = (
-                        verify_questions_with_ai(
-                            grounded_questions
+                            target_count=5,
+                            max_refill_rounds=2,
                         )
                     )
 
                 st.session_state.generated_questions = (
-                    verified_questions
+                    final_questions
                 )
 
-                all_rejections = (
-                    grounding_rejections
-                    + semantic_rejections
+                st.session_state.question_generation_stats = (
+                    generation_rounds
                 )
 
                 if all_rejections:
@@ -1363,6 +1396,7 @@ def show_home():
                         )
 
                         rejected_text.append(
+                            f"第 {item['round']} 輪・"
                             f"第 {item['number']} 題："
                             f"{reasons}"
                         )
@@ -1392,15 +1426,45 @@ def show_home():
     st.subheader("測驗已產生")
 
     st.success(
-        f"已通過兩層教材驗證："
+        f"最終可用題目："
         f"{len(generated_questions)} 題"
     )
+
+
+    generation_stats = (
+        st.session_state
+        .question_generation_stats
+    )
+
+    if generation_stats:
+
+        with st.expander(
+            "查看出題 / 補題紀錄"
+        ):
+
+            for item in generation_stats:
+
+                if item["round"] == 1:
+                    round_name = "初次出題"
+
+                else:
+                    round_name = (
+                        f"第 {item['round'] - 1} 輪補題"
+                    )
+
+                st.write(
+                    f"**{round_name}**："
+                    f"要求 {item['requested']} 題，"
+                    f"本輪通過 {item['accepted']} 題，"
+                    f"淘汰 {item['rejected']} 題，"
+                    f"累計 {item['total_accepted']} 題"
+                )
 
     if (
         st.session_state.question_generation_error
     ):
         st.warning(
-            "部分 AI 題目因驗證失敗，"
+            "部分題目未通過 Python 驗證，"
             "已自動排除。"
         )
 
