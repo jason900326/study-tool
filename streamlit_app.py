@@ -718,6 +718,40 @@ def validate_generated_questions(
 
 
 # =========================================================
+# 動態題數
+# =========================================================
+
+def get_target_question_count(
+    analysis,
+):
+    """
+    使用 AI 建議題數，但程式端限制：
+    最少 5 題，最多 20 題。
+    """
+
+    recommended = analysis.get(
+        "recommended_question_count",
+        5,
+    )
+
+    try:
+        recommended = int(
+            recommended
+        )
+
+    except Exception:
+        recommended = 5
+
+    return max(
+        5,
+        min(
+            20,
+            recommended,
+        ),
+    )
+
+
+# =========================================================
 # 目前測驗題目
 # =========================================================
 
@@ -771,7 +805,7 @@ def show_sidebar():
             with st.expander("查看錯誤"):
                 st.code(error)
 
-        st.caption("Prototype v0.6")
+        st.caption("Prototype v0.7")
 
 
 # =========================================================
@@ -1335,11 +1369,15 @@ def show_home():
                 unit["description"]
             )
 
+    target_question_count = (
+        get_target_question_count(
+            analysis
+        )
+    )
+
     st.metric(
         "AI 建議測驗題數",
-        analysis[
-            "recommended_question_count"
-        ],
+        target_question_count,
     )
 
     st.divider()
@@ -1351,12 +1389,14 @@ def show_home():
         st.subheader("產生測驗")
 
         st.caption(
-            "Prototype 先產生 5 題，"
-            "先一次產生 5 題；若 Python 驗證淘汰題目，只批量補足缺額，最多補 2 輪。"
+            f"AI 建議本份教材產生 "
+            f"{target_question_count} 題。"
+            "若 Python 驗證淘汰題目，"
+            "只批量補足缺額，最多補 2 輪。"
         )
 
         if st.button(
-            "產生 5 題測驗",
+            f"產生 {target_question_count} 題測驗",
             use_container_width=True,
         ):
             try:
@@ -1374,7 +1414,7 @@ def show_home():
                             analysis,
                             pages,
                             uploaded_file.name,
-                            target_count=5,
+                            target_count=target_question_count,
                             max_refill_rounds=2,
                         )
                     )
