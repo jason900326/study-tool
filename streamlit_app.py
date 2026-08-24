@@ -1,10 +1,16 @@
 import streamlit as st
 
+
+# =========================================================
+# 網頁基本設定
+# =========================================================
+
 st.set_page_config(
     page_title="Study Tool",
     page_icon="📚",
     layout="wide"
 )
+
 
 # =========================================================
 # Session State
@@ -16,7 +22,7 @@ if "page" not in st.session_state:
 if "question_index" not in st.session_state:
     st.session_state.question_index = 0
 
-# 真正儲存使用者答案的地方
+# 儲存使用者答案
 if "answers" not in st.session_state:
     st.session_state.answers = {}
 
@@ -64,17 +70,21 @@ questions = [
 
 
 # =========================================================
-# 儲存答案的 function
+# 儲存答案
 # =========================================================
 
 def save_answer(question_index):
+
     widget_key = f"radio_{question_index}"
 
     if widget_key in st.session_state:
-        st.session_state.answers[question_index] = st.session_state[widget_key]
+        st.session_state.answers[question_index] = (
+            st.session_state[widget_key]
+        )
 
 
 def save_uncertain(question_index):
+
     widget_key = f"uncertain_{question_index}"
 
     if widget_key in st.session_state:
@@ -84,7 +94,7 @@ def save_uncertain(question_index):
 
 
 # =========================================================
-# 結束測驗確認視窗
+# 結束測驗 Dialog
 # =========================================================
 
 @st.dialog("結束測驗")
@@ -97,9 +107,13 @@ def finish_quiz_dialog():
         answer = st.session_state.answers.get(i)
         uncertain = st.session_state.uncertain_answers.get(i, False)
 
-        # 沒答案，而且也沒有按 ❓，才算真正漏答
+        # 沒選答案也沒按 ❓ 才算未作答
         if answer is None and not uncertain:
             unanswered.append(i + 1)
+
+    # -----------------------------------------------------
+    # 有未作答題目
+    # -----------------------------------------------------
 
     if unanswered:
 
@@ -111,11 +125,15 @@ def finish_quiz_dialog():
             f"你還有未作答的題目：{question_list}"
         )
 
-        st.write("你可以返回測驗繼續作答，或仍然結束測驗。")
+        st.write(
+            "你可以返回測驗繼續作答，"
+            "或直接結束測驗。"
+        )
 
         col1, col2 = st.columns(2)
 
         with col1:
+
             if st.button(
                 "返回測驗",
                 use_container_width=True
@@ -123,12 +141,17 @@ def finish_quiz_dialog():
                 st.rerun()
 
         with col2:
+
             if st.button(
                 "仍然結束",
                 use_container_width=True
             ):
                 st.session_state.page = "result"
                 st.rerun()
+
+    # -----------------------------------------------------
+    # 所有題目皆已完成
+    # -----------------------------------------------------
 
     else:
 
@@ -146,7 +169,7 @@ def finish_quiz_dialog():
 # 首頁
 # =========================================================
 
-if st.session_state.page == "home":
+def show_home():
 
     st.title("📚 把教材變成你的測驗")
 
@@ -176,7 +199,8 @@ if st.session_state.page == "home":
 
         st.write("偵測到 **18 個核心概念**")
 
-        st.markdown("""
+        st.markdown(
+            """
 **主要內容**
 
 - Gram-positive / Gram-negative bacteria
@@ -184,18 +208,34 @@ if st.session_state.page == "home":
 - Acid-fast staining
 - Antimicrobial mechanisms
 - Antibiotic resistance
-""")
+"""
+        )
 
         st.write("建議測驗題數：**18 題**")
 
-        if st.button("開始測驗"):
+        if st.button(
+            "開始測驗",
+            use_container_width=True
+        ):
 
             st.session_state.page = "quiz"
             st.session_state.question_index = 0
 
-            # 每次開始新測驗時清除舊資料
+            # 開始新測驗時清空舊資料
             st.session_state.answers = {}
             st.session_state.uncertain_answers = {}
+
+            # 清掉舊 widget state
+            for i in range(len(questions)):
+
+                radio_key = f"radio_{i}"
+                uncertain_key = f"uncertain_{i}"
+
+                if radio_key in st.session_state:
+                    del st.session_state[radio_key]
+
+                if uncertain_key in st.session_state:
+                    del st.session_state[uncertain_key]
 
             st.rerun()
 
@@ -204,39 +244,44 @@ if st.session_state.page == "home":
 # 測驗頁
 # =========================================================
 
-elif st.session_state.page == "quiz":
+def show_quiz():
 
     current = st.session_state.question_index
     question = questions[current]
 
+    # =====================================================
+    # 上方：題號 + 右上角結束測驗
+    # =====================================================
 
-# -----------------------------------------------------
-# 上方：題號 + 結束測驗
-# -----------------------------------------------------
+    top_left, top_right = st.columns([7, 1.4])
 
-title_col, finish_col = st.columns([7, 1])
+    with top_left:
 
-with title_col:
-    st.markdown(
-        f"""
-        <div style="
-            padding-top: 8px;
-            font-size: 18px;
-            font-weight: 600;
-        ">
-            Question {current + 1} / {len(questions)}
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+        st.markdown(
+            f"""
+            <div style="
+                padding-top: 8px;
+                font-size: 18px;
+                font-weight: 600;
+            ">
+                Question {current + 1} / {len(questions)}
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
 
-with finish_col:
-    if st.button(
-        "結束測驗",
-        use_container_width=True,
-        key=f"finish_top_{current}"
-    ):
-        finish_quiz_dialog()
+    with top_right:
+
+        if st.button(
+            "結束測驗",
+            use_container_width=True,
+            key=f"finish_top_{current}"
+        ):
+            finish_quiz_dialog()
+
+    # =====================================================
+    # 進度條
+    # =====================================================
 
     st.progress(
         (current + 1) / len(questions)
@@ -244,142 +289,208 @@ with finish_col:
 
     st.divider()
 
-    # -----------------------------------------------------
+    # =====================================================
     # 題目
-    # -----------------------------------------------------
+    # =====================================================
 
     st.subheader(question["question"])
 
-    saved_answer = st.session_state.answers.get(current)
+    # -----------------------------------------------------
+    # 如果之前已經答過，把答案帶回畫面
+    # -----------------------------------------------------
 
-    if saved_answer in question["options"]:
-        saved_index = question["options"].index(saved_answer)
-    else:
-        saved_index = None
+    radio_key = f"radio_{current}"
+
+    if radio_key not in st.session_state:
+
+        saved_answer = st.session_state.answers.get(current)
+
+        if saved_answer is not None:
+            st.session_state[radio_key] = saved_answer
+
+    # -----------------------------------------------------
+    # 選項
+    # -----------------------------------------------------
 
     st.radio(
         "請選擇答案",
         question["options"],
-        index=saved_index,
-        key=f"radio_{current}",
+        index=None,
+        key=radio_key,
         on_change=save_answer,
         args=(current,)
     )
 
-    saved_uncertain = (
-        st.session_state.uncertain_answers.get(current, False)
-    )
+    # =====================================================
+    # ❓ 不確定
+    # =====================================================
+
+    uncertain_key = f"uncertain_{current}"
+
+    if uncertain_key not in st.session_state:
+
+        saved_uncertain = (
+            st.session_state.uncertain_answers.get(
+                current,
+                False
+            )
+        )
+
+        st.session_state[uncertain_key] = saved_uncertain
 
     st.checkbox(
         "❓ 我不確定",
-        value=saved_uncertain,
-        key=f"uncertain_{current}",
+        key=uncertain_key,
         on_change=save_uncertain,
         args=(current,)
     )
 
-    # -----------------------------------------------------
+    # =====================================================
     # 顯示目前狀態
-    # -----------------------------------------------------
+    # =====================================================
 
     answer_exists = (
         current in st.session_state.answers
     )
 
     uncertain = (
-        st.session_state.uncertain_answers.get(current, False)
+        st.session_state.uncertain_answers.get(
+            current,
+            False
+        )
     )
 
     if answer_exists and uncertain:
-        st.caption("已作答 · ❓ 不確定")
+
+        st.caption(
+            "已作答 · ❓ 不確定"
+        )
 
     elif answer_exists:
-        st.caption("已作答")
+
+        st.caption(
+            "已作答"
+        )
 
     elif uncertain:
-        st.caption("❓ 已標記為不確定")
 
-   # -----------------------------------------------------
-# 下方：上一題 / 下一題
-# -----------------------------------------------------
+        st.caption(
+            "❓ 已標記為不確定"
+        )
 
-st.divider()
+    # =====================================================
+    # 下方 Navigation
+    # =====================================================
 
-# 第一題：只有下一題
-if current == 0:
+    st.divider()
 
-    nav_left, nav_right = st.columns([1, 1])
+    total_questions = len(questions)
 
-    with nav_right:
-        if st.button(
-            "下一題 →",
-            use_container_width=True,
-            key=f"next_{current}"
-        ):
-            st.session_state.question_index += 1
-            st.rerun()
+    # -----------------------------------------------------
+    # Q1：只有下一題
+    # -----------------------------------------------------
 
-# 最後一題：只有上一題
-elif current == len(questions) - 1:
+    if current == 0:
 
-    nav_left, nav_right = st.columns([1, 1])
+        empty_col, next_col = st.columns(2)
 
-    with nav_left:
-        if st.button(
-            "← 上一題",
-            use_container_width=True,
-            key=f"prev_{current}"
-        ):
-            st.session_state.question_index -= 1
-            st.rerun()
+        with next_col:
 
-# 中間題目：上一題 / 下一題並列
-else:
+            if st.button(
+                "下一題 →",
+                use_container_width=True,
+                key=f"next_{current}"
+            ):
 
-    nav_left, nav_right = st.columns([1, 1])
+                st.session_state.question_index += 1
+                st.rerun()
 
-    with nav_left:
-        if st.button(
-            "← 上一題",
-            use_container_width=True,
-            key=f"prev_{current}"
-        ):
-            st.session_state.question_index -= 1
-            st.rerun()
+    # -----------------------------------------------------
+    # 最後一題：只有上一題
+    # -----------------------------------------------------
 
-    with nav_right:
-        if st.button(
-            "下一題 →",
-            use_container_width=True,
-            key=f"next_{current}"
-        ):
-            st.session_state.question_index += 1
-            st.rerun()
+    elif current == total_questions - 1:
+
+        prev_col, empty_col = st.columns(2)
+
+        with prev_col:
+
+            if st.button(
+                "← 上一題",
+                use_container_width=True,
+                key=f"prev_{current}"
+            ):
+
+                st.session_state.question_index -= 1
+                st.rerun()
+
+    # -----------------------------------------------------
+    # 中間題目：上一題 + 下一題
+    # -----------------------------------------------------
+
+    else:
+
+        prev_col, next_col = st.columns(2)
+
+        with prev_col:
+
+            if st.button(
+                "← 上一題",
+                use_container_width=True,
+                key=f"prev_{current}"
+            ):
+
+                st.session_state.question_index -= 1
+                st.rerun()
+
+        with next_col:
+
+            if st.button(
+                "下一題 →",
+                use_container_width=True,
+                key=f"next_{current}"
+            ):
+
+                st.session_state.question_index += 1
+                st.rerun()
+
 
 # =========================================================
-# 結果頁（暫時）
+# 結果頁
 # =========================================================
 
-elif st.session_state.page == "result":
+def show_result():
 
     st.title("測驗完成")
+
+    # =====================================================
+    # 計算分數
+    # =====================================================
 
     correct_count = 0
 
     for i, question in enumerate(questions):
 
-        user_answer = st.session_state.answers.get(i)
-        uncertain = st.session_state.uncertain_answers.get(i, False)
+        user_answer = (
+            st.session_state.answers.get(i)
+        )
 
-        correct_answer = question["options"][question["answer"]]
+        correct_answer = (
+            question["options"][question["answer"]]
+        )
 
-        is_correct = user_answer == correct_answer
-
-        if is_correct:
+        if user_answer == correct_answer:
             correct_count += 1
 
     total_questions = len(questions)
-    percentage = round(correct_count / total_questions * 100)
+
+    percentage = round(
+        correct_count / total_questions * 100
+    )
+
+    # =====================================================
+    # 顯示分數
+    # =====================================================
 
     st.subheader(
         f"{correct_count} / {total_questions}（{percentage}%）"
@@ -387,42 +498,112 @@ elif st.session_state.page == "result":
 
     st.divider()
 
+    # =====================================================
+    # 答題結果
+    # =====================================================
+
     st.subheader("答題結果")
 
     for i, question in enumerate(questions):
 
-        user_answer = st.session_state.answers.get(i)
-        uncertain = st.session_state.uncertain_answers.get(i, False)
+        user_answer = (
+            st.session_state.answers.get(i)
+        )
 
-        correct_answer = question["options"][question["answer"]]
+        uncertain = (
+            st.session_state.uncertain_answers.get(
+                i,
+                False
+            )
+        )
 
-        is_correct = user_answer == correct_answer
+        correct_answer = (
+            question["options"][question["answer"]]
+        )
 
+        is_correct = (
+            user_answer == correct_answer
+        )
+
+        # -------------------------------------------------
         # 答對
+        # -------------------------------------------------
+
         if is_correct and not uncertain:
-            st.write(f"**第 {i + 1} 題**　✅")
 
-        # 答對，但有按 ❓
+            st.write(
+                f"**第 {i + 1} 題**　✅"
+            )
+
+        # -------------------------------------------------
+        # 答對 + ❓
+        # -------------------------------------------------
+
         elif is_correct and uncertain:
-            st.write(f"**第 {i + 1} 題**　✅ ❓")
 
+            st.write(
+                f"**第 {i + 1} 題**　✅ ❓"
+            )
+
+        # -------------------------------------------------
         # 答錯
+        # -------------------------------------------------
+
         elif user_answer is not None:
-            st.write(f"**第 {i + 1} 題**　❌")
 
-        # 沒選答案，但有按 ❓
+            st.write(
+                f"**第 {i + 1} 題**　❌"
+            )
+
+        # -------------------------------------------------
+        # 沒有答案，但按了 ❓
+        # -------------------------------------------------
+
         elif uncertain:
-            st.write(f"**第 {i + 1} 題**　❓")
 
-        # 完全沒作答
+            st.write(
+                f"**第 {i + 1} 題**　❓"
+            )
+
+        # -------------------------------------------------
+        # 完全未作答
+        # -------------------------------------------------
+
         else:
-            st.write(f"**第 {i + 1} 題**　未作答")
+
+            st.write(
+                f"**第 {i + 1} 題**　未作答"
+            )
 
     st.divider()
 
-    if st.button("回首頁"):
+    # =====================================================
+    # 回首頁
+    # =====================================================
+
+    if st.button(
+        "回首頁",
+        use_container_width=True
+    ):
 
         st.session_state.page = "home"
         st.session_state.question_index = 0
 
         st.rerun()
+
+
+# =========================================================
+# Page Router
+# =========================================================
+
+if st.session_state.page == "home":
+
+    show_home()
+
+elif st.session_state.page == "quiz":
+
+    show_quiz()
+
+elif st.session_state.page == "result":
+
+    show_result()
