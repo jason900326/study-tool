@@ -1,6 +1,9 @@
 import streamlit as st
 import html
 import json
+import re
+import hashlib
+from io import BytesIO
 
 from supabase import create_client
 from pypdf import PdfReader
@@ -8,7 +11,7 @@ from openai import OpenAI
 
 
 # =========================================================
-# 網頁基本設定
+# 基本設定
 # =========================================================
 
 st.set_page_config(
@@ -98,245 +101,49 @@ def get_openai_client():
     )
 
 
-def analyze_document_with_ai(
-    document_text
-):
-
-    client = get_openai_client()
-
-    schema = {
-        "type": "object",
-        "properties": {
-
-            "subject": {
-                "type": "string"
-            },
-
-            "summary": {
-                "type": "string"
-            },
-
-            "main_topics": {
-                "type": "array",
-                "items": {
-                    "type": "string"
-                }
-            },
-
-            "knowledge_units": {
-                "type": "array",
-                "items": {
-                    "type": "object",
-                    "properties": {
-
-                        "name": {
-                            "type": "string"
-                        },
-
-                        "description": {
-                            "type": "string"
-                        },
-
-                        "importance": {
-                            "type": "string",
-                            "enum": [
-                                "high",
-                                "medium",
-                                "low"
-                            ]
-                        }
-                    },
-                    "required": [
-                        "name",
-                        "description",
-                        "importance"
-                    ],
-                    "additionalProperties": False
-                }
-            },
-
-            "recommended_question_count": {
-                "type": "integer",
-                "minimum": 5,
-                "maximum": 20
-            }
-        },
-
-        "required": [
-            "subject",
-            "summary",
-            "main_topics",
-            "knowledge_units",
-            "recommended_question_count"
-        ],
-
-        "additionalProperties": False
-    }
-
-    instructions = """
-你是一個教材分析系統。
-
-你的工作不是補充外部知識，而是分析使用者提供的教材。
-
-規則：
-
-1. 所有判斷只能根據使用者提供的教材文字。
-2. 不可以自行加入教材沒有提到的知識。
-3. subject 使用適合學生理解的大分類，例如：
-   臨床微生物學、血液學、免疫學、生化學等。
-4. Knowledge Unit 是之後可以拿來出題與追蹤學習狀態的核心概念。
-5. Knowledge Unit 不要切得過細，也不要只照章節標題抄寫。
-6. importance 表示這個概念在教材中的重要程度，不代表外部考試的重要程度。
-7. recommended_question_count 根據教材的非重複核心概念數量決定。
-8. 如果教材資訊不足，不要猜。
-"""
-
-    response = client.responses.create(
-        model="gpt-5.6-luna",
-
-        instructions=instructions,
-
-        input=(
-            "以下是使用者上傳教材中擷取出的文字：\n\n"
-            + document_text
-        ),
-
-        text={
-            "format": {
-                "type": "json_schema",
-                "name": "document_analysis",
-                "strict": True,
-                "schema": schema
-            }
-        }
-    )
-
-    return json.loads(
-        response.output_text
-    )
-
-
 # =========================================================
 # Session State
 # =========================================================
 
-if "page" not in st.session_state:
-    st.session_state.page = "home"
+default_states = {
 
-if "question_index" not in st.session_state:
-    st.session_state.question_index = 0
+    "page": "home",
 
-if "answers" not in st.session_state:
-    st.session_state.answers = {}
+    "question_index": 0,
 
-if "uncertain_answers" not in st.session_state:
-    st.session_state.uncertain_answers = {}
+    "answers": {},
 
-if "error_labels" not in st.session_state:
-    st.session_state.error_labels = {}
+    "uncertain_answers": {},
 
-if "mistakes_saved" not in st.session_state:
-    st.session_state.mistakes_saved = False
+    "error_labels": {},
 
-if "mistake_record_ids" not in st.session_state:
-    st.session_state.mistake_record_ids = {}
+    "mistakes_saved": False,
 
-if "label_sync_error" not in st.session_state:
-    st.session_state.label_sync_error = None
+    "mistake_record_ids": {},
 
-if "document_analysis" not in st.session_state:
-    st.session_state.document_analysis = None
+    "label_sync_error": None,
 
-if "document_text" not in st.session_state:
-    st.session_state.document_text = None
+    "document_analysis": None,
 
-if "uploaded_filename" not in st.session_state:
-    st.session_state.uploaded_filename = None
+    "document_text": None,
+
+    "document_pages": None,
+
+    "uploaded_filename": None,
+
+    "uploaded_file_hash": None,
+
+    "generated_questions": None,
+
+    "question_generation_error": None
+}
 
 
-# =========================================================
-# Prototype 題目
-# =========================================================
+for key, value in default_states.items():
 
-questions = [
-    {
-        "question": "下列何者是 Gram-negative bacteria 的特徵？",
-        "options": [
-            "具有厚的 peptidoglycan layer",
-            "具有 outer membrane",
-            "沒有 LPS",
-            "沒有 periplasm"
-        ],
-        "answer": 1,
-        "subject": "臨床微生物學",
-        "concept": "Gram-positive / Gram-negative cell envelope",
-        "review_type": "table",
-        "review_points": [
-            "Gram-negative bacteria 具有 outer membrane。",
-            "Gram-negative bacteria 的 peptidoglycan layer 較薄。",
-            "LPS 位於 Gram-negative bacteria 的 outer membrane。"
-        ],
-        "comparison": {
-            "特徵": [
-                "Peptidoglycan",
-                "Outer membrane",
-                "LPS"
-            ],
-            "Gram-positive": [
-                "厚",
-                "無",
-                "無"
-            ],
-            "Gram-negative": [
-                "薄",
-                "有",
-                "有"
-            ]
-        },
-        "source": "Prototype PDF · Page 8"
-    },
+    if key not in st.session_state:
 
-    {
-        "question": "Gram stain 中的主要脫色步驟使用何者？",
-        "options": [
-            "Crystal violet",
-            "Iodine",
-            "Alcohol / acetone",
-            "Safranin"
-        ],
-        "answer": 2,
-        "subject": "臨床微生物學",
-        "concept": "Gram staining procedure",
-        "review_type": "bullets",
-        "review_points": [
-            "Crystal violet 是 primary stain。",
-            "Iodine 是 mordant。",
-            "Alcohol / acetone 是 decolorizer。",
-            "Safranin 是 counterstain。"
-        ],
-        "source": "Prototype PDF · Page 9"
-    },
-
-    {
-        "question": "Vancomycin 主要作用在哪個細菌結構？",
-        "options": [
-            "DNA",
-            "Cell wall",
-            "30S ribosome",
-            "Cytoplasmic membrane"
-        ],
-        "answer": 1,
-        "subject": "臨床微生物學",
-        "concept": "Vancomycin mechanism of action",
-        "review_type": "bullets",
-        "review_points": [
-            "Vancomycin 屬於 glycopeptide。",
-            "作用位置與 bacterial cell wall synthesis 有關。",
-            "其作用與 peptidoglycan precursor 的 D-Ala-D-Ala 有關。"
-        ],
-        "source": "Prototype PDF · Page 30"
-    }
-]
+        st.session_state[key] = value
 
 
 # =========================================================
@@ -344,11 +151,11 @@ questions = [
 # =========================================================
 
 def extract_pdf_text(
-    uploaded_file
+    file_bytes
 ):
 
     reader = PdfReader(
-        uploaded_file
+        BytesIO(file_bytes)
     )
 
     page_count = len(
@@ -367,9 +174,7 @@ def extract_pdf_text(
 
         try:
 
-            text = (
-                page.extract_text()
-            )
+            text = page.extract_text()
 
             if text is None:
                 text = ""
@@ -380,11 +185,8 @@ def extract_pdf_text(
 
         pages.append(
             {
-                "page":
-                    page_number,
-
-                "text":
-                    text.strip()
+                "page": page_number,
+                "text": text.strip()
             }
         )
 
@@ -447,9 +249,7 @@ def create_pdf_preview(
         ):
 
             text = (
-                text[
-                    :max_chars_per_page
-                ]
+                text[:max_chars_per_page]
                 + "..."
             )
 
@@ -461,6 +261,597 @@ def create_pdf_preview(
     return "\n\n".join(
         preview_parts
     )
+
+
+# =========================================================
+# AI 教材分析
+# =========================================================
+
+def analyze_document_with_ai(
+    document_text
+):
+
+    client = get_openai_client()
+
+    schema = {
+
+        "type": "object",
+
+        "properties": {
+
+            "subject": {
+                "type": "string"
+            },
+
+            "summary": {
+                "type": "string"
+            },
+
+            "main_topics": {
+
+                "type": "array",
+
+                "items": {
+                    "type": "string"
+                }
+            },
+
+            "knowledge_units": {
+
+                "type": "array",
+
+                "items": {
+
+                    "type": "object",
+
+                    "properties": {
+
+                        "name": {
+                            "type": "string"
+                        },
+
+                        "description": {
+                            "type": "string"
+                        },
+
+                        "importance": {
+
+                            "type": "string",
+
+                            "enum": [
+                                "high",
+                                "medium",
+                                "low"
+                            ]
+                        }
+                    },
+
+                    "required": [
+                        "name",
+                        "description",
+                        "importance"
+                    ],
+
+                    "additionalProperties": False
+                }
+            },
+
+            "recommended_question_count": {
+
+                "type": "integer",
+
+                "minimum": 5,
+
+                "maximum": 20
+            }
+        },
+
+        "required": [
+            "subject",
+            "summary",
+            "main_topics",
+            "knowledge_units",
+            "recommended_question_count"
+        ],
+
+        "additionalProperties": False
+    }
+
+    instructions = """
+你是一個教材分析系統。
+
+你只能根據使用者提供的教材文字進行分析。
+
+規則：
+
+1. 不可以加入教材沒有出現的外部知識。
+2. subject 使用適合學生理解的大分類。
+3. Knowledge Unit 是可以被測驗與追蹤學習狀態的核心概念。
+4. Knowledge Unit 不要切得過細。
+5. importance 只表示此教材中的重要程度。
+6. recommended_question_count 依照非重複的重要概念數量決定。
+7. 如果教材不足以支持某個判斷，不要猜。
+"""
+
+    response = client.responses.create(
+
+        model="gpt-5.6-luna",
+
+        instructions=instructions,
+
+        input=(
+            "以下是使用者上傳教材：\n\n"
+            + document_text
+        ),
+
+        text={
+            "format": {
+
+                "type": "json_schema",
+
+                "name": "document_analysis",
+
+                "strict": True,
+
+                "schema": schema
+            }
+        }
+    )
+
+    return json.loads(
+        response.output_text
+    )
+
+
+# =========================================================
+# AI 題目生成
+# =========================================================
+
+def generate_questions_with_ai(
+    document_text,
+    analysis,
+    question_count=5
+):
+
+    client = get_openai_client()
+
+    knowledge_units = [
+        unit["name"]
+        for unit
+        in analysis["knowledge_units"]
+    ]
+
+    schema = {
+
+        "type": "object",
+
+        "properties": {
+
+            "questions": {
+
+                "type": "array",
+
+                "minItems": question_count,
+
+                "maxItems": question_count,
+
+                "items": {
+
+                    "type": "object",
+
+                    "properties": {
+
+                        "question": {
+                            "type": "string"
+                        },
+
+                        "options": {
+
+                            "type": "array",
+
+                            "minItems": 4,
+
+                            "maxItems": 4,
+
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+
+                        "correct_index": {
+
+                            "type": "integer",
+
+                            "minimum": 0,
+
+                            "maximum": 3
+                        },
+
+                        "concept": {
+                            "type": "string"
+                        },
+
+                        "explanation": {
+                            "type": "string"
+                        },
+
+                        "review_points": {
+
+                            "type": "array",
+
+                            "minItems": 2,
+
+                            "maxItems": 4,
+
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+
+                        "source_page": {
+
+                            "type": "integer",
+
+                            "minimum": 1
+                        },
+
+                        "source_quote": {
+                            "type": "string"
+                        }
+                    },
+
+                    "required": [
+                        "question",
+                        "options",
+                        "correct_index",
+                        "concept",
+                        "explanation",
+                        "review_points",
+                        "source_page",
+                        "source_quote"
+                    ],
+
+                    "additionalProperties": False
+                }
+            }
+        },
+
+        "required": [
+            "questions"
+        ],
+
+        "additionalProperties": False
+    }
+
+    instructions = f"""
+你是一個嚴格的教材測驗出題系統。
+
+請產生剛好 {question_count} 題單選題。
+
+這些題目將直接用於學生測驗，因此正確性比題目數量更重要。
+
+【最重要規則】
+
+1. 所有題目、答案、解釋都只能根據提供的教材。
+2. 絕對不可以用外部知識補充答案。
+3. 每題必須只有一個明確正確答案。
+4. 每題一定要有四個不同的選項。
+5. distractors 必須合理，但不能造成兩個答案都成立。
+6. correct_index 使用 0、1、2、3。
+7. concept 優先使用以下 Knowledge Units：
+
+{json.dumps(knowledge_units, ensure_ascii=False)}
+
+8. source_page 必須是教材中實際提供的 Page 編號。
+9. source_quote 必須逐字摘自該頁教材。
+10. source_quote 必須足以支持正確答案。
+11. 不要改寫 source_quote。
+12. 如果某個概念無法從教材中產生無歧義題目，就換另一個概念。
+13. explanation 必須解釋為什麼正確答案成立，但不能加入教材外資訊。
+14. review_points 應為 2～4 個簡短、可複習的教材重點。
+15. 優先涵蓋不同 Knowledge Units，避免五題都測同一件事。
+"""
+
+    response = client.responses.create(
+
+        model="gpt-5.6-luna",
+
+        instructions=instructions,
+
+        input=(
+            "以下是教材全文：\n\n"
+            + document_text
+        ),
+
+        text={
+            "format": {
+
+                "type": "json_schema",
+
+                "name": "quiz_generation",
+
+                "strict": True,
+
+                "schema": schema
+            }
+        }
+    )
+
+    result = json.loads(
+        response.output_text
+    )
+
+    return result["questions"]
+
+
+# =========================================================
+# 題目 Grounding 驗證
+# =========================================================
+
+def normalize_text(
+    text
+):
+
+    text = str(
+        text
+    )
+
+    text = re.sub(
+        r"\s+",
+        "",
+        text
+    )
+
+    return text
+
+
+def validate_generated_questions(
+    raw_questions,
+    pages,
+    filename,
+    subject
+):
+
+    valid_questions = []
+
+    rejected_questions = []
+
+    page_lookup = {
+
+        page["page"]:
+            page["text"]
+
+        for page
+        in pages
+    }
+
+    for index, question in enumerate(
+        raw_questions,
+        start=1
+    ):
+
+        reasons = []
+
+        options = question.get(
+            "options",
+            []
+        )
+
+        correct_index = question.get(
+            "correct_index"
+        )
+
+        source_page = question.get(
+            "source_page"
+        )
+
+        source_quote = question.get(
+            "source_quote",
+            ""
+        )
+
+        # -------------------------------------------------
+        # 必須有四個選項
+        # -------------------------------------------------
+
+        if len(options) != 4:
+
+            reasons.append(
+                "選項數量不是 4"
+            )
+
+        # -------------------------------------------------
+        # 四個選項不能重複
+        # -------------------------------------------------
+
+        normalized_options = [
+
+            normalize_text(option)
+
+            for option
+            in options
+        ]
+
+        if (
+            len(
+                set(
+                    normalized_options
+                )
+            )
+            != len(
+                normalized_options
+            )
+        ):
+
+            reasons.append(
+                "存在重複選項"
+            )
+
+        # -------------------------------------------------
+        # Correct index
+        # -------------------------------------------------
+
+        if (
+            not isinstance(
+                correct_index,
+                int
+            )
+            or correct_index
+            not in [
+                0,
+                1,
+                2,
+                3
+            ]
+        ):
+
+            reasons.append(
+                "正確答案 index 無效"
+            )
+
+        # -------------------------------------------------
+        # Page 是否存在
+        # -------------------------------------------------
+
+        if (
+            source_page
+            not in page_lookup
+        ):
+
+            reasons.append(
+                "來源頁碼不存在"
+            )
+
+        # -------------------------------------------------
+        # Quote 是否真的存在於該頁
+        # -------------------------------------------------
+
+        else:
+
+            page_text = (
+                page_lookup[
+                    source_page
+                ]
+            )
+
+            normalized_page = (
+                normalize_text(
+                    page_text
+                )
+            )
+
+            normalized_quote = (
+                normalize_text(
+                    source_quote
+                )
+            )
+
+            if (
+                not normalized_quote
+            ):
+
+                reasons.append(
+                    "來源證據為空"
+                )
+
+            elif (
+                normalized_quote
+                not in normalized_page
+            ):
+
+                reasons.append(
+                    "來源證據無法在指定頁面找到"
+                )
+
+        # -------------------------------------------------
+        # 驗證成功
+        # -------------------------------------------------
+
+        if not reasons:
+
+            valid_questions.append(
+                {
+
+                    "question":
+                        question[
+                            "question"
+                        ],
+
+                    "options":
+                        options,
+
+                    "answer":
+                        correct_index,
+
+                    "subject":
+                        subject,
+
+                    "concept":
+                        question[
+                            "concept"
+                        ],
+
+                    "review_type":
+                        "bullets",
+
+                    "review_points":
+                        question[
+                            "review_points"
+                        ],
+
+                    "explanation":
+                        question[
+                            "explanation"
+                        ],
+
+                    "source_page":
+                        source_page,
+
+                    "source_quote":
+                        source_quote,
+
+                    "source":
+                        (
+                            f"{filename} · "
+                            f"Page {source_page}"
+                        )
+                }
+            )
+
+        else:
+
+            rejected_questions.append(
+                {
+                    "number":
+                        index,
+
+                    "reasons":
+                        reasons
+                }
+            )
+
+    return (
+        valid_questions,
+        rejected_questions
+    )
+
+
+# =========================================================
+# 目前測驗題目
+# =========================================================
+
+def get_questions():
+
+    questions = (
+        st.session_state
+        .generated_questions
+    )
+
+    if questions is None:
+
+        return []
+
+    return questions
 
 
 # =========================================================
@@ -480,7 +871,10 @@ def show_sidebar():
             use_container_width=True
         ):
 
-            st.session_state.page = "home"
+            st.session_state.page = (
+                "home"
+            )
+
             st.rerun()
 
         if st.button(
@@ -488,7 +882,10 @@ def show_sidebar():
             use_container_width=True
         ):
 
-            st.session_state.page = "mistakes"
+            st.session_state.page = (
+                "mistakes"
+            )
+
             st.rerun()
 
         st.button(
@@ -524,7 +921,7 @@ def show_sidebar():
                 )
 
         st.caption(
-            "Prototype v0.2"
+            "Prototype v0.3"
         )
 
 
@@ -538,7 +935,7 @@ def render_answer_options(
     user_answer
 ):
 
-    option_labels = [
+    labels = [
         "A",
         "B",
         "C",
@@ -546,41 +943,41 @@ def render_answer_options(
     ]
 
     for (
-        option_label,
-        option_text
+        label,
+        option
     ) in zip(
-        option_labels,
+        labels,
         options
     ):
 
         is_correct = (
-            option_text
+            option
             == correct_answer
         )
 
         is_user_answer = (
-            option_text
+            option
             == user_answer
         )
 
         background = (
-            "rgba(128, 128, 128, 0.08)"
+            "rgba(128,128,128,0.08)"
         )
 
         border = (
             "1px solid "
-            "rgba(128, 128, 128, 0.25)"
+            "rgba(128,128,128,0.25)"
         )
 
         if is_correct:
 
             background = (
-                "rgba(46, 204, 113, 0.18)"
+                "rgba(46,204,113,0.18)"
             )
 
             border = (
                 "1px solid "
-                "rgba(46, 204, 113, 0.55)"
+                "rgba(46,204,113,0.55)"
             )
 
         if (
@@ -589,12 +986,12 @@ def render_answer_options(
         ):
 
             background = (
-                "rgba(231, 76, 60, 0.18)"
+                "rgba(231,76,60,0.18)"
             )
 
             border = (
                 "1px solid "
-                "rgba(231, 76, 60, 0.55)"
+                "rgba(231,76,60,0.55)"
             )
 
         if (
@@ -603,30 +1000,28 @@ def render_answer_options(
         ):
 
             background = (
-                "rgba(46, 204, 113, 0.18)"
+                "rgba(46,204,113,0.18)"
             )
 
             border = (
                 "2px solid "
-                "rgba(231, 76, 60, 0.70)"
+                "rgba(231,76,60,0.70)"
             )
 
-        safe_option = (
-            html.escape(
-                str(option_text)
-            )
+        safe_option = html.escape(
+            str(option)
         )
 
         st.markdown(
             f"""
             <div style="
-                background: {background};
-                border: {border};
-                border-radius: 10px;
-                padding: 12px 16px;
-                margin-bottom: 9px;
+                background:{background};
+                border:{border};
+                border-radius:10px;
+                padding:12px 16px;
+                margin-bottom:9px;
             ">
-                <strong>{option_label}.</strong>
+                <strong>{label}.</strong>
                 {safe_option}
             </div>
             """,
@@ -635,27 +1030,24 @@ def render_answer_options(
 
 
 # =========================================================
-# 答案 State
+# 答題 State
 # =========================================================
 
 def save_answer(
     question_index
 ):
 
-    widget_key = (
+    key = (
         f"radio_{question_index}"
     )
 
-    if (
-        widget_key
-        in st.session_state
-    ):
+    if key in st.session_state:
 
         st.session_state.answers[
             question_index
         ] = (
             st.session_state[
-                widget_key
+                key
             ]
         )
 
@@ -664,18 +1056,15 @@ def save_uncertain(
     question_index
 ):
 
-    widget_key = (
+    key = (
         f"uncertain_{question_index}"
     )
 
-    if (
-        widget_key
-        in st.session_state
-    ):
+    if key in st.session_state:
 
         value = (
             st.session_state[
-                widget_key
+                key
             ]
         )
 
@@ -704,19 +1093,16 @@ def save_error_label(
     question_index
 ):
 
-    widget_key = (
+    key = (
         f"error_label_{question_index}"
     )
 
-    if (
-        widget_key
-        not in st.session_state
-    ):
+    if key not in st.session_state:
         return
 
     new_label = (
         st.session_state[
-            widget_key
+            key
         ]
     )
 
@@ -733,17 +1119,14 @@ def save_error_label(
     if record_id is None:
 
         st.session_state.label_sync_error = (
-            f"找不到第 {question_index + 1} 題"
-            "對應的資料庫紀錄。"
+            "找不到對應的資料庫紀錄。"
         )
 
         return
 
     try:
 
-        supabase = (
-            get_supabase()
-        )
+        supabase = get_supabase()
 
         (
             supabase
@@ -772,7 +1155,7 @@ def save_error_label(
 
 
 # =========================================================
-# 錯題 DB
+# Supabase 錯題
 # =========================================================
 
 def save_mistakes_to_database():
@@ -782,6 +1165,10 @@ def save_mistakes_to_database():
         .mistakes_saved
     ):
         return
+
+    questions = (
+        get_questions()
+    )
 
     supabase = (
         get_supabase()
@@ -830,16 +1217,24 @@ def save_mistakes_to_database():
         row = {
 
             "subject":
-                question["subject"],
+                question[
+                    "subject"
+                ],
 
             "concept":
-                question["concept"],
+                question[
+                    "concept"
+                ],
 
             "question":
-                question["question"],
+                question[
+                    "question"
+                ],
 
             "options":
-                question["options"],
+                question[
+                    "options"
+                ],
 
             "user_answer":
                 user_answer,
@@ -859,7 +1254,9 @@ def save_mistakes_to_database():
                 .get(i),
 
             "source":
-                question["source"]
+                question[
+                    "source"
+                ]
         }
 
         response = (
@@ -876,22 +1273,20 @@ def save_mistakes_to_database():
             ) > 0
         ):
 
-            database_id = (
-                response.data[0]["id"]
-            )
-
             st.session_state.mistake_record_ids[
                 i
-            ] = database_id
+            ] = (
+                response.data[0][
+                    "id"
+                ]
+            )
 
     st.session_state.mistakes_saved = True
 
 
 def load_mistakes_from_database():
 
-    supabase = (
-        get_supabase()
-    )
+    supabase = get_supabase()
 
     response = (
         supabase
@@ -904,9 +1299,7 @@ def load_mistakes_from_database():
         .execute()
     )
 
-    return (
-        response.data
-    )
+    return response.data
 
 
 # =========================================================
@@ -917,6 +1310,10 @@ def load_mistakes_from_database():
     "結束測驗"
 )
 def finish_quiz_dialog():
+
+    questions = (
+        get_questions()
+    )
 
     unanswered = []
 
@@ -954,6 +1351,7 @@ def finish_quiz_dialog():
             "、".join(
                 [
                     f"第 {number} 題"
+
                     for number
                     in unanswered
                 ]
@@ -963,11 +1361,6 @@ def finish_quiz_dialog():
         st.warning(
             f"你還有未作答的題目："
             f"{question_list}"
-        )
-
-        st.write(
-            "你可以返回測驗繼續作答，"
-            "或直接結束測驗。"
         )
 
         col1, col2 = (
@@ -1047,6 +1440,50 @@ def finish_quiz_dialog():
 
 
 # =========================================================
+# 開始新測驗
+# =========================================================
+
+def reset_quiz_state():
+
+    questions = (
+        get_questions()
+    )
+
+    st.session_state.question_index = 0
+
+    st.session_state.answers = {}
+
+    st.session_state.uncertain_answers = {}
+
+    st.session_state.error_labels = {}
+
+    st.session_state.mistakes_saved = False
+
+    st.session_state.mistake_record_ids = {}
+
+    st.session_state.label_sync_error = None
+
+    for i in range(
+        len(questions)
+    ):
+
+        for key in [
+
+            f"radio_{i}",
+
+            f"uncertain_{i}",
+
+            f"error_label_{i}"
+        ]:
+
+            if key in st.session_state:
+
+                del st.session_state[
+                    key
+                ]
+
+
+# =========================================================
 # 首頁
 # =========================================================
 
@@ -1057,8 +1494,8 @@ def show_home():
     )
 
     st.write(
-        "上傳你的課堂講義，"
-        "系統會讀取教材內容並分析核心概念。"
+        "上傳教材 → AI 分析 → "
+        "產生有教材證據的測驗。"
     )
 
     st.divider()
@@ -1070,11 +1507,43 @@ def show_home():
         )
     )
 
-    if (
-        uploaded_file
-        is None
-    ):
+    if uploaded_file is None:
         return
+
+    file_bytes = (
+        uploaded_file.getvalue()
+    )
+
+    file_hash = (
+        hashlib.sha256(
+            file_bytes
+        )
+        .hexdigest()
+    )
+
+    # =====================================================
+    # 換了一份 PDF
+    # =====================================================
+
+    if (
+        st.session_state
+        .uploaded_file_hash
+        != file_hash
+    ):
+
+        st.session_state.uploaded_file_hash = (
+            file_hash
+        )
+
+        st.session_state.uploaded_filename = (
+            uploaded_file.name
+        )
+
+        st.session_state.document_analysis = None
+
+        st.session_state.generated_questions = None
+
+        st.session_state.question_generation_error = None
 
     st.success(
         f"已成功上傳："
@@ -1089,7 +1558,7 @@ def show_home():
 
         page_count, pages = (
             extract_pdf_text(
-                uploaded_file
+                file_bytes
             )
         )
 
@@ -1100,8 +1569,7 @@ def show_home():
         )
 
         st.code(
-            f"{type(error).__name__}: "
-            f"{str(error)}"
+            str(error)
         )
 
         return
@@ -1112,18 +1580,9 @@ def show_home():
         )
     )
 
-    # 新 PDF 時清除舊 AI 分析
-    if (
-        st.session_state
-        .uploaded_filename
-        != uploaded_file.name
-    ):
-
-        st.session_state.document_analysis = None
-
-        st.session_state.uploaded_filename = (
-            uploaded_file.name
-        )
+    st.session_state.document_pages = (
+        pages
+    )
 
     st.session_state.document_text = (
         document_text
@@ -1133,17 +1592,18 @@ def show_home():
         len(
             page["text"]
         )
-        for page in pages
+
+        for page
+        in pages
     )
 
     pages_with_text = sum(
         1
-        for page in pages
-        if page["text"]
-    )
 
-    st.subheader(
-        "PDF 解析結果"
+        for page
+        in pages
+
+        if page["text"]
     )
 
     col1, col2, col3 = (
@@ -1157,7 +1617,8 @@ def show_home():
 
     col2.metric(
         "可讀文字頁",
-        f"{pages_with_text} / {page_count}"
+        f"{pages_with_text} / "
+        f"{page_count}"
     )
 
     col3.metric(
@@ -1166,31 +1627,28 @@ def show_home():
     )
 
     with st.expander(
-        "查看文字預覽",
-        expanded=False
+        "查看文字預覽"
     ):
 
-        preview = (
-            create_pdf_preview(
-                pages
-            )
-        )
-
         st.text_area(
+
             "PDF 文字",
-            value=preview,
+
+            value=create_pdf_preview(
+                pages
+            ),
+
             height=350,
+
             disabled=True,
+
             label_visibility="collapsed"
         )
 
-    if (
-        pages_with_text == 0
-    ):
+    if pages_with_text == 0:
 
         st.warning(
-            "這份 PDF 沒有擷取到可讀文字，"
-            "目前無法進行 AI 分析。"
+            "這份 PDF 沒有可讀取文字。"
         )
 
         return
@@ -1198,7 +1656,7 @@ def show_home():
     st.divider()
 
     # =====================================================
-    # AI Analysis
+    # AI 分析
     # =====================================================
 
     if (
@@ -1209,11 +1667,6 @@ def show_home():
 
         st.subheader(
             "AI 教材分析"
-        )
-
-        st.write(
-            "下一步讓 AI 根據這份教材辨識"
-            "科目、主要主題與核心 Knowledge Units。"
         )
 
         if st.button(
@@ -1227,15 +1680,11 @@ def show_home():
                     "正在分析教材..."
                 ):
 
-                    analysis = (
+                    st.session_state.document_analysis = (
                         analyze_document_with_ai(
                             document_text
                         )
                     )
-
-                st.session_state.document_analysis = (
-                    analysis
-                )
 
                 st.rerun()
 
@@ -1250,10 +1699,10 @@ def show_home():
                     f"{str(error)}"
                 )
 
-                return
+        return
 
     # =====================================================
-    # 顯示 AI Analysis
+    # 顯示分析
     # =====================================================
 
     analysis = (
@@ -1261,16 +1710,9 @@ def show_home():
         .document_analysis
     )
 
-    if analysis is None:
-        return
-
     st.subheader(
         "教材分析"
     )
-
-    # -----------------------------------------------------
-    # Subject
-    # -----------------------------------------------------
 
     st.markdown(
         "#### 建議科目"
@@ -1280,10 +1722,6 @@ def show_home():
         analysis["subject"]
     )
 
-    # -----------------------------------------------------
-    # Summary
-    # -----------------------------------------------------
-
     st.markdown(
         "#### 教材摘要"
     )
@@ -1291,10 +1729,6 @@ def show_home():
     st.write(
         analysis["summary"]
     )
-
-    # -----------------------------------------------------
-    # Topics
-    # -----------------------------------------------------
 
     st.markdown(
         "#### 主要內容"
@@ -1310,13 +1744,18 @@ def show_home():
             f"- {topic}"
         )
 
-    # -----------------------------------------------------
-    # Knowledge Units
-    # -----------------------------------------------------
-
     st.markdown(
         "#### 核心概念"
     )
+
+    importance_map = {
+
+        "high": "高",
+
+        "medium": "中",
+
+        "low": "低"
+    }
 
     for (
         index,
@@ -1328,26 +1767,10 @@ def show_home():
         start=1
     ):
 
-        importance_map = {
-
-            "high":
-                "高",
-
-            "medium":
-                "中",
-
-            "low":
-                "低"
-        }
-
         importance = (
             importance_map.get(
-                unit[
-                    "importance"
-                ],
-                unit[
-                    "importance"
-                ]
+                unit["importance"],
+                unit["importance"]
             )
         )
 
@@ -1363,8 +1786,6 @@ def show_home():
                 ]
             )
 
-    st.divider()
-
     st.metric(
         "AI 建議測驗題數",
         analysis[
@@ -1372,82 +1793,217 @@ def show_home():
         ]
     )
 
-    st.info(
-        "目前這個步驟只分析教材，"
-        "還沒有讓 AI 產生題目。"
-    )
+    st.divider()
 
     # =====================================================
-    # Prototype Quiz
+    # AI 真實出題
     # =====================================================
 
-    if st.button(
-        "開始 Prototype 測驗",
-        use_container_width=True
+    if (
+        st.session_state
+        .generated_questions
+        is None
     ):
 
-        st.session_state.page = (
-            "quiz"
+        st.subheader(
+            "產生測驗"
         )
 
-        st.session_state.question_index = 0
+        st.caption(
+            "Prototype 先產生 5 題，"
+            "每一題都必須通過教材來源驗證。"
+        )
 
-        st.session_state.answers = {}
-
-        st.session_state.uncertain_answers = {}
-
-        st.session_state.error_labels = {}
-
-        st.session_state.mistakes_saved = False
-
-        st.session_state.mistake_record_ids = {}
-
-        st.session_state.label_sync_error = None
-
-        for i in range(
-            len(questions)
+        if st.button(
+            "產生 5 題測驗",
+            use_container_width=True
         ):
 
-            radio_key = (
-                f"radio_{i}"
+            try:
+
+                with st.spinner(
+                    "正在根據教材出題並驗證來源..."
+                ):
+
+                    raw_questions = (
+                        generate_questions_with_ai(
+                            document_text,
+                            analysis,
+                            question_count=5
+                        )
+                    )
+
+                    (
+                        valid_questions,
+                        rejected_questions
+                    ) = (
+                        validate_generated_questions(
+                            raw_questions,
+                            pages,
+                            uploaded_file.name,
+                            analysis[
+                                "subject"
+                            ]
+                        )
+                    )
+
+                st.session_state.generated_questions = (
+                    valid_questions
+                )
+
+                if rejected_questions:
+
+                    rejected_text = []
+
+                    for item in (
+                        rejected_questions
+                    ):
+
+                        reasons = (
+                            "、".join(
+                                item[
+                                    "reasons"
+                                ]
+                            )
+                        )
+
+                        rejected_text.append(
+                            f"第 {item['number']} 題："
+                            f"{reasons}"
+                        )
+
+                    st.session_state.question_generation_error = (
+                        "\n".join(
+                            rejected_text
+                        )
+                    )
+
+                else:
+
+                    st.session_state.question_generation_error = None
+
+                st.rerun()
+
+            except Exception as error:
+
+                st.error(
+                    "題目生成失敗"
+                )
+
+                st.code(
+                    f"{type(error).__name__}: "
+                    f"{str(error)}"
+                )
+
+        return
+
+    # =====================================================
+    # 生成結果
+    # =====================================================
+
+    generated_questions = (
+        get_questions()
+    )
+
+    st.subheader(
+        "測驗已產生"
+    )
+
+    st.success(
+        f"已通過教材驗證："
+        f"{len(generated_questions)} 題"
+    )
+
+    if (
+        st.session_state
+        .question_generation_error
+    ):
+
+        st.warning(
+            "部分 AI 題目因來源驗證失敗，"
+            "已自動排除。"
+        )
+
+        with st.expander(
+            "查看驗證結果"
+        ):
+
+            st.text(
+                st.session_state
+                .question_generation_error
             )
 
-            uncertain_key = (
-                f"uncertain_{i}"
+    # 至少需要 1 題才能測
+    if not generated_questions:
+
+        st.error(
+            "這次沒有題目通過來源驗證。"
+        )
+
+        if st.button(
+            "重新產生題目"
+        ):
+
+            st.session_state.generated_questions = None
+
+            st.session_state.question_generation_error = None
+
+            st.rerun()
+
+        return
+
+    # -----------------------------------------------------
+    # 封卷前只顯示題目概念，不顯示答案
+    # -----------------------------------------------------
+
+    with st.expander(
+        "查看測驗涵蓋概念"
+    ):
+
+        for (
+            index,
+            question
+        ) in enumerate(
+            generated_questions,
+            start=1
+        ):
+
+            st.write(
+                f"{index}. "
+                f"{question['concept']}"
             )
 
-            label_key = (
-                f"error_label_{i}"
+    col1, col2 = (
+        st.columns(2)
+    )
+
+    with col1:
+
+        if st.button(
+            "重新產生題目",
+            use_container_width=True
+        ):
+
+            st.session_state.generated_questions = None
+
+            st.session_state.question_generation_error = None
+
+            st.rerun()
+
+    with col2:
+
+        if st.button(
+            "開始測驗",
+            use_container_width=True
+        ):
+
+            reset_quiz_state()
+
+            st.session_state.page = (
+                "quiz"
             )
 
-            if (
-                radio_key
-                in st.session_state
-            ):
-
-                del st.session_state[
-                    radio_key
-                ]
-
-            if (
-                uncertain_key
-                in st.session_state
-            ):
-
-                del st.session_state[
-                    uncertain_key
-                ]
-
-            if (
-                label_key
-                in st.session_state
-            ):
-
-                del st.session_state[
-                    label_key
-                ]
-
-        st.rerun()
+            st.rerun()
 
 
 # =========================================================
@@ -1456,13 +2012,27 @@ def show_home():
 
 def show_quiz():
 
+    questions = (
+        get_questions()
+    )
+
+    if not questions:
+
+        st.error(
+            "目前沒有可用的測驗題目。"
+        )
+
+        return
+
     current = (
         st.session_state
         .question_index
     )
 
     question = (
-        questions[current]
+        questions[
+            current
+        ]
     )
 
     top_left, top_right = (
@@ -1476,9 +2046,9 @@ def show_quiz():
         st.markdown(
             f"""
             <div style="
-                padding-top: 8px;
-                font-size: 18px;
-                font-weight: 600;
+                padding-top:8px;
+                font-size:18px;
+                font-weight:600;
             ">
                 Question {current + 1}
                 /
@@ -1506,7 +2076,9 @@ def show_quiz():
     st.divider()
 
     st.subheader(
-        question["question"]
+        question[
+            "question"
+        ]
     )
 
     radio_key = (
@@ -1534,11 +2106,19 @@ def show_quiz():
             ] = saved_answer
 
     st.radio(
+
         "請選擇答案",
-        question["options"],
+
+        question[
+            "options"
+        ],
+
         index=None,
+
         key=radio_key,
+
         on_change=save_answer,
+
         args=(current,)
     )
 
@@ -1551,7 +2131,9 @@ def show_quiz():
         not in st.session_state
     ):
 
-        saved_uncertain = (
+        st.session_state[
+            uncertain_key
+        ] = (
             st.session_state
             .uncertain_answers
             .get(
@@ -1560,14 +2142,14 @@ def show_quiz():
             )
         )
 
-        st.session_state[
-            uncertain_key
-        ] = saved_uncertain
-
     st.checkbox(
+
         "❓ 我不確定",
+
         key=uncertain_key,
+
         on_change=save_uncertain,
+
         args=(current,)
     )
 
@@ -1608,8 +2190,8 @@ def show_quiz():
 
     st.divider()
 
-    total_questions = (
-        len(questions)
+    total = len(
+        questions
     )
 
     if current == 0:
@@ -1620,18 +2202,24 @@ def show_quiz():
 
         with next_col:
 
-            if st.button(
-                "下一題 →",
-                use_container_width=True,
-                key=f"next_{current}"
+            if (
+                current
+                < total - 1
             ):
 
-                st.session_state.question_index += 1
-                st.rerun()
+                if st.button(
+                    "下一題 →",
+                    use_container_width=True,
+                    key=f"next_{current}"
+                ):
+
+                    st.session_state.question_index += 1
+
+                    st.rerun()
 
     elif (
         current
-        == total_questions - 1
+        == total - 1
     ):
 
         prev_col, empty_col = (
@@ -1647,6 +2235,7 @@ def show_quiz():
             ):
 
                 st.session_state.question_index -= 1
+
                 st.rerun()
 
     else:
@@ -1664,6 +2253,7 @@ def show_quiz():
             ):
 
                 st.session_state.question_index -= 1
+
                 st.rerun()
 
         with next_col:
@@ -1675,6 +2265,7 @@ def show_quiz():
             ):
 
                 st.session_state.question_index += 1
+
                 st.rerun()
 
 
@@ -1685,6 +2276,10 @@ def show_quiz():
 def show_review_item(
     question_index
 ):
+
+    questions = (
+        get_questions()
+    )
 
     question = (
         questions[
@@ -1710,8 +2305,12 @@ def show_review_item(
     )
 
     correct_answer = (
-        question["options"][
-            question["answer"]
+        question[
+            "options"
+        ][
+            question[
+                "answer"
+            ]
         ]
     )
 
@@ -1755,14 +2354,15 @@ def show_review_item(
         )
 
         render_answer_options(
-            question["options"],
+            question[
+                "options"
+            ],
             correct_answer,
             user_answer
         )
 
         if (
-            user_answer
-            is None
+            user_answer is None
         ):
 
             st.caption(
@@ -1777,66 +2377,38 @@ def show_review_item(
         )
 
         st.write(
-            question["concept"]
+            question[
+                "concept"
+            ]
         )
 
-        if (
+        st.markdown(
+            "### 為什麼？"
+        )
+
+        st.write(
             question[
-                "review_type"
+                "explanation"
             ]
-            == "table"
+        )
+
+        st.markdown(
+            "### 複習重點"
+        )
+
+        for point in (
+            question[
+                "review_points"
+            ]
         ):
 
-            comparison = (
-                question[
-                    "comparison"
-                ]
+            st.markdown(
+                f"- {point}"
             )
 
-            rows = []
-
-            for i in range(
-                len(
-                    comparison[
-                        "特徵"
-                    ]
-                )
-            ):
-
-                rows.append(
-                    {
-                        "特徵":
-                            comparison[
-                                "特徵"
-                            ][i],
-
-                        "Gram-positive":
-                            comparison[
-                                "Gram-positive"
-                            ][i],
-
-                        "Gram-negative":
-                            comparison[
-                                "Gram-negative"
-                            ][i]
-                    }
-                )
-
-            st.table(
-                rows
-            )
-
-        else:
-
-            for point in (
-                question[
-                    "review_points"
-                ]
-            ):
-
-                st.markdown(
-                    f"- {point}"
-                )
+        # -------------------------------------------------
+        # 真正 PDF 證據
+        # -------------------------------------------------
 
         st.markdown(
             "### 📖 教材根據"
@@ -1845,6 +2417,12 @@ def show_review_item(
         st.caption(
             question[
                 "source"
+            ]
+        )
+
+        st.info(
+            question[
+                "source_quote"
             ]
         )
 
@@ -1889,32 +2467,25 @@ def show_review_item(
         )
 
         st.radio(
+
             "錯誤分類",
+
             label_options,
+
             index=label_index,
+
             horizontal=True,
+
             key=label_key,
+
             on_change=save_error_label,
+
             args=(
                 question_index,
             ),
+
             label_visibility="collapsed"
         )
-
-        selected_label = (
-            st.session_state
-            .error_labels
-            .get(
-                question_index
-            )
-        )
-
-        if selected_label:
-
-            st.caption(
-                f"已標記："
-                f"{selected_label}"
-            )
 
 
 # =========================================================
@@ -1922,6 +2493,18 @@ def show_review_item(
 # =========================================================
 
 def show_result():
+
+    questions = (
+        get_questions()
+    )
+
+    if not questions:
+
+        st.error(
+            "沒有測驗資料。"
+        )
+
+        return
 
     st.title(
         "測驗完成"
@@ -1940,8 +2523,12 @@ def show_result():
         )
 
         correct_answer = (
-            question["options"][
-                question["answer"]
+            question[
+                "options"
+            ][
+                question[
+                    "answer"
+                ]
             ]
         )
 
@@ -1952,19 +2539,19 @@ def show_result():
 
             correct_count += 1
 
-    total_questions = (
-        len(questions)
+    total = len(
+        questions
     )
 
     percentage = round(
         correct_count
-        / total_questions
+        / total
         * 100
     )
 
     st.subheader(
         f"{correct_count} / "
-        f"{total_questions}"
+        f"{total}"
         f"（{percentage}%）"
     )
 
@@ -1996,8 +2583,12 @@ def show_result():
         )
 
         correct_answer = (
-            question["options"][
-                question["answer"]
+            question[
+                "options"
+            ][
+                question[
+                    "answer"
+                ]
             ]
         )
 
@@ -2024,7 +2615,9 @@ def show_result():
                 f"**第 {i + 1} 題**　✅ ❓"
             )
 
-            review_questions.append(i)
+            review_questions.append(
+                i
+            )
 
         elif (
             user_answer
@@ -2035,7 +2628,9 @@ def show_result():
                 f"**第 {i + 1} 題**　❌"
             )
 
-            review_questions.append(i)
+            review_questions.append(
+                i
+            )
 
         elif uncertain:
 
@@ -2043,7 +2638,9 @@ def show_result():
                 f"**第 {i + 1} 題**　❓"
             )
 
-            review_questions.append(i)
+            review_questions.append(
+                i
+            )
 
         else:
 
@@ -2059,31 +2656,12 @@ def show_result():
             "需要檢討"
         )
 
-        st.caption(
-            "答錯或曾標記 ❓ 的題目"
-            "會出現在這裡。"
-        )
-
         for question_index in (
             review_questions
         ):
 
             show_review_item(
                 question_index
-            )
-
-        if (
-            st.session_state
-            .label_sync_error
-        ):
-
-            st.warning(
-                "部分錯題分類尚未同步到資料庫。"
-            )
-
-            st.code(
-                st.session_state
-                .label_sync_error
             )
 
     else:
@@ -2121,8 +2699,6 @@ def show_result():
             st.session_state.page = (
                 "home"
             )
-
-            st.session_state.question_index = 0
 
             st.rerun()
 
@@ -2181,24 +2757,15 @@ def show_mistake_bank():
             )
         )
 
-        if (
-            label
-            == "粗心大意"
-        ):
+        if label == "粗心大意":
 
             careless += 1
 
-        elif (
-            label
-            == "觀念不熟"
-        ):
+        elif label == "觀念不熟":
 
             unfamiliar += 1
 
-        elif (
-            label
-            == "完全沒看過"
-        ):
+        elif label == "完全沒看過":
 
             unseen += 1
 
@@ -2230,9 +2797,7 @@ def show_mistake_bank():
 
     subjects = {}
 
-    for item in (
-        mistake_bank
-    ):
+    for item in mistake_bank:
 
         subject = (
             item.get(
@@ -2301,8 +2866,7 @@ def show_mistake_bank():
 
             with st.expander(
                 f"{concept} · "
-                f"{len(concept_items)} 題",
-                expanded=False
+                f"{len(concept_items)} 題"
             ):
 
                 for item in (
@@ -2314,40 +2878,38 @@ def show_mistake_bank():
                         f"{item['question']}"
                     )
 
-                    info_parts = []
+                    info = []
 
-                    if (
-                        item.get(
-                            "uncertain",
-                            False
-                        )
+                    if item.get(
+                        "uncertain",
+                        False
                     ):
 
-                        info_parts.append(
+                        info.append(
                             "❓"
                         )
 
-                    if (
-                        item.get(
-                            "label"
-                        )
+                    if item.get(
+                        "label"
                     ):
 
-                        info_parts.append(
+                        info.append(
                             f"🏷️ "
                             f"{item['label']}"
                         )
 
-                    if info_parts:
+                    if info:
 
                         st.write(
                             "　".join(
-                                info_parts
+                                info
                             )
                         )
 
                     render_answer_options(
-                        item["options"],
+                        item[
+                            "options"
+                        ],
                         item[
                             "correct_answer"
                         ],
@@ -2356,32 +2918,10 @@ def show_mistake_bank():
                         ]
                     )
 
-                    if (
-                        item[
-                            "user_answer"
-                        ]
-                        is None
-                    ):
-
-                        st.caption(
-                            "本題沒有選擇答案。"
-                        )
-
                     st.caption(
                         f"教材來源："
                         f"{item['source']}"
                     )
-
-                    if (
-                        item.get(
-                            "created_at"
-                        )
-                    ):
-
-                        st.caption(
-                            f"紀錄時間："
-                            f"{item['created_at']}"
-                        )
 
                     st.divider()
 
@@ -2392,12 +2932,14 @@ def show_mistake_bank():
 
 show_sidebar()
 
+
 if (
     st.session_state.page
     == "home"
 ):
 
     show_home()
+
 
 elif (
     st.session_state.page
@@ -2406,12 +2948,14 @@ elif (
 
     show_quiz()
 
+
 elif (
     st.session_state.page
     == "result"
 ):
 
     show_result()
+
 
 elif (
     st.session_state.page
