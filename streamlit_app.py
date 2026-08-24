@@ -18,7 +18,7 @@ st.set_page_config(
     page_title="Study Tool",
     page_icon="📚",
     layout="wide",
-    initial_sidebar_state="collapsed"
+    initial_sidebar_state="collapsed",
 )
 
 
@@ -28,39 +28,18 @@ st.set_page_config(
 
 @st.cache_resource
 def get_supabase():
+    url = str(st.secrets["SUPABASE_URL"]).strip()
+    key = str(st.secrets["SUPABASE_KEY"]).strip()
 
-    url = str(
-        st.secrets["SUPABASE_URL"]
-    ).strip()
+    url = url.replace("\ufeff", "").replace("\u200b", "")
+    key = key.replace("\ufeff", "").replace("\u200b", "")
 
-    key = str(
-        st.secrets["SUPABASE_KEY"]
-    ).strip()
-
-    url = (
-        url
-        .replace("\ufeff", "")
-        .replace("\u200b", "")
-    )
-
-    key = (
-        key
-        .replace("\ufeff", "")
-        .replace("\u200b", "")
-    )
-
-    return create_client(
-        url,
-        key
-    )
+    return create_client(url, key)
 
 
 def test_database_connection():
-
     try:
-
         supabase = get_supabase()
-
         (
             supabase
             .table("mistakes")
@@ -68,15 +47,10 @@ def test_database_connection():
             .limit(1)
             .execute()
         )
-
         return True, None
 
     except Exception as error:
-
-        return (
-            False,
-            f"{type(error).__name__}: {str(error)}"
-        )
+        return False, f"{type(error).__name__}: {str(error)}"
 
 
 # =========================================================
@@ -85,20 +59,9 @@ def test_database_connection():
 
 @st.cache_resource
 def get_openai_client():
-
-    api_key = str(
-        st.secrets["OPENAI_API_KEY"]
-    ).strip()
-
-    api_key = (
-        api_key
-        .replace("\ufeff", "")
-        .replace("\u200b", "")
-    )
-
-    return OpenAI(
-        api_key=api_key
-    )
+    api_key = str(st.secrets["OPENAI_API_KEY"]).strip()
+    api_key = api_key.replace("\ufeff", "").replace("\u200b", "")
+    return OpenAI(api_key=api_key)
 
 
 # =========================================================
@@ -106,43 +69,25 @@ def get_openai_client():
 # =========================================================
 
 default_states = {
-
     "page": "home",
-
     "question_index": 0,
-
     "answers": {},
-
     "uncertain_answers": {},
-
     "error_labels": {},
-
     "mistakes_saved": False,
-
     "mistake_record_ids": {},
-
     "label_sync_error": None,
-
     "document_analysis": None,
-
     "document_text": None,
-
     "document_pages": None,
-
     "uploaded_filename": None,
-
     "uploaded_file_hash": None,
-
     "generated_questions": None,
-
-    "question_generation_error": None
+    "question_generation_error": None,
 }
 
-
 for key, value in default_states.items():
-
     if key not in st.session_state:
-
         st.session_state[key] = value
 
 
@@ -150,174 +95,100 @@ for key, value in default_states.items():
 # PDF
 # =========================================================
 
-def extract_pdf_text(
-    file_bytes
-):
-
-    reader = PdfReader(
-        BytesIO(file_bytes)
-    )
-
-    page_count = len(
-        reader.pages
-    )
-
+def extract_pdf_text(file_bytes):
+    reader = PdfReader(BytesIO(file_bytes))
+    page_count = len(reader.pages)
     pages = []
 
-    for (
-        page_number,
-        page
-    ) in enumerate(
-        reader.pages,
-        start=1
-    ):
-
+    for page_number, page in enumerate(reader.pages, start=1):
         try:
-
             text = page.extract_text()
-
             if text is None:
                 text = ""
-
         except Exception:
-
             text = ""
 
-        pages.append(
-            {
-                "page": page_number,
-                "text": text.strip()
-            }
-        )
+        pages.append({
+            "page": page_number,
+            "text": text.strip(),
+        })
 
-    return (
-        page_count,
-        pages
-    )
+    return page_count, pages
 
 
-def build_document_text(
-    pages
-):
-
+def build_document_text(pages):
     parts = []
 
     for page in pages:
-
         if not page["text"]:
             continue
 
         parts.append(
-            f"[Page {page['page']}]\n"
-            f"{page['text']}"
+            f"[Page {page['page']}]\n{page['text']}"
         )
 
-    return "\n\n".join(
-        parts
-    )
+    return "\n\n".join(parts)
 
 
 def create_pdf_preview(
     pages,
     max_pages=3,
-    max_chars_per_page=1500
+    max_chars_per_page=1500,
 ):
-
     preview_parts = []
 
-    for page_data in (
-        pages[:max_pages]
-    ):
-
-        page_number = (
-            page_data["page"]
-        )
-
-        text = (
-            page_data["text"]
-        )
+    for page_data in pages[:max_pages]:
+        page_number = page_data["page"]
+        text = page_data["text"]
 
         if not text:
+            text = "（此頁未擷取到可讀取文字）"
 
-            text = (
-                "（此頁未擷取到可讀取文字）"
-            )
-
-        if (
-            len(text)
-            > max_chars_per_page
-        ):
-
-            text = (
-                text[:max_chars_per_page]
-                + "..."
-            )
+        if len(text) > max_chars_per_page:
+            text = text[:max_chars_per_page] + "..."
 
         preview_parts.append(
-            f"--- 第 {page_number} 頁 ---\n"
-            f"{text}"
+            f"--- 第 {page_number} 頁 ---\n{text}"
         )
 
-    return "\n\n".join(
-        preview_parts
-    )
+    return "\n\n".join(preview_parts)
 
 
 # =========================================================
 # AI 教材分析
 # =========================================================
 
-def analyze_document_with_ai(
-    document_text
-):
-
+def analyze_document_with_ai(document_text):
     client = get_openai_client()
 
     schema = {
-
         "type": "object",
-
         "properties": {
-
             "subject": {
                 "type": "string"
             },
-
             "summary": {
                 "type": "string"
             },
-
             "main_topics": {
-
                 "type": "array",
-
                 "items": {
                     "type": "string"
                 }
             },
-
             "knowledge_units": {
-
                 "type": "array",
-
                 "items": {
-
                     "type": "object",
-
                     "properties": {
-
                         "name": {
                             "type": "string"
                         },
-
                         "description": {
                             "type": "string"
                         },
-
                         "importance": {
-
                             "type": "string",
-
                             "enum": [
                                 "high",
                                 "medium",
@@ -325,27 +196,20 @@ def analyze_document_with_ai(
                             ]
                         }
                     },
-
                     "required": [
                         "name",
                         "description",
                         "importance"
                     ],
-
                     "additionalProperties": False
                 }
             },
-
             "recommended_question_count": {
-
                 "type": "integer",
-
                 "minimum": 5,
-
                 "maximum": 20
             }
         },
-
         "required": [
             "subject",
             "summary",
@@ -353,7 +217,6 @@ def analyze_document_with_ai(
             "knowledge_units",
             "recommended_question_count"
         ],
-
         "additionalProperties": False
     }
 
@@ -363,7 +226,6 @@ def analyze_document_with_ai(
 你只能根據使用者提供的教材文字進行分析。
 
 規則：
-
 1. 不可以加入教材沒有出現的外部知識。
 2. subject 使用適合學生理解的大分類。
 3. Knowledge Unit 是可以被測驗與追蹤學習狀態的核心概念。
@@ -374,33 +236,23 @@ def analyze_document_with_ai(
 """
 
     response = client.responses.create(
-
         model="gpt-5.6-luna",
-
         instructions=instructions,
-
         input=(
             "以下是使用者上傳教材：\n\n"
             + document_text
         ),
-
         text={
             "format": {
-
                 "type": "json_schema",
-
                 "name": "document_analysis",
-
                 "strict": True,
-
                 "schema": schema
             }
         }
     )
 
-    return json.loads(
-        response.output_text
-    )
+    return json.loads(response.output_text)
 
 
 # =========================================================
@@ -410,96 +262,63 @@ def analyze_document_with_ai(
 def generate_questions_with_ai(
     document_text,
     analysis,
-    question_count=5
+    question_count=5,
 ):
-
     client = get_openai_client()
 
     knowledge_units = [
         unit["name"]
-        for unit
-        in analysis["knowledge_units"]
+        for unit in analysis["knowledge_units"]
     ]
 
     schema = {
-
         "type": "object",
-
         "properties": {
-
             "questions": {
-
                 "type": "array",
-
                 "minItems": question_count,
-
                 "maxItems": question_count,
-
                 "items": {
-
                     "type": "object",
-
                     "properties": {
-
                         "question": {
                             "type": "string"
                         },
-
                         "options": {
-
                             "type": "array",
-
                             "minItems": 4,
-
                             "maxItems": 4,
-
                             "items": {
                                 "type": "string"
                             }
                         },
-
                         "correct_index": {
-
                             "type": "integer",
-
                             "minimum": 0,
-
                             "maximum": 3
                         },
-
                         "concept": {
                             "type": "string"
                         },
-
                         "explanation": {
                             "type": "string"
                         },
-
                         "review_points": {
-
                             "type": "array",
-
                             "minItems": 2,
-
                             "maxItems": 4,
-
                             "items": {
                                 "type": "string"
                             }
                         },
-
                         "source_page": {
-
                             "type": "integer",
-
                             "minimum": 1
                         },
-
                         "source_quote": {
                             "type": "string"
                         }
                     },
-
                     "required": [
                         "question",
                         "options",
@@ -510,16 +329,13 @@ def generate_questions_with_ai(
                         "source_page",
                         "source_quote"
                     ],
-
                     "additionalProperties": False
                 }
             }
         },
-
         "required": [
             "questions"
         ],
-
         "additionalProperties": False
     }
 
@@ -528,312 +344,144 @@ def generate_questions_with_ai(
 
 請產生剛好 {question_count} 題單選題。
 
-這些題目將直接用於學生測驗，因此正確性比題目數量更重要。
-
-【最重要規則】
-
-1. 所有題目、答案、解釋都只能根據提供的教材。
-2. 絕對不可以用外部知識補充答案。
-3. 每題必須只有一個明確正確答案。
-4. 每題一定要有四個不同的選項。
-5. distractors 必須合理，但不能造成兩個答案都成立。
+【規則】
+1. 所有題目、答案、解釋只能根據教材。
+2. 不可用外部知識補充答案。
+3. 每題只能有一個明確正確答案。
+4. 每題必須有四個不同選項。
+5. distractors 要合理，但不能讓兩個答案都成立。
 6. correct_index 使用 0、1、2、3。
 7. concept 優先使用以下 Knowledge Units：
-
 {json.dumps(knowledge_units, ensure_ascii=False)}
-
-8. source_page 必須是教材中實際提供的 Page 編號。
+8. source_page 必須是教材實際 Page 編號。
 9. source_quote 必須逐字摘自該頁教材。
 10. source_quote 必須足以支持正確答案。
 11. 不要改寫 source_quote。
-12. 如果某個概念無法從教材中產生無歧義題目，就換另一個概念。
-13. explanation 必須解釋為什麼正確答案成立，但不能加入教材外資訊。
-14. review_points 應為 2～4 個簡短、可複習的教材重點。
-15. 優先涵蓋不同 Knowledge Units，避免五題都測同一件事。
+12. 無法產生無歧義題目時，換另一個概念。
+13. explanation 不可加入教材外資訊。
+14. review_points 為 2～4 個簡短教材重點。
+15. 優先涵蓋不同 Knowledge Units。
 """
 
     response = client.responses.create(
-
         model="gpt-5.6-luna",
-
         instructions=instructions,
-
         input=(
             "以下是教材全文：\n\n"
             + document_text
         ),
-
         text={
             "format": {
-
                 "type": "json_schema",
-
                 "name": "quiz_generation",
-
                 "strict": True,
-
                 "schema": schema
             }
         }
     )
 
-    result = json.loads(
-        response.output_text
-    )
-
+    result = json.loads(response.output_text)
     return result["questions"]
 
 
 # =========================================================
-# 題目 Grounding 驗證
+# Grounding 驗證
 # =========================================================
 
-def normalize_text(
-    text
-):
-
-    text = str(
-        text
-    )
-
-    text = re.sub(
-        r"\s+",
-        "",
-        text
-    )
-
-    return text
+def normalize_text(text):
+    text = str(text)
+    return re.sub(r"\s+", "", text)
 
 
 def validate_generated_questions(
     raw_questions,
     pages,
     filename,
-    subject
+    subject,
 ):
-
     valid_questions = []
-
     rejected_questions = []
 
     page_lookup = {
-
-        page["page"]:
-            page["text"]
-
-        for page
-        in pages
+        page["page"]: page["text"]
+        for page in pages
     }
 
     for index, question in enumerate(
         raw_questions,
-        start=1
+        start=1,
     ):
-
         reasons = []
 
-        options = question.get(
-            "options",
-            []
-        )
-
-        correct_index = question.get(
-            "correct_index"
-        )
-
-        source_page = question.get(
-            "source_page"
-        )
-
-        source_quote = question.get(
-            "source_quote",
-            ""
-        )
-
-        # -------------------------------------------------
-        # 必須有四個選項
-        # -------------------------------------------------
+        options = question.get("options", [])
+        correct_index = question.get("correct_index")
+        source_page = question.get("source_page")
+        source_quote = question.get("source_quote", "")
 
         if len(options) != 4:
-
-            reasons.append(
-                "選項數量不是 4"
-            )
-
-        # -------------------------------------------------
-        # 四個選項不能重複
-        # -------------------------------------------------
+            reasons.append("選項數量不是 4")
 
         normalized_options = [
-
             normalize_text(option)
-
-            for option
-            in options
+            for option in options
         ]
 
         if (
-            len(
-                set(
-                    normalized_options
-                )
-            )
-            != len(
-                normalized_options
-            )
+            len(set(normalized_options))
+            != len(normalized_options)
         ):
-
-            reasons.append(
-                "存在重複選項"
-            )
-
-        # -------------------------------------------------
-        # Correct index
-        # -------------------------------------------------
+            reasons.append("存在重複選項")
 
         if (
-            not isinstance(
-                correct_index,
-                int
-            )
-            or correct_index
-            not in [
-                0,
-                1,
-                2,
-                3
-            ]
+            not isinstance(correct_index, int)
+            or correct_index not in [0, 1, 2, 3]
         ):
+            reasons.append("正確答案 index 無效")
 
-            reasons.append(
-                "正確答案 index 無效"
-            )
-
-        # -------------------------------------------------
-        # Page 是否存在
-        # -------------------------------------------------
-
-        if (
-            source_page
-            not in page_lookup
-        ):
-
-            reasons.append(
-                "來源頁碼不存在"
-            )
-
-        # -------------------------------------------------
-        # Quote 是否真的存在於該頁
-        # -------------------------------------------------
+        if source_page not in page_lookup:
+            reasons.append("來源頁碼不存在")
 
         else:
-
-            page_text = (
-                page_lookup[
-                    source_page
-                ]
+            normalized_page = normalize_text(
+                page_lookup[source_page]
             )
 
-            normalized_page = (
-                normalize_text(
-                    page_text
-                )
+            normalized_quote = normalize_text(
+                source_quote
             )
 
-            normalized_quote = (
-                normalize_text(
-                    source_quote
-                )
-            )
+            if not normalized_quote:
+                reasons.append("來源證據為空")
 
-            if (
-                not normalized_quote
-            ):
-
-                reasons.append(
-                    "來源證據為空"
-                )
-
-            elif (
-                normalized_quote
-                not in normalized_page
-            ):
-
+            elif normalized_quote not in normalized_page:
                 reasons.append(
                     "來源證據無法在指定頁面找到"
                 )
 
-        # -------------------------------------------------
-        # 驗證成功
-        # -------------------------------------------------
-
         if not reasons:
-
-            valid_questions.append(
-                {
-
-                    "question":
-                        question[
-                            "question"
-                        ],
-
-                    "options":
-                        options,
-
-                    "answer":
-                        correct_index,
-
-                    "subject":
-                        subject,
-
-                    "concept":
-                        question[
-                            "concept"
-                        ],
-
-                    "review_type":
-                        "bullets",
-
-                    "review_points":
-                        question[
-                            "review_points"
-                        ],
-
-                    "explanation":
-                        question[
-                            "explanation"
-                        ],
-
-                    "source_page":
-                        source_page,
-
-                    "source_quote":
-                        source_quote,
-
-                    "source":
-                        (
-                            f"{filename} · "
-                            f"Page {source_page}"
-                        )
-                }
-            )
+            valid_questions.append({
+                "question": question["question"],
+                "options": options,
+                "answer": correct_index,
+                "subject": subject,
+                "concept": question["concept"],
+                "review_type": "bullets",
+                "review_points": question["review_points"],
+                "explanation": question["explanation"],
+                "source_page": source_page,
+                "source_quote": source_quote,
+                "source": (
+                    f"{filename} · Page {source_page}"
+                )
+            })
 
         else:
+            rejected_questions.append({
+                "number": index,
+                "reasons": reasons,
+            })
 
-            rejected_questions.append(
-                {
-                    "number":
-                        index,
-
-                    "reasons":
-                        reasons
-                }
-            )
-
-    return (
-        valid_questions,
-        rejected_questions
-    )
+    return valid_questions, rejected_questions
 
 
 # =========================================================
@@ -841,14 +489,9 @@ def validate_generated_questions(
 # =========================================================
 
 def get_questions():
-
-    questions = (
-        st.session_state
-        .generated_questions
-    )
+    questions = st.session_state.generated_questions
 
     if questions is None:
-
         return []
 
     return questions
@@ -859,70 +502,43 @@ def get_questions():
 # =========================================================
 
 def show_sidebar():
-
     with st.sidebar:
-
-        st.title(
-            "📚 Study Tool"
-        )
+        st.title("📚 Study Tool")
 
         if st.button(
             "首頁",
-            use_container_width=True
+            use_container_width=True,
         ):
-
-            st.session_state.page = (
-                "home"
-            )
-
+            st.session_state.page = "home"
             st.rerun()
 
         if st.button(
             "錯題庫",
-            use_container_width=True
+            use_container_width=True,
         ):
-
-            st.session_state.page = (
-                "mistakes"
-            )
-
+            st.session_state.page = "mistakes"
             st.rerun()
 
         st.button(
             "弱點分析",
             use_container_width=True,
-            disabled=True
+            disabled=True,
         )
 
         st.divider()
 
-        connected, error = (
-            test_database_connection()
-        )
+        connected, error = test_database_connection()
 
         if connected:
-
-            st.success(
-                "Database connected"
-            )
+            st.success("Database connected")
 
         else:
+            st.error("Database connection failed")
 
-            st.error(
-                "Database connection failed"
-            )
+            with st.expander("查看錯誤"):
+                st.code(error)
 
-            with st.expander(
-                "查看錯誤"
-            ):
-
-                st.code(
-                    error
-                )
-
-        st.caption(
-            "Prototype v0.3"
-        )
+        st.caption("Prototype v0.4")
 
 
 # =========================================================
@@ -932,85 +548,33 @@ def show_sidebar():
 def render_answer_options(
     options,
     correct_answer,
-    user_answer
+    user_answer,
 ):
+    labels = ["A", "B", "C", "D"]
 
-    labels = [
-        "A",
-        "B",
-        "C",
-        "D"
-    ]
-
-    for (
-        label,
-        option
-    ) in zip(
+    for label, option in zip(
         labels,
-        options
+        options,
     ):
+        is_correct = option == correct_answer
+        is_user_answer = option == user_answer
 
-        is_correct = (
-            option
-            == correct_answer
-        )
-
-        is_user_answer = (
-            option
-            == user_answer
-        )
-
-        background = (
-            "rgba(128,128,128,0.08)"
-        )
-
-        border = (
-            "1px solid "
-            "rgba(128,128,128,0.25)"
-        )
+        background = "rgba(128,128,128,0.08)"
+        border = "1px solid rgba(128,128,128,0.25)"
 
         if is_correct:
+            background = "rgba(46,204,113,0.18)"
+            border = "1px solid rgba(46,204,113,0.55)"
 
-            background = (
-                "rgba(46,204,113,0.18)"
-            )
+        if is_user_answer and not is_correct:
+            background = "rgba(231,76,60,0.18)"
+            border = "1px solid rgba(231,76,60,0.55)"
 
-            border = (
-                "1px solid "
-                "rgba(46,204,113,0.55)"
-            )
+        if is_user_answer and is_correct:
+            background = "rgba(46,204,113,0.18)"
+            border = "2px solid rgba(231,76,60,0.70)"
 
-        if (
-            is_user_answer
-            and not is_correct
-        ):
-
-            background = (
-                "rgba(231,76,60,0.18)"
-            )
-
-            border = (
-                "1px solid "
-                "rgba(231,76,60,0.55)"
-            )
-
-        if (
-            is_user_answer
-            and is_correct
-        ):
-
-            background = (
-                "rgba(46,204,113,0.18)"
-            )
-
-            border = (
-                "2px solid "
-                "rgba(231,76,60,0.70)"
-            )
-
-        safe_option = html.escape(
-            str(option)
-        )
+        safe_option = html.escape(str(option))
 
         st.markdown(
             f"""
@@ -1025,7 +589,7 @@ def render_answer_options(
                 {safe_option}
             </div>
             """,
-            unsafe_allow_html=True
+            unsafe_allow_html=True,
         )
 
 
@@ -1033,78 +597,46 @@ def render_answer_options(
 # 答題 State
 # =========================================================
 
-def save_answer(
-    question_index
-):
-
-    key = (
-        f"radio_{question_index}"
-    )
+def save_answer(question_index):
+    key = f"radio_{question_index}"
 
     if key in st.session_state:
-
         st.session_state.answers[
             question_index
-        ] = (
-            st.session_state[
-                key
-            ]
-        )
+        ] = st.session_state[key]
 
 
-def save_uncertain(
-    question_index
-):
-
-    key = (
-        f"uncertain_{question_index}"
-    )
+def save_uncertain(question_index):
+    key = f"uncertain_{question_index}"
 
     if key in st.session_state:
-
-        value = (
-            st.session_state[
-                key
-            ]
-        )
+        value = st.session_state[key]
 
         st.session_state.uncertain_answers[
             question_index
         ] = value
 
         if value:
-
             if (
                 question_index
-                not in
-                st.session_state.error_labels
+                not in st.session_state.error_labels
             ):
-
                 st.session_state.error_labels[
                     question_index
                 ] = "觀念不熟"
 
 
 # =========================================================
-# Label → Supabase
+# 結果頁 Label → Supabase
 # =========================================================
 
-def save_error_label(
-    question_index
-):
-
-    key = (
-        f"error_label_{question_index}"
-    )
+def save_error_label(question_index):
+    key = f"error_label_{question_index}"
 
     if key not in st.session_state:
         return
 
-    new_label = (
-        st.session_state[
-            key
-        ]
-    )
+    new_label = st.session_state[key]
 
     st.session_state.error_labels[
         question_index
@@ -1117,26 +649,20 @@ def save_error_label(
     )
 
     if record_id is None:
-
         st.session_state.label_sync_error = (
             "找不到對應的資料庫紀錄。"
         )
-
         return
 
     try:
-
         supabase = get_supabase()
 
         (
             supabase
             .table("mistakes")
-            .update(
-                {
-                    "label":
-                        new_label
-                }
-            )
+            .update({
+                "label": new_label
+            })
             .eq(
                 "id",
                 record_id
@@ -1147,10 +673,42 @@ def save_error_label(
         st.session_state.label_sync_error = None
 
     except Exception as error:
-
         st.session_state.label_sync_error = (
-            f"{type(error).__name__}: "
-            f"{str(error)}"
+            f"{type(error).__name__}: {str(error)}"
+        )
+
+
+# =========================================================
+# 錯題庫 Label → Supabase
+# =========================================================
+
+def save_bank_error_label(record_id):
+    key = f"bank_label_{record_id}"
+
+    if key not in st.session_state:
+        return
+
+    new_label = st.session_state[key]
+
+    try:
+        supabase = get_supabase()
+
+        (
+            supabase
+            .table("mistakes")
+            .update({
+                "label": new_label
+            })
+            .eq(
+                "id",
+                record_id
+            )
+            .execute()
+        )
+
+    except Exception as error:
+        st.session_state.label_sync_error = (
+            f"{type(error).__name__}: {str(error)}"
         )
 
 
@@ -1159,27 +717,15 @@ def save_error_label(
 # =========================================================
 
 def save_mistakes_to_database():
-
-    if (
-        st.session_state
-        .mistakes_saved
-    ):
+    if st.session_state.mistakes_saved:
         return
 
-    questions = (
-        get_questions()
-    )
-
-    supabase = (
-        get_supabase()
-    )
+    questions = get_questions()
+    supabase = get_supabase()
 
     st.session_state.mistake_record_ids = {}
 
-    for i, question in enumerate(
-        questions
-    ):
-
+    for i, question in enumerate(questions):
         user_answer = (
             st.session_state
             .answers
@@ -1189,10 +735,7 @@ def save_mistakes_to_database():
         uncertain = (
             st.session_state
             .uncertain_answers
-            .get(
-                i,
-                False
-            )
+            .get(i, False)
         )
 
         correct_answer = (
@@ -1202,8 +745,7 @@ def save_mistakes_to_database():
         )
 
         is_correct = (
-            user_answer
-            == correct_answer
+            user_answer == correct_answer
         )
 
         needs_review = (
@@ -1215,48 +757,20 @@ def save_mistakes_to_database():
             continue
 
         row = {
-
-            "subject":
-                question[
-                    "subject"
-                ],
-
-            "concept":
-                question[
-                    "concept"
-                ],
-
-            "question":
-                question[
-                    "question"
-                ],
-
-            "options":
-                question[
-                    "options"
-                ],
-
-            "user_answer":
-                user_answer,
-
-            "correct_answer":
-                correct_answer,
-
-            "uncertain":
-                uncertain,
-
-            "is_correct":
-                is_correct,
-
-            "label":
+            "subject": question["subject"],
+            "concept": question["concept"],
+            "question": question["question"],
+            "options": question["options"],
+            "user_answer": user_answer,
+            "correct_answer": correct_answer,
+            "uncertain": uncertain,
+            "is_correct": is_correct,
+            "label": (
                 st.session_state
                 .error_labels
-                .get(i),
-
-            "source":
-                question[
-                    "source"
-                ]
+                .get(i)
+            ),
+            "source": question["source"],
         }
 
         response = (
@@ -1266,26 +780,15 @@ def save_mistakes_to_database():
             .execute()
         )
 
-        if (
-            response.data
-            and len(
-                response.data
-            ) > 0
-        ):
-
+        if response.data and len(response.data) > 0:
             st.session_state.mistake_record_ids[
                 i
-            ] = (
-                response.data[0][
-                    "id"
-                ]
-            )
+            ] = response.data[0]["id"]
 
     st.session_state.mistakes_saved = True
 
 
 def load_mistakes_from_database():
-
     supabase = get_supabase()
 
     response = (
@@ -1294,7 +797,7 @@ def load_mistakes_from_database():
         .select("*")
         .order(
             "created_at",
-            desc=True
+            desc=True,
         )
         .execute()
     )
@@ -1306,21 +809,12 @@ def load_mistakes_from_database():
 # 結束測驗
 # =========================================================
 
-@st.dialog(
-    "結束測驗"
-)
+@st.dialog("結束測驗")
 def finish_quiz_dialog():
-
-    questions = (
-        get_questions()
-    )
-
+    questions = get_questions()
     unanswered = []
 
-    for i in range(
-        len(questions)
-    ):
-
+    for i in range(len(questions)):
         answer = (
             st.session_state
             .answers
@@ -1330,112 +824,65 @@ def finish_quiz_dialog():
         uncertain = (
             st.session_state
             .uncertain_answers
-            .get(
-                i,
-                False
-            )
+            .get(i, False)
         )
 
-        if (
-            answer is None
-            and not uncertain
-        ):
-
-            unanswered.append(
-                i + 1
-            )
+        if answer is None and not uncertain:
+            unanswered.append(i + 1)
 
     if unanswered:
-
-        question_list = (
-            "、".join(
-                [
-                    f"第 {number} 題"
-
-                    for number
-                    in unanswered
-                ]
-            )
+        question_list = "、".join(
+            [
+                f"第 {number} 題"
+                for number in unanswered
+            ]
         )
 
         st.warning(
-            f"你還有未作答的題目："
-            f"{question_list}"
+            f"你還有未作答的題目：{question_list}"
         )
 
-        col1, col2 = (
-            st.columns(2)
-        )
+        col1, col2 = st.columns(2)
 
         with col1:
-
             if st.button(
                 "返回測驗",
-                use_container_width=True
+                use_container_width=True,
             ):
-
                 st.rerun()
 
         with col2:
-
             if st.button(
                 "仍然結束",
-                use_container_width=True
+                use_container_width=True,
             ):
-
                 try:
-
                     save_mistakes_to_database()
 
                 except Exception as error:
-
-                    st.error(
-                        "錯題儲存失敗"
-                    )
-
-                    st.code(
-                        str(error)
-                    )
-
+                    st.error("錯題儲存失敗")
+                    st.code(str(error))
                     return
 
-                st.session_state.page = (
-                    "result"
-                )
-
+                st.session_state.page = "result"
                 st.rerun()
 
     else:
-
-        st.success(
-            "所有題目皆已完成。"
-        )
+        st.success("所有題目皆已完成。")
 
         if st.button(
             "查看結果",
-            use_container_width=True
+            use_container_width=True,
         ):
-
             try:
-
                 save_mistakes_to_database()
 
             except Exception as error:
-
-                st.error(
-                    "錯題儲存失敗"
-                )
-
-                st.code(
-                    str(error)
-                )
-
+                st.error("錯題儲存失敗")
+                st.code(str(error))
                 return
 
-            st.session_state.page = (
-                "result"
-            )
-
+            st.session_state.page = "result"
             st.rerun()
 
 
@@ -1444,43 +891,24 @@ def finish_quiz_dialog():
 # =========================================================
 
 def reset_quiz_state():
-
-    questions = (
-        get_questions()
-    )
+    questions = get_questions()
 
     st.session_state.question_index = 0
-
     st.session_state.answers = {}
-
     st.session_state.uncertain_answers = {}
-
     st.session_state.error_labels = {}
-
     st.session_state.mistakes_saved = False
-
     st.session_state.mistake_record_ids = {}
-
     st.session_state.label_sync_error = None
 
-    for i in range(
-        len(questions)
-    ):
-
+    for i in range(len(questions)):
         for key in [
-
             f"radio_{i}",
-
             f"uncertain_{i}",
-
-            f"error_label_{i}"
+            f"error_label_{i}",
         ]:
-
             if key in st.session_state:
-
-                del st.session_state[
-                    key
-                ]
+                del st.session_state[key]
 
 
 # =========================================================
@@ -1488,10 +916,7 @@ def reset_quiz_state():
 # =========================================================
 
 def show_home():
-
-    st.title(
-        "📚 把教材變成你的測驗"
-    )
+    st.title("📚 把教材變成你的測驗")
 
     st.write(
         "上傳教材 → AI 分析 → "
@@ -1500,37 +925,25 @@ def show_home():
 
     st.divider()
 
-    uploaded_file = (
-        st.file_uploader(
-            "上傳 PDF",
-            type=["pdf"]
-        )
+    uploaded_file = st.file_uploader(
+        "上傳 PDF",
+        type=["pdf"],
     )
 
     if uploaded_file is None:
         return
 
-    file_bytes = (
-        uploaded_file.getvalue()
-    )
+    file_bytes = uploaded_file.getvalue()
 
     file_hash = (
-        hashlib.sha256(
-            file_bytes
-        )
+        hashlib.sha256(file_bytes)
         .hexdigest()
     )
 
-    # =====================================================
-    # 換了一份 PDF
-    # =====================================================
-
     if (
-        st.session_state
-        .uploaded_file_hash
+        st.session_state.uploaded_file_hash
         != file_hash
     ):
-
         st.session_state.uploaded_file_hash = (
             file_hash
         )
@@ -1540,22 +953,14 @@ def show_home():
         )
 
         st.session_state.document_analysis = None
-
         st.session_state.generated_questions = None
-
         st.session_state.question_generation_error = None
 
     st.success(
-        f"已成功上傳："
-        f"{uploaded_file.name}"
+        f"已成功上傳：{uploaded_file.name}"
     )
 
-    # =====================================================
-    # PDF Parsing
-    # =====================================================
-
     try:
-
         page_count, pages = (
             extract_pdf_text(
                 file_bytes
@@ -1563,123 +968,80 @@ def show_home():
         )
 
     except Exception as error:
-
-        st.error(
-            "PDF 讀取失敗"
-        )
-
-        st.code(
-            str(error)
-        )
-
+        st.error("PDF 讀取失敗")
+        st.code(str(error))
         return
 
     document_text = (
-        build_document_text(
-            pages
-        )
+        build_document_text(pages)
     )
 
-    st.session_state.document_pages = (
-        pages
-    )
-
-    st.session_state.document_text = (
-        document_text
-    )
+    st.session_state.document_pages = pages
+    st.session_state.document_text = document_text
 
     total_chars = sum(
-        len(
-            page["text"]
-        )
-
-        for page
-        in pages
+        len(page["text"])
+        for page in pages
     )
 
     pages_with_text = sum(
         1
-
-        for page
-        in pages
-
+        for page in pages
         if page["text"]
     )
 
-    col1, col2, col3 = (
-        st.columns(3)
-    )
+    col1, col2, col3 = st.columns(3)
 
     col1.metric(
         "PDF 頁數",
-        page_count
+        page_count,
     )
 
     col2.metric(
         "可讀文字頁",
-        f"{pages_with_text} / "
-        f"{page_count}"
+        f"{pages_with_text} / {page_count}",
     )
 
     col3.metric(
         "擷取字元數",
-        f"{total_chars:,}"
+        f"{total_chars:,}",
     )
 
     with st.expander(
         "查看文字預覽"
     ):
-
         st.text_area(
-
             "PDF 文字",
-
             value=create_pdf_preview(
                 pages
             ),
-
             height=350,
-
             disabled=True,
-
-            label_visibility="collapsed"
+            label_visibility="collapsed",
         )
 
     if pages_with_text == 0:
-
         st.warning(
             "這份 PDF 沒有可讀取文字。"
         )
-
         return
 
     st.divider()
 
-    # =====================================================
-    # AI 分析
-    # =====================================================
-
     if (
-        st.session_state
-        .document_analysis
+        st.session_state.document_analysis
         is None
     ):
-
-        st.subheader(
-            "AI 教材分析"
-        )
+        st.subheader("AI 教材分析")
 
         if st.button(
             "AI 分析教材",
-            use_container_width=True
+            use_container_width=True,
         ):
-
             try:
-
                 with st.spinner(
                     "正在分析教材..."
                 ):
-
                     st.session_state.document_analysis = (
                         analyze_document_with_ai(
                             document_text
@@ -1689,11 +1051,7 @@ def show_home():
                 st.rerun()
 
             except Exception as error:
-
-                st.error(
-                    "AI 分析失敗"
-                )
-
+                st.error("AI 分析失敗")
                 st.code(
                     f"{type(error).__name__}: "
                     f"{str(error)}"
@@ -1701,77 +1059,36 @@ def show_home():
 
         return
 
-    # =====================================================
-    # 顯示分析
-    # =====================================================
+    analysis = st.session_state.document_analysis
 
-    analysis = (
-        st.session_state
-        .document_analysis
-    )
+    st.subheader("教材分析")
 
-    st.subheader(
-        "教材分析"
-    )
+    st.markdown("#### 建議科目")
+    st.write(analysis["subject"])
 
-    st.markdown(
-        "#### 建議科目"
-    )
+    st.markdown("#### 教材摘要")
+    st.write(analysis["summary"])
 
-    st.write(
-        analysis["subject"]
-    )
+    st.markdown("#### 主要內容")
 
-    st.markdown(
-        "#### 教材摘要"
-    )
+    for topic in analysis["main_topics"]:
+        st.markdown(f"- {topic}")
 
-    st.write(
-        analysis["summary"]
-    )
-
-    st.markdown(
-        "#### 主要內容"
-    )
-
-    for topic in (
-        analysis[
-            "main_topics"
-        ]
-    ):
-
-        st.markdown(
-            f"- {topic}"
-        )
-
-    st.markdown(
-        "#### 核心概念"
-    )
+    st.markdown("#### 核心概念")
 
     importance_map = {
-
         "high": "高",
-
         "medium": "中",
-
-        "low": "低"
+        "low": "低",
     }
 
-    for (
-        index,
-        unit
-    ) in enumerate(
-        analysis[
-            "knowledge_units"
-        ],
-        start=1
+    for index, unit in enumerate(
+        analysis["knowledge_units"],
+        start=1,
     ):
-
-        importance = (
-            importance_map.get(
-                unit["importance"],
-                unit["importance"]
-            )
+        importance = importance_map.get(
+            unit["importance"],
+            unit["importance"],
         )
 
         with st.expander(
@@ -1779,35 +1096,24 @@ def show_home():
             f"{unit['name']} "
             f"· 重要度 {importance}"
         ):
-
             st.write(
-                unit[
-                    "description"
-                ]
+                unit["description"]
             )
 
     st.metric(
         "AI 建議測驗題數",
         analysis[
             "recommended_question_count"
-        ]
+        ],
     )
 
     st.divider()
 
-    # =====================================================
-    # AI 真實出題
-    # =====================================================
-
     if (
-        st.session_state
-        .generated_questions
+        st.session_state.generated_questions
         is None
     ):
-
-        st.subheader(
-            "產生測驗"
-        )
+        st.subheader("產生測驗")
 
         st.caption(
             "Prototype 先產生 5 題，"
@@ -1816,34 +1122,29 @@ def show_home():
 
         if st.button(
             "產生 5 題測驗",
-            use_container_width=True
+            use_container_width=True,
         ):
-
             try:
-
                 with st.spinner(
                     "正在根據教材出題並驗證來源..."
                 ):
-
                     raw_questions = (
                         generate_questions_with_ai(
                             document_text,
                             analysis,
-                            question_count=5
+                            question_count=5,
                         )
                     )
 
                     (
                         valid_questions,
-                        rejected_questions
+                        rejected_questions,
                     ) = (
                         validate_generated_questions(
                             raw_questions,
                             pages,
                             uploaded_file.name,
-                            analysis[
-                                "subject"
-                            ]
+                            analysis["subject"],
                         )
                     )
 
@@ -1852,19 +1153,11 @@ def show_home():
                 )
 
                 if rejected_questions:
-
                     rejected_text = []
 
-                    for item in (
-                        rejected_questions
-                    ):
-
-                        reasons = (
-                            "、".join(
-                                item[
-                                    "reasons"
-                                ]
-                            )
+                    for item in rejected_questions:
+                        reasons = "、".join(
+                            item["reasons"]
                         )
 
                         rejected_text.append(
@@ -1879,17 +1172,12 @@ def show_home():
                     )
 
                 else:
-
                     st.session_state.question_generation_error = None
 
                 st.rerun()
 
             except Exception as error:
-
-                st.error(
-                    "題目生成失敗"
-                )
-
+                st.error("題目生成失敗")
                 st.code(
                     f"{type(error).__name__}: "
                     f"{str(error)}"
@@ -1897,17 +1185,9 @@ def show_home():
 
         return
 
-    # =====================================================
-    # 生成結果
-    # =====================================================
+    generated_questions = get_questions()
 
-    generated_questions = (
-        get_questions()
-    )
-
-    st.subheader(
-        "測驗已產生"
-    )
+    st.subheader("測驗已產生")
 
     st.success(
         f"已通過教材驗證："
@@ -1915,10 +1195,8 @@ def show_home():
     )
 
     if (
-        st.session_state
-        .question_generation_error
+        st.session_state.question_generation_error
     ):
-
         st.warning(
             "部分 AI 題目因來源驗證失敗，"
             "已自動排除。"
@@ -1927,15 +1205,12 @@ def show_home():
         with st.expander(
             "查看驗證結果"
         ):
-
             st.text(
                 st.session_state
                 .question_generation_error
             )
 
-    # 至少需要 1 題才能測
     if not generated_questions:
-
         st.error(
             "這次沒有題目通過來源驗證。"
         )
@@ -1943,66 +1218,43 @@ def show_home():
         if st.button(
             "重新產生題目"
         ):
-
             st.session_state.generated_questions = None
-
             st.session_state.question_generation_error = None
-
             st.rerun()
 
         return
 
-    # -----------------------------------------------------
-    # 封卷前只顯示題目概念，不顯示答案
-    # -----------------------------------------------------
-
     with st.expander(
         "查看測驗涵蓋概念"
     ):
-
-        for (
-            index,
-            question
-        ) in enumerate(
+        for index, question in enumerate(
             generated_questions,
-            start=1
+            start=1,
         ):
-
             st.write(
                 f"{index}. "
                 f"{question['concept']}"
             )
 
-    col1, col2 = (
-        st.columns(2)
-    )
+    col1, col2 = st.columns(2)
 
     with col1:
-
         if st.button(
             "重新產生題目",
-            use_container_width=True
+            use_container_width=True,
         ):
-
             st.session_state.generated_questions = None
-
             st.session_state.question_generation_error = None
-
             st.rerun()
 
     with col2:
-
         if st.button(
             "開始測驗",
-            use_container_width=True
+            use_container_width=True,
         ):
-
             reset_quiz_state()
 
-            st.session_state.page = (
-                "quiz"
-            )
-
+            st.session_state.page = "quiz"
             st.rerun()
 
 
@@ -2011,38 +1263,22 @@ def show_home():
 # =========================================================
 
 def show_quiz():
-
-    questions = (
-        get_questions()
-    )
+    questions = get_questions()
 
     if not questions:
-
         st.error(
             "目前沒有可用的測驗題目。"
         )
-
         return
 
-    current = (
-        st.session_state
-        .question_index
-    )
+    current = st.session_state.question_index
+    question = questions[current]
 
-    question = (
-        questions[
-            current
-        ]
-    )
-
-    top_left, top_right = (
-        st.columns(
-            [7, 1.4]
-        )
+    top_left, top_right = st.columns(
+        [7, 1.4]
     )
 
     with top_left:
-
         st.markdown(
             f"""
             <div style="
@@ -2055,17 +1291,15 @@ def show_quiz():
                 {len(questions)}
             </div>
             """,
-            unsafe_allow_html=True
+            unsafe_allow_html=True,
         )
 
     with top_right:
-
         if st.button(
             "結束測驗",
             use_container_width=True,
-            key=f"finish_top_{current}"
+            key=f"finish_top_{current}",
         ):
-
             finish_quiz_dialog()
 
     st.progress(
@@ -2076,9 +1310,7 @@ def show_quiz():
     st.divider()
 
     st.subheader(
-        question[
-            "question"
-        ]
+        question["question"]
     )
 
     radio_key = (
@@ -2089,37 +1321,24 @@ def show_quiz():
         radio_key
         not in st.session_state
     ):
-
         saved_answer = (
             st.session_state
             .answers
             .get(current)
         )
 
-        if (
-            saved_answer
-            is not None
-        ):
-
+        if saved_answer is not None:
             st.session_state[
                 radio_key
             ] = saved_answer
 
     st.radio(
-
         "請選擇答案",
-
-        question[
-            "options"
-        ],
-
+        question["options"],
         index=None,
-
         key=radio_key,
-
         on_change=save_answer,
-
-        args=(current,)
+        args=(current,),
     )
 
     uncertain_key = (
@@ -2130,7 +1349,6 @@ def show_quiz():
         uncertain_key
         not in st.session_state
     ):
-
         st.session_state[
             uncertain_key
         ] = (
@@ -2138,19 +1356,15 @@ def show_quiz():
             .uncertain_answers
             .get(
                 current,
-                False
+                False,
             )
         )
 
     st.checkbox(
-
         "❓ 我不確定",
-
         key=uncertain_key,
-
         on_change=save_uncertain,
-
-        args=(current,)
+        args=(current,),
     )
 
     answer_exists = (
@@ -2163,136 +1377,92 @@ def show_quiz():
         .uncertain_answers
         .get(
             current,
-            False
+            False,
         )
     )
 
-    if (
-        answer_exists
-        and uncertain
-    ):
-
+    if answer_exists and uncertain:
         st.caption(
             "已作答 · ❓ 不確定"
         )
 
     elif answer_exists:
-
-        st.caption(
-            "已作答"
-        )
+        st.caption("已作答")
 
     elif uncertain:
-
         st.caption(
             "❓ 已標記為不確定"
         )
 
     st.divider()
 
-    total = len(
-        questions
-    )
+    total = len(questions)
 
     if current == 0:
-
         empty_col, next_col = (
             st.columns(2)
         )
 
         with next_col:
-
-            if (
-                current
-                < total - 1
-            ):
-
+            if current < total - 1:
                 if st.button(
                     "下一題 →",
                     use_container_width=True,
-                    key=f"next_{current}"
+                    key=f"next_{current}",
                 ):
-
                     st.session_state.question_index += 1
-
                     st.rerun()
 
-    elif (
-        current
-        == total - 1
-    ):
-
+    elif current == total - 1:
         prev_col, empty_col = (
             st.columns(2)
         )
 
         with prev_col:
-
             if st.button(
                 "← 上一題",
                 use_container_width=True,
-                key=f"prev_{current}"
+                key=f"prev_{current}",
             ):
-
                 st.session_state.question_index -= 1
-
                 st.rerun()
 
     else:
-
         prev_col, next_col = (
             st.columns(2)
         )
 
         with prev_col:
-
             if st.button(
                 "← 上一題",
                 use_container_width=True,
-                key=f"prev_{current}"
+                key=f"prev_{current}",
             ):
-
                 st.session_state.question_index -= 1
-
                 st.rerun()
 
         with next_col:
-
             if st.button(
                 "下一題 →",
                 use_container_width=True,
-                key=f"next_{current}"
+                key=f"next_{current}",
             ):
-
                 st.session_state.question_index += 1
-
                 st.rerun()
 
 
 # =========================================================
-# Review
+# Result Review
 # =========================================================
 
-def show_review_item(
-    question_index
-):
-
-    questions = (
-        get_questions()
-    )
-
-    question = (
-        questions[
-            question_index
-        ]
-    )
+def show_review_item(question_index):
+    questions = get_questions()
+    question = questions[question_index]
 
     user_answer = (
         st.session_state
         .answers
-        .get(
-            question_index
-        )
+        .get(question_index)
     )
 
     uncertain = (
@@ -2300,17 +1470,13 @@ def show_review_item(
         .uncertain_answers
         .get(
             question_index,
-            False
+            False,
         )
     )
 
     correct_answer = (
-        question[
-            "options"
-        ][
-            question[
-                "answer"
-            ]
+        question["options"][
+            question["answer"]
         ]
     )
 
@@ -2319,11 +1485,7 @@ def show_review_item(
         == correct_answer
     )
 
-    if (
-        is_correct
-        and uncertain
-    ):
-
+    if is_correct and uncertain:
         title = (
             f"第 {question_index + 1} 題　✅ ❓"
         )
@@ -2332,39 +1494,30 @@ def show_review_item(
         user_answer is None
         and uncertain
     ):
-
         title = (
             f"第 {question_index + 1} 題　❓"
         )
 
     else:
-
         title = (
             f"第 {question_index + 1} 題　❌"
         )
 
     with st.expander(
         title,
-        expanded=False
+        expanded=False,
     ):
-
         st.markdown(
-            f"### "
-            f"{question['question']}"
+            f"### {question['question']}"
         )
 
         render_answer_options(
-            question[
-                "options"
-            ],
+            question["options"],
             correct_answer,
-            user_answer
+            user_answer,
         )
 
-        if (
-            user_answer is None
-        ):
-
+        if user_answer is None:
             st.caption(
                 "你沒有選擇答案，"
                 "但曾標記 ❓。"
@@ -2372,58 +1525,31 @@ def show_review_item(
 
         st.divider()
 
-        st.markdown(
-            "### 核心觀念"
-        )
+        st.markdown("### 核心觀念")
+        st.write(question["concept"])
 
-        st.write(
-            question[
-                "concept"
-            ]
-        )
+        st.markdown("### 為什麼？")
+        st.write(question["explanation"])
 
-        st.markdown(
-            "### 為什麼？"
-        )
+        st.markdown("### 複習重點")
 
-        st.write(
-            question[
-                "explanation"
-            ]
-        )
-
-        st.markdown(
-            "### 複習重點"
-        )
-
-        for point in (
-            question[
-                "review_points"
-            ]
-        ):
-
+        for point in question[
+            "review_points"
+        ]:
             st.markdown(
                 f"- {point}"
             )
-
-        # -------------------------------------------------
-        # 真正 PDF 證據
-        # -------------------------------------------------
 
         st.markdown(
             "### 📖 教材根據"
         )
 
         st.caption(
-            question[
-                "source"
-            ]
+            question["source"]
         )
 
         st.info(
-            question[
-                "source_quote"
-            ]
+            question["source_quote"]
         )
 
         st.divider()
@@ -2435,22 +1561,16 @@ def show_review_item(
         label_options = [
             "粗心大意",
             "觀念不熟",
-            "完全沒看過"
+            "完全沒看過",
         ]
 
         saved_label = (
             st.session_state
             .error_labels
-            .get(
-                question_index
-            )
+            .get(question_index)
         )
 
-        if (
-            saved_label
-            in label_options
-        ):
-
+        if saved_label in label_options:
             label_index = (
                 label_options.index(
                     saved_label
@@ -2458,7 +1578,6 @@ def show_review_item(
             )
 
         else:
-
             label_index = None
 
         label_key = (
@@ -2467,24 +1586,14 @@ def show_review_item(
         )
 
         st.radio(
-
             "錯誤分類",
-
             label_options,
-
             index=label_index,
-
             horizontal=True,
-
             key=label_key,
-
             on_change=save_error_label,
-
-            args=(
-                question_index,
-            ),
-
-            label_visibility="collapsed"
+            args=(question_index,),
+            label_visibility="collapsed",
         )
 
 
@@ -2493,29 +1602,19 @@ def show_review_item(
 # =========================================================
 
 def show_result():
-
-    questions = (
-        get_questions()
-    )
+    questions = get_questions()
 
     if not questions:
-
-        st.error(
-            "沒有測驗資料。"
-        )
-
+        st.error("沒有測驗資料。")
         return
 
-    st.title(
-        "測驗完成"
-    )
+    st.title("測驗完成")
 
     correct_count = 0
 
     for i, question in enumerate(
         questions
     ):
-
         user_answer = (
             st.session_state
             .answers
@@ -2523,12 +1622,8 @@ def show_result():
         )
 
         correct_answer = (
-            question[
-                "options"
-            ][
-                question[
-                    "answer"
-                ]
+            question["options"][
+                question["answer"]
             ]
         )
 
@@ -2536,12 +1631,9 @@ def show_result():
             user_answer
             == correct_answer
         ):
-
             correct_count += 1
 
-    total = len(
-        questions
-    )
+    total = len(questions)
 
     percentage = round(
         correct_count
@@ -2556,17 +1648,13 @@ def show_result():
     )
 
     st.divider()
-
-    st.subheader(
-        "答題結果"
-    )
+    st.subheader("答題結果")
 
     review_questions = []
 
     for i, question in enumerate(
         questions
     ):
-
         user_answer = (
             st.session_state
             .answers
@@ -2576,19 +1664,12 @@ def show_result():
         uncertain = (
             st.session_state
             .uncertain_answers
-            .get(
-                i,
-                False
-            )
+            .get(i, False)
         )
 
         correct_answer = (
-            question[
-                "options"
-            ][
-                question[
-                    "answer"
-                ]
+            question["options"][
+                question["answer"]
             ]
         )
 
@@ -2601,7 +1682,6 @@ def show_result():
             is_correct
             and not uncertain
         ):
-
             st.write(
                 f"**第 {i + 1} 題**　✅"
             )
@@ -2610,96 +1690,62 @@ def show_result():
             is_correct
             and uncertain
         ):
-
             st.write(
                 f"**第 {i + 1} 題**　✅ ❓"
             )
+            review_questions.append(i)
 
-            review_questions.append(
-                i
-            )
-
-        elif (
-            user_answer
-            is not None
-        ):
-
+        elif user_answer is not None:
             st.write(
                 f"**第 {i + 1} 題**　❌"
             )
-
-            review_questions.append(
-                i
-            )
+            review_questions.append(i)
 
         elif uncertain:
-
             st.write(
                 f"**第 {i + 1} 題**　❓"
             )
-
-            review_questions.append(
-                i
-            )
+            review_questions.append(i)
 
         else:
-
             st.write(
                 f"**第 {i + 1} 題**　未作答"
             )
 
     if review_questions:
-
         st.divider()
-
-        st.subheader(
-            "需要檢討"
-        )
+        st.subheader("需要檢討")
 
         for question_index in (
             review_questions
         ):
-
             show_review_item(
                 question_index
             )
 
     else:
-
         st.success(
             "這次沒有需要檢討的題目。"
         )
 
     st.divider()
 
-    nav1, nav2 = (
-        st.columns(2)
-    )
+    nav1, nav2 = st.columns(2)
 
     with nav1:
-
         if st.button(
             "查看錯題庫",
-            use_container_width=True
+            use_container_width=True,
         ):
-
-            st.session_state.page = (
-                "mistakes"
-            )
-
+            st.session_state.page = "mistakes"
             st.rerun()
 
     with nav2:
-
         if st.button(
             "回首頁",
-            use_container_width=True
+            use_container_width=True,
         ):
-
-            st.session_state.page = (
-                "home"
-            )
-
+            st.session_state.page = "home"
             st.rerun()
 
 
@@ -2708,89 +1754,88 @@ def show_result():
 # =========================================================
 
 def show_mistake_bank():
-
-    st.title(
-        "📘 錯題庫"
-    )
+    st.title("📘 錯題庫")
 
     try:
-
         mistake_bank = (
             load_mistakes_from_database()
         )
 
     except Exception as error:
-
-        st.error(
-            "無法讀取錯題庫"
-        )
-
-        st.code(
-            str(error)
-        )
-
+        st.error("無法讀取錯題庫")
+        st.code(str(error))
         return
 
     if not mistake_bank:
-
         st.info(
             "目前還沒有錯題紀錄。"
         )
-
         return
 
-    total = len(
-        mistake_bank
+    # -----------------------------------------------------
+    # 統計
+    #
+    # 每一筆錯題只能有一個 label。
+    # 修改 label 時是 UPDATE 同一筆資料，
+    # 所以不會重複計算。
+    # -----------------------------------------------------
+
+    total = len(mistake_bank)
+
+    careless = sum(
+        1
+        for item in mistake_bank
+        if item.get("label")
+        == "粗心大意"
     )
 
-    careless = 0
-    unfamiliar = 0
-    unseen = 0
+    unfamiliar = sum(
+        1
+        for item in mistake_bank
+        if item.get("label")
+        == "觀念不熟"
+    )
 
-    for item in (
-        mistake_bank
-    ):
+    unseen = sum(
+        1
+        for item in mistake_bank
+        if item.get("label")
+        == "完全沒看過"
+    )
 
-        label = (
-            item.get(
-                "label"
-            )
-        )
+    unclassified = sum(
+        1
+        for item in mistake_bank
+        if not item.get("label")
+    )
 
-        if label == "粗心大意":
-
-            careless += 1
-
-        elif label == "觀念不熟":
-
-            unfamiliar += 1
-
-        elif label == "完全沒看過":
-
-            unseen += 1
-
-    col1, col2, col3, col4 = (
-        st.columns(4)
+    col1, col2, col3, col4, col5 = (
+        st.columns(5)
     )
 
     col1.metric(
         "需複習",
-        total
+        total,
     )
 
     col2.metric(
         "粗心大意",
-        careless
+        careless,
     )
 
     col3.metric(
         "觀念不熟",
-        unfamiliar
+        unfamiliar,
     )
 
     col4.metric(
         "完全沒看過",
-        unseen
+        unseen,
+    )
+
+    col5.metric(
+        "未分類",
+        unclassified,
     )
 
     st.divider()
@@ -2798,34 +1843,22 @@ def show_mistake_bank():
     subjects = {}
 
     for item in mistake_bank:
-
-        subject = (
-            item.get(
-                "subject",
-                "未分類"
-            )
+        subject = item.get(
+            "subject",
+            "未分類",
         )
 
-        if (
-            subject
-            not in subjects
-        ):
+        if subject not in subjects:
+            subjects[subject] = []
 
-            subjects[
-                subject
-            ] = []
-
-        subjects[
-            subject
-        ].append(
+        subjects[subject].append(
             item
         )
 
     for (
         subject,
-        subject_items
+        subject_items,
     ) in subjects.items():
-
         st.subheader(
             f"{subject} · "
             f"{len(subject_items)} 題"
@@ -2833,94 +1866,112 @@ def show_mistake_bank():
 
         concepts = {}
 
-        for item in (
-            subject_items
-        ):
-
-            concept = (
-                item.get(
-                    "concept",
-                    "未分類概念"
-                )
+        for item in subject_items:
+            concept = item.get(
+                "concept",
+                "未分類概念",
             )
 
-            if (
-                concept
-                not in concepts
-            ):
+            if concept not in concepts:
+                concepts[concept] = []
 
-                concepts[
-                    concept
-                ] = []
-
-            concepts[
-                concept
-            ].append(
+            concepts[concept].append(
                 item
             )
 
         for (
             concept,
-            concept_items
+            concept_items,
         ) in concepts.items():
-
             with st.expander(
                 f"{concept} · "
-                f"{len(concept_items)} 題"
+                f"{len(concept_items)} 題",
+                expanded=False,
             ):
-
-                for item in (
-                    concept_items
-                ):
-
+                for item in concept_items:
                     st.markdown(
                         f"### "
                         f"{item['question']}"
                     )
 
-                    info = []
-
                     if item.get(
                         "uncertain",
-                        False
+                        False,
                     ):
-
-                        info.append(
-                            "❓"
-                        )
-
-                    if item.get(
-                        "label"
-                    ):
-
-                        info.append(
-                            f"🏷️ "
-                            f"{item['label']}"
-                        )
-
-                    if info:
-
-                        st.write(
-                            "　".join(
-                                info
-                            )
-                        )
+                        st.write("❓")
 
                     render_answer_options(
-                        item[
-                            "options"
-                        ],
-                        item[
-                            "correct_answer"
-                        ],
-                        item[
-                            "user_answer"
-                        ]
+                        item["options"],
+                        item["correct_answer"],
+                        item["user_answer"],
                     )
+
+                    if (
+                        item["user_answer"]
+                        is None
+                    ):
+                        st.caption(
+                            "本題沒有選擇答案。"
+                        )
 
                     st.caption(
                         f"教材來源："
                         f"{item['source']}"
+                    )
+
+                    if item.get(
+                        "created_at"
+                    ):
+                        st.caption(
+                            f"紀錄時間："
+                            f"{item['created_at']}"
+                        )
+
+                    # =====================================
+                    # 錯題庫也可修改原因
+                    # =====================================
+
+                    st.markdown(
+                        "**錯誤原因**"
+                    )
+
+                    label_options = [
+                        "粗心大意",
+                        "觀念不熟",
+                        "完全沒看過",
+                    ]
+
+                    saved_label = item.get(
+                        "label"
+                    )
+
+                    if (
+                        saved_label
+                        in label_options
+                    ):
+                        label_index = (
+                            label_options.index(
+                                saved_label
+                            )
+                        )
+
+                    else:
+                        label_index = None
+
+                    record_id = item["id"]
+
+                    st.radio(
+                        "錯誤原因",
+                        label_options,
+                        index=label_index,
+                        horizontal=True,
+                        key=(
+                            f"bank_label_"
+                            f"{record_id}"
+                        ),
+                        on_change=save_bank_error_label,
+                        args=(record_id,),
+                        label_visibility="collapsed",
                     )
 
                     st.divider()
@@ -2932,34 +1983,14 @@ def show_mistake_bank():
 
 show_sidebar()
 
-
-if (
-    st.session_state.page
-    == "home"
-):
-
+if st.session_state.page == "home":
     show_home()
 
-
-elif (
-    st.session_state.page
-    == "quiz"
-):
-
+elif st.session_state.page == "quiz":
     show_quiz()
 
-
-elif (
-    st.session_state.page
-    == "result"
-):
-
+elif st.session_state.page == "result":
     show_result()
 
-
-elif (
-    st.session_state.page
-    == "mistakes"
-):
-
+elif st.session_state.page == "mistakes":
     show_mistake_bank()
