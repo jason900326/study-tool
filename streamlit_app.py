@@ -22,22 +22,53 @@ st.set_page_config(
 @st.cache_resource
 def get_supabase():
 
-    url = st.secrets["SUPABASE_URL"]
-    key = st.secrets["SUPABASE_KEY"]
+    url = str(st.secrets["SUPABASE_URL"]).strip()
+    key = str(st.secrets["SUPABASE_KEY"]).strip()
+
+    # 移除常見的隱藏 Unicode 字元
+    url = url.replace("\ufeff", "").replace("\u200b", "")
+    key = key.replace("\ufeff", "").replace("\u200b", "")
 
     return create_client(
         url,
         key
     )
 
-
 def test_database_connection():
 
     try:
 
-        supabase = get_supabase()
+        url = str(st.secrets["SUPABASE_URL"]).strip()
+        key = str(st.secrets["SUPABASE_KEY"]).strip()
 
-        response = (
+        url = url.replace("\ufeff", "").replace("\u200b", "")
+        key = key.replace("\ufeff", "").replace("\u200b", "")
+
+        # 不顯示真正內容，只檢查格式
+        url_ascii = all(ord(c) < 128 for c in url)
+        key_ascii = all(ord(c) < 128 for c in key)
+
+        if not url_ascii:
+            return False, "SUPABASE_URL 含有非 ASCII 的隱藏字元"
+
+        if not key_ascii:
+            return False, "SUPABASE_KEY 含有非 ASCII 的隱藏字元"
+
+        if not url.startswith("https://"):
+            return False, "SUPABASE_URL 沒有以 https:// 開頭"
+
+        if not url.endswith(".supabase.co"):
+            return False, "SUPABASE_URL 應該以 .supabase.co 結尾"
+
+        if not key.startswith("sb_publishable_"):
+            return False, "目前 SUPABASE_KEY 不是 sb_publishable_ 開頭"
+
+        supabase = create_client(
+            url,
+            key
+        )
+
+        (
             supabase
             .table("mistakes")
             .select("id")
@@ -49,7 +80,9 @@ def test_database_connection():
 
     except Exception as error:
 
-        return False, str(error)
+        return False, (
+            f"{type(error).__name__}: {str(error)}"
+        )
 
 
 # =========================================================
