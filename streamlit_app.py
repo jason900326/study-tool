@@ -1,6 +1,7 @@
 import streamlit as st
 import html
 from supabase import create_client
+from pypdf import PdfReader
 
 
 # =========================================================
@@ -94,8 +95,6 @@ if "error_labels" not in st.session_state:
 if "mistakes_saved" not in st.session_state:
     st.session_state.mistakes_saved = False
 
-# 關鍵：
-# question_index → Supabase mistakes.id
 if "mistake_record_ids" not in st.session_state:
     st.session_state.mistake_record_ids = {}
 
@@ -104,7 +103,7 @@ if "label_sync_error" not in st.session_state:
 
 
 # =========================================================
-# Prototype 假題目
+# Prototype 題目資料
 # =========================================================
 
 questions = [
@@ -189,6 +188,85 @@ questions = [
 
 
 # =========================================================
+# PDF 解析
+# =========================================================
+
+def extract_pdf_text(uploaded_file):
+
+    reader = PdfReader(uploaded_file)
+
+    page_count = len(reader.pages)
+
+    pages = []
+
+    for page_number, page in enumerate(
+        reader.pages,
+        start=1
+    ):
+
+        try:
+
+            text = page.extract_text()
+
+            if text is None:
+                text = ""
+
+        except Exception:
+
+            text = ""
+
+        pages.append(
+            {
+                "page": page_number,
+                "text": text.strip()
+            }
+        )
+
+    return page_count, pages
+
+
+def create_pdf_preview(
+    pages,
+    max_pages=3,
+    max_chars_per_page=1500
+):
+
+    preview_parts = []
+
+    for page_data in pages[:max_pages]:
+
+        page_number = (
+            page_data["page"]
+        )
+
+        text = (
+            page_data["text"]
+        )
+
+        if not text:
+
+            text = "（此頁未擷取到可讀取文字）"
+
+        if (
+            len(text)
+            > max_chars_per_page
+        ):
+
+            text = (
+                text[:max_chars_per_page]
+                + "..."
+            )
+
+        preview_parts.append(
+            f"--- 第 {page_number} 頁 ---\n{text}"
+        )
+
+    return "\n\n".join(
+        preview_parts
+    )
+
+
+# =========================================================
 # Sidebar
 # =========================================================
 
@@ -196,7 +274,9 @@ def show_sidebar():
 
     with st.sidebar:
 
-        st.title("📚 Study Tool")
+        st.title(
+            "📚 Study Tool"
+        )
 
         if st.button(
             "首頁",
@@ -241,6 +321,7 @@ def show_sidebar():
             with st.expander(
                 "查看錯誤"
             ):
+
                 st.code(error)
 
         st.caption(
@@ -274,11 +355,13 @@ def render_answer_options(
     ):
 
         is_correct = (
-            option_text == correct_answer
+            option_text
+            == correct_answer
         )
 
         is_user_answer = (
-            option_text == user_answer
+            option_text
+            == user_answer
         )
 
         background = (
@@ -290,7 +373,6 @@ def render_answer_options(
             "rgba(128, 128, 128, 0.25)"
         )
 
-        # 正確答案：淺綠
         if is_correct:
 
             background = (
@@ -302,7 +384,6 @@ def render_answer_options(
                 "rgba(46, 204, 113, 0.55)"
             )
 
-        # 使用者答錯：淺紅
         if (
             is_user_answer
             and not is_correct
@@ -317,7 +398,6 @@ def render_answer_options(
                 "rgba(231, 76, 60, 0.55)"
             )
 
-        # 使用者答對
         if (
             is_user_answer
             and is_correct
@@ -404,7 +484,6 @@ def save_uncertain(
             question_index
         ] = value
 
-        # ❓ 預設觀念不熟
         if value:
 
             if (
@@ -419,7 +498,7 @@ def save_uncertain(
 
 
 # =========================================================
-# Label → Supabase 即時同步
+# Label 同步 Supabase
 # =========================================================
 
 def save_error_label(
@@ -442,12 +521,10 @@ def save_error_label(
         ]
     )
 
-    # 先更新本機狀態
     st.session_state.error_labels[
         question_index
     ] = new_label
 
-    # 找到這題對應的 Supabase row id
     record_id = (
         st.session_state
         .mistake_record_ids
@@ -493,7 +570,7 @@ def save_error_label(
 
 
 # =========================================================
-# 錯題 INSERT Supabase
+# 錯題 INSERT
 # =========================================================
 
 def save_mistakes_to_database():
@@ -505,8 +582,6 @@ def save_mistakes_to_database():
 
     st.session_state.mistake_record_ids = {}
 
-    # 一題一題 INSERT
-    # 好處：可以精準拿到每題自己的 database id
     for i, question in enumerate(
         questions
     ):
@@ -586,7 +661,6 @@ def save_mistakes_to_database():
             .execute()
         )
 
-        # INSERT 成功後，Supabase 會回傳該筆資料
         if (
             response.data
             and len(response.data) > 0
@@ -604,7 +678,7 @@ def save_mistakes_to_database():
 
 
 # =========================================================
-# 從 Supabase 讀錯題
+# 讀取錯題
 # =========================================================
 
 def load_mistakes_from_database():
@@ -629,7 +703,9 @@ def load_mistakes_from_database():
 # 結束測驗 Dialog
 # =========================================================
 
-@st.dialog("結束測驗")
+@st.dialog(
+    "結束測驗"
+)
 def finish_quiz_dialog():
 
     unanswered = []
@@ -661,10 +737,6 @@ def finish_quiz_dialog():
             unanswered.append(
                 i + 1
             )
-
-    # =====================================================
-    # 有漏答
-    # =====================================================
 
     if unanswered:
 
@@ -730,10 +802,6 @@ def finish_quiz_dialog():
 
                 st.rerun()
 
-    # =====================================================
-    # 全部完成
-    # =====================================================
-
     else:
 
         st.success(
@@ -780,8 +848,8 @@ def show_home():
 
     st.write(
         "上傳你的課堂講義，"
-        "系統會整理教材內容，"
-        "並根據重要概念產生測驗。"
+        "系統會讀取 PDF 內容，"
+        "後續再根據教材產生測驗。"
     )
 
     st.divider()
@@ -804,41 +872,139 @@ def show_home():
         )
 
         st.subheader(
-            "教材分析"
+            "PDF 解析結果"
         )
+
+        try:
+
+            page_count, pages = (
+                extract_pdf_text(
+                    uploaded_file
+                )
+            )
+
+        except Exception as error:
+
+            st.error(
+                "PDF 讀取失敗"
+            )
+
+            st.code(
+                f"{type(error).__name__}: "
+                f"{str(error)}"
+            )
+
+            return
+
+        # ================================================
+        # 基本資訊
+        # ================================================
+
+        total_chars = sum(
+            len(
+                page["text"]
+            )
+            for page in pages
+        )
+
+        pages_with_text = sum(
+            1
+            for page in pages
+            if page["text"]
+        )
+
+        col1, col2, col3 = (
+            st.columns(3)
+        )
+
+        col1.metric(
+            "PDF 頁數",
+            page_count
+        )
+
+        col2.metric(
+            "可讀文字頁",
+            f"{pages_with_text} / {page_count}"
+        )
+
+        col3.metric(
+            "擷取字元數",
+            f"{total_chars:,}"
+        )
+
+        st.divider()
+
+        # ================================================
+        # 文字預覽
+        # ================================================
+
+        st.subheader(
+            "文字預覽"
+        )
+
+        st.caption(
+            "目前只顯示前 3 頁，"
+            "用來確認 PDF 是否能正常讀取。"
+        )
+
+        preview = (
+            create_pdf_preview(
+                pages,
+                max_pages=3
+            )
+        )
+
+        st.text_area(
+            "PDF 文字內容",
+            value=preview,
+            height=420,
+            disabled=True,
+            label_visibility="collapsed"
+        )
+
+        # ================================================
+        # 無文字 PDF 提醒
+        # ================================================
+
+        if pages_with_text == 0:
+
+            st.warning(
+                "這份 PDF 沒有擷取到可讀取文字。"
+                "它可能是掃描圖片型 PDF，"
+                "之後需要另外處理 OCR。"
+            )
+
+        elif (
+            pages_with_text
+            < page_count
+        ):
+
+            st.warning(
+                "部分頁面沒有擷取到文字。"
+                "可能包含圖片、掃描頁面或特殊排版。"
+            )
+
+        else:
+
+            st.success(
+                "PDF 文字擷取正常。"
+            )
+
+        st.divider()
 
         st.info(
-            "目前為 Prototype："
-            "以下分析結果暫時使用測試資料。"
-        )
-
-        st.write(
-            "偵測到 **18 個核心概念**"
-        )
-
-        st.markdown(
-            """
-**主要內容**
-
-- Gram-positive / Gram-negative bacteria
-- Gram staining
-- Acid-fast staining
-- Antimicrobial mechanisms
-- Antibiotic resistance
-"""
-        )
-
-        st.write(
-            "建議測驗題數："
-            "**18 題**"
+            "目前測驗仍使用 Prototype 假題目。"
+            "下一步才會把實際 PDF 內容送進 AI 分析。"
         )
 
         if st.button(
-            "開始測驗",
+            "開始 Prototype 測驗",
             use_container_width=True
         ):
 
-            st.session_state.page = "quiz"
+            st.session_state.page = (
+                "quiz"
+            )
 
             st.session_state.question_index = 0
 
@@ -1062,7 +1228,6 @@ def show_quiz():
         len(questions)
     )
 
-    # 第一題
     if current == 0:
 
         empty_col, next_col = (
@@ -1080,7 +1245,6 @@ def show_quiz():
                 st.session_state.question_index += 1
                 st.rerun()
 
-    # 最後一題
     elif (
         current
         == total_questions - 1
@@ -1101,7 +1265,6 @@ def show_quiz():
                 st.session_state.question_index -= 1
                 st.rerun()
 
-    # 中間題
     else:
 
         prev_col, next_col = (
@@ -1518,7 +1681,6 @@ def show_result():
                 question_index
             )
 
-        # Label 同步失敗才顯示
         if (
             st.session_state
             .label_sync_error
@@ -1610,10 +1772,6 @@ def show_mistake_bank():
 
         return
 
-    # =====================================================
-    # 統計
-    # =====================================================
-
     total = len(
         mistake_bank
     )
@@ -1677,10 +1835,6 @@ def show_mistake_bank():
 
     st.divider()
 
-    # =====================================================
-    # Subject
-    # =====================================================
-
     subjects = {}
 
     for item in mistake_bank:
@@ -1706,10 +1860,6 @@ def show_mistake_bank():
         ].append(
             item
         )
-
-    # =====================================================
-    # Subject → Concept
-    # =====================================================
 
     for (
         subject,
