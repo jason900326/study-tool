@@ -952,7 +952,7 @@ def show_sidebar():
             with st.expander("查看錯誤"):
                 st.code(error)
 
-        st.caption("Prototype v0.8")
+        st.caption("Prototype v0.9")
 
 
 # =========================================================
@@ -1185,6 +1185,21 @@ def save_mistakes_to_database():
                 .get(i)
             ),
             "source": question["source"],
+
+            # 檢討內容也永久保存，
+            # 讓錯題庫可以完整重現結果頁的解析。
+            "explanation": question.get(
+                "explanation",
+                ""
+            ),
+            "review_points": question.get(
+                "review_points",
+                []
+            ),
+            "source_quote": question.get(
+                "source_quote",
+                ""
+            ),
         }
 
         response = (
@@ -1479,9 +1494,6 @@ def show_home():
 
     st.subheader("教材分析")
 
-    st.markdown("#### 建議科目")
-    st.write(analysis["subject"])
-
     st.markdown("#### 教材摘要")
     st.write(analysis["summary"])
 
@@ -1490,41 +1502,12 @@ def show_home():
     for topic in analysis["main_topics"]:
         st.markdown(f"- {topic}")
 
-    st.markdown("#### 核心概念")
-
-    importance_map = {
-        "high": "高",
-        "medium": "中",
-        "low": "低",
-    }
-
-    for index, unit in enumerate(
-        analysis["knowledge_units"],
-        start=1,
-    ):
-        importance = importance_map.get(
-            unit["importance"],
-            unit["importance"],
-        )
-
-        with st.expander(
-            f"{index}. "
-            f"{unit['name']} "
-            f"· 重要度 {importance}"
-        ):
-            st.write(
-                unit["description"]
-            )
-
+    # AI 的 recommended_question_count 仍在後端使用，
+    # 但首頁不另外顯示這個 metric。
     target_question_count = (
         get_target_question_count(
             analysis
         )
-    )
-
-    st.metric(
-        "AI 建議測驗題數",
-        target_question_count,
     )
 
     st.divider()
@@ -1538,8 +1521,6 @@ def show_home():
         st.caption(
             f"AI 建議本份教材產生 "
             f"{target_question_count} 題。"
-            "若 Python 驗證淘汰題目，"
-            "只批量補足缺額，最多補 2 輪。"
         )
 
         if st.button(
@@ -2345,10 +2326,57 @@ def show_mistake_bank():
                             "本題沒有選擇答案。"
                         )
 
+                    st.divider()
+
+                    # =====================================
+                    # 完整檢討內容
+                    # =====================================
+
+                    st.markdown("### 核心觀念")
+                    st.write(
+                        item.get(
+                            "concept",
+                            "未分類概念"
+                        )
+                    )
+
+                    explanation = item.get(
+                        "explanation"
+                    )
+
+                    if explanation:
+                        st.markdown("### 為什麼？")
+                        st.write(
+                            explanation
+                        )
+
+                    review_points = item.get(
+                        "review_points"
+                    )
+
+                    if review_points:
+                        st.markdown("### 複習重點")
+
+                        for point in review_points:
+                            st.markdown(
+                                f"- {point}"
+                            )
+
+                    source_quote = item.get(
+                        "source_quote"
+                    )
+
+                    st.markdown("### 📖 教材根據")
+
                     st.caption(
                         f"教材來源："
                         f"{item['source']}"
                     )
+
+                    if source_quote:
+                        st.info(
+                            source_quote
+                        )
 
                     if item.get(
                         "created_at"
