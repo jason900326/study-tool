@@ -330,22 +330,59 @@ elif st.session_state.page == "result":
 
     st.title("測驗完成")
 
-    st.info(
-        "下一個 Prototype 階段會在這裡加入真正的判分與錯題檢討。"
-    )
-
-    st.subheader("目前記錄")
+    correct_count = 0
 
     for i, question in enumerate(questions):
 
-        answer = st.session_state.answers.get(i, "未選擇")
+        user_answer = st.session_state.answers.get(i)
         uncertain = st.session_state.uncertain_answers.get(i, False)
 
-        status = "❓" if uncertain else ""
+        correct_answer = question["options"][question["answer"]]
 
-        st.write(
-            f"**第 {i + 1} 題：** {answer} {status}"
-        )
+        is_correct = user_answer == correct_answer
+
+        if is_correct:
+            correct_count += 1
+
+    total_questions = len(questions)
+    percentage = round(correct_count / total_questions * 100)
+
+    st.subheader(
+        f"{correct_count} / {total_questions}（{percentage}%）"
+    )
+
+    st.divider()
+
+    st.subheader("答題結果")
+
+    for i, question in enumerate(questions):
+
+        user_answer = st.session_state.answers.get(i)
+        uncertain = st.session_state.uncertain_answers.get(i, False)
+
+        correct_answer = question["options"][question["answer"]]
+
+        is_correct = user_answer == correct_answer
+
+        # 答對
+        if is_correct and not uncertain:
+            st.write(f"**第 {i + 1} 題**　✅")
+
+        # 答對，但有按 ❓
+        elif is_correct and uncertain:
+            st.write(f"**第 {i + 1} 題**　✅ ❓")
+
+        # 答錯
+        elif user_answer is not None:
+            st.write(f"**第 {i + 1} 題**　❌")
+
+        # 沒選答案，但有按 ❓
+        elif uncertain:
+            st.write(f"**第 {i + 1} 題**　❓")
+
+        # 完全沒作答
+        else:
+            st.write(f"**第 {i + 1} 題**　未作答")
 
     st.divider()
 
