@@ -1,7 +1,10 @@
 import streamlit as st
 import html
+import json
+
 from supabase import create_client
 from pypdf import PdfReader
+from openai import OpenAI
 
 
 # =========================================================
@@ -74,6 +77,146 @@ def test_database_connection():
 
 
 # =========================================================
+# OpenAI
+# =========================================================
+
+@st.cache_resource
+def get_openai_client():
+
+    api_key = str(
+        st.secrets["OPENAI_API_KEY"]
+    ).strip()
+
+    api_key = (
+        api_key
+        .replace("\ufeff", "")
+        .replace("\u200b", "")
+    )
+
+    return OpenAI(
+        api_key=api_key
+    )
+
+
+def analyze_document_with_ai(
+    document_text
+):
+
+    client = get_openai_client()
+
+    schema = {
+        "type": "object",
+        "properties": {
+
+            "subject": {
+                "type": "string"
+            },
+
+            "summary": {
+                "type": "string"
+            },
+
+            "main_topics": {
+                "type": "array",
+                "items": {
+                    "type": "string"
+                }
+            },
+
+            "knowledge_units": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+
+                        "name": {
+                            "type": "string"
+                        },
+
+                        "description": {
+                            "type": "string"
+                        },
+
+                        "importance": {
+                            "type": "string",
+                            "enum": [
+                                "high",
+                                "medium",
+                                "low"
+                            ]
+                        }
+                    },
+                    "required": [
+                        "name",
+                        "description",
+                        "importance"
+                    ],
+                    "additionalProperties": False
+                }
+            },
+
+            "recommended_question_count": {
+                "type": "integer",
+                "minimum": 5,
+                "maximum": 20
+            }
+        },
+
+        "required": [
+            "subject",
+            "summary",
+            "main_topics",
+            "knowledge_units",
+            "recommended_question_count"
+        ],
+
+        "additionalProperties": False
+    }
+
+    instructions = """
+你是一個教材分析系統。
+
+你的工作不是補充外部知識，而是分析使用者提供的教材。
+
+規則：
+
+1. 所有判斷只能根據使用者提供的教材文字。
+2. 不可以自行加入教材沒有提到的知識。
+3. subject 使用適合學生理解的大分類，例如：
+   臨床微生物學、血液學、免疫學、生化學等。
+4. Knowledge Unit 是之後可以拿來出題與追蹤學習狀態的核心概念。
+5. Knowledge Unit 不要切得過細，也不要只照章節標題抄寫。
+6. importance 表示這個概念在教材中的重要程度，不代表外部考試的重要程度。
+7. recommended_question_count 根據教材的非重複核心概念數量決定。
+8. 如果教材資訊不足，不要猜。
+"""
+
+    response = client.responses.create(
+        model="gpt-5.6-luna",
+
+        instructions=instructions,
+
+        input=(
+            "以下是使用者上傳教材中擷取出的文字：\n\n"
+            + document_text
+        ),
+
+        text={
+            "format": {
+                "type": "json_schema",
+                "name": "document_analysis",
+                "strict": True,
+                "schema": schema
+            }
+        }
+    )
+
+    return json.loads(
+        response.output_text
+    )
+
+
+# =========================================================
 # Session State
 # =========================================================
 
@@ -101,9 +244,18 @@ if "mistake_record_ids" not in st.session_state:
 if "label_sync_error" not in st.session_state:
     st.session_state.label_sync_error = None
 
+if "document_analysis" not in st.session_state:
+    st.session_state.document_analysis = None
+
+if "document_text" not in st.session_state:
+    st.session_state.document_text = None
+
+if "uploaded_filename" not in st.session_state:
+    st.session_state.uploaded_filename = None
+
 
 # =========================================================
-# Prototype 題目資料
+# Prototype 題目
 # =========================================================
 
 questions = [
@@ -188,25 +340,36 @@ questions = [
 
 
 # =========================================================
-# PDF 解析
+# PDF
 # =========================================================
 
-def extract_pdf_text(uploaded_file):
+def extract_pdf_text(
+    uploaded_file
+):
 
-    reader = PdfReader(uploaded_file)
+    reader = PdfReader(
+        uploaded_file
+    )
 
-    page_count = len(reader.pages)
+    page_count = len(
+        reader.pages
+    )
 
     pages = []
 
-    for page_number, page in enumerate(
+    for (
+        page_number,
+        page
+    ) in enumerate(
         reader.pages,
         start=1
     ):
 
         try:
 
-            text = page.extract_text()
+            text = (
+                page.extract_text()
+            )
 
             if text is None:
                 text = ""
@@ -217,12 +380,39 @@ def extract_pdf_text(uploaded_file):
 
         pages.append(
             {
-                "page": page_number,
-                "text": text.strip()
+                "page":
+                    page_number,
+
+                "text":
+                    text.strip()
             }
         )
 
-    return page_count, pages
+    return (
+        page_count,
+        pages
+    )
+
+
+def build_document_text(
+    pages
+):
+
+    parts = []
+
+    for page in pages:
+
+        if not page["text"]:
+            continue
+
+        parts.append(
+            f"[Page {page['page']}]\n"
+            f"{page['text']}"
+        )
+
+    return "\n\n".join(
+        parts
+    )
 
 
 def create_pdf_preview(
@@ -233,7 +423,9 @@ def create_pdf_preview(
 
     preview_parts = []
 
-    for page_data in pages[:max_pages]:
+    for page_data in (
+        pages[:max_pages]
+    ):
 
         page_number = (
             page_data["page"]
@@ -245,7 +437,9 @@ def create_pdf_preview(
 
         if not text:
 
-            text = "（此頁未擷取到可讀取文字）"
+            text = (
+                "（此頁未擷取到可讀取文字）"
+            )
 
         if (
             len(text)
@@ -253,12 +447,15 @@ def create_pdf_preview(
         ):
 
             text = (
-                text[:max_chars_per_page]
+                text[
+                    :max_chars_per_page
+                ]
                 + "..."
             )
 
         preview_parts.append(
-            f"--- 第 {page_number} 頁 ---\n{text}"
+            f"--- 第 {page_number} 頁 ---\n"
+            f"{text}"
         )
 
     return "\n\n".join(
@@ -322,15 +519,17 @@ def show_sidebar():
                 "查看錯誤"
             ):
 
-                st.code(error)
+                st.code(
+                    error
+                )
 
         st.caption(
-            "Prototype v0.1"
+            "Prototype v0.2"
         )
 
 
 # =========================================================
-# 彩色答案選項
+# 彩色答案
 # =========================================================
 
 def render_answer_options(
@@ -436,7 +635,7 @@ def render_answer_options(
 
 
 # =========================================================
-# 儲存答案
+# 答案 State
 # =========================================================
 
 def save_answer(
@@ -498,7 +697,7 @@ def save_uncertain(
 
 
 # =========================================================
-# Label 同步 Supabase
+# Label → Supabase
 # =========================================================
 
 def save_error_label(
@@ -542,14 +741,17 @@ def save_error_label(
 
     try:
 
-        supabase = get_supabase()
+        supabase = (
+            get_supabase()
+        )
 
         (
             supabase
             .table("mistakes")
             .update(
                 {
-                    "label": new_label
+                    "label":
+                        new_label
                 }
             )
             .eq(
@@ -570,15 +772,20 @@ def save_error_label(
 
 
 # =========================================================
-# 錯題 INSERT
+# 錯題 DB
 # =========================================================
 
 def save_mistakes_to_database():
 
-    if st.session_state.mistakes_saved:
+    if (
+        st.session_state
+        .mistakes_saved
+    ):
         return
 
-    supabase = get_supabase()
+    supabase = (
+        get_supabase()
+    )
 
     st.session_state.mistake_record_ids = {}
 
@@ -621,6 +828,7 @@ def save_mistakes_to_database():
             continue
 
         row = {
+
             "subject":
                 question["subject"],
 
@@ -663,7 +871,9 @@ def save_mistakes_to_database():
 
         if (
             response.data
-            and len(response.data) > 0
+            and len(
+                response.data
+            ) > 0
         ):
 
             database_id = (
@@ -677,13 +887,11 @@ def save_mistakes_to_database():
     st.session_state.mistakes_saved = True
 
 
-# =========================================================
-# 讀取錯題
-# =========================================================
-
 def load_mistakes_from_database():
 
-    supabase = get_supabase()
+    supabase = (
+        get_supabase()
+    )
 
     response = (
         supabase
@@ -696,11 +904,13 @@ def load_mistakes_from_database():
         .execute()
     )
 
-    return response.data
+    return (
+        response.data
+    )
 
 
 # =========================================================
-# 結束測驗 Dialog
+# 結束測驗
 # =========================================================
 
 @st.dialog(
@@ -848,8 +1058,7 @@ def show_home():
 
     st.write(
         "上傳你的課堂講義，"
-        "系統會讀取 PDF 內容，"
-        "後續再根據教材產生測驗。"
+        "系統會讀取教材內容並分析核心概念。"
     )
 
     st.divider()
@@ -863,211 +1072,386 @@ def show_home():
 
     if (
         uploaded_file
-        is not None
+        is None
+    ):
+        return
+
+    st.success(
+        f"已成功上傳："
+        f"{uploaded_file.name}"
+    )
+
+    # =====================================================
+    # PDF Parsing
+    # =====================================================
+
+    try:
+
+        page_count, pages = (
+            extract_pdf_text(
+                uploaded_file
+            )
+        )
+
+    except Exception as error:
+
+        st.error(
+            "PDF 讀取失敗"
+        )
+
+        st.code(
+            f"{type(error).__name__}: "
+            f"{str(error)}"
+        )
+
+        return
+
+    document_text = (
+        build_document_text(
+            pages
+        )
+    )
+
+    # 新 PDF 時清除舊 AI 分析
+    if (
+        st.session_state
+        .uploaded_filename
+        != uploaded_file.name
     ):
 
-        st.success(
-            f"已成功上傳："
-            f"{uploaded_file.name}"
+        st.session_state.document_analysis = None
+
+        st.session_state.uploaded_filename = (
+            uploaded_file.name
         )
 
-        st.subheader(
-            "PDF 解析結果"
+    st.session_state.document_text = (
+        document_text
+    )
+
+    total_chars = sum(
+        len(
+            page["text"]
         )
+        for page in pages
+    )
 
-        try:
+    pages_with_text = sum(
+        1
+        for page in pages
+        if page["text"]
+    )
 
-            page_count, pages = (
-                extract_pdf_text(
-                    uploaded_file
-                )
-            )
+    st.subheader(
+        "PDF 解析結果"
+    )
 
-        except Exception as error:
+    col1, col2, col3 = (
+        st.columns(3)
+    )
 
-            st.error(
-                "PDF 讀取失敗"
-            )
+    col1.metric(
+        "PDF 頁數",
+        page_count
+    )
 
-            st.code(
-                f"{type(error).__name__}: "
-                f"{str(error)}"
-            )
+    col2.metric(
+        "可讀文字頁",
+        f"{pages_with_text} / {page_count}"
+    )
 
-            return
+    col3.metric(
+        "擷取字元數",
+        f"{total_chars:,}"
+    )
 
-        # ================================================
-        # 基本資訊
-        # ================================================
-
-        total_chars = sum(
-            len(
-                page["text"]
-            )
-            for page in pages
-        )
-
-        pages_with_text = sum(
-            1
-            for page in pages
-            if page["text"]
-        )
-
-        col1, col2, col3 = (
-            st.columns(3)
-        )
-
-        col1.metric(
-            "PDF 頁數",
-            page_count
-        )
-
-        col2.metric(
-            "可讀文字頁",
-            f"{pages_with_text} / {page_count}"
-        )
-
-        col3.metric(
-            "擷取字元數",
-            f"{total_chars:,}"
-        )
-
-        st.divider()
-
-        # ================================================
-        # 文字預覽
-        # ================================================
-
-        st.subheader(
-            "文字預覽"
-        )
-
-        st.caption(
-            "目前只顯示前 3 頁，"
-            "用來確認 PDF 是否能正常讀取。"
-        )
+    with st.expander(
+        "查看文字預覽",
+        expanded=False
+    ):
 
         preview = (
             create_pdf_preview(
-                pages,
-                max_pages=3
+                pages
             )
         )
 
         st.text_area(
-            "PDF 文字內容",
+            "PDF 文字",
             value=preview,
-            height=420,
+            height=350,
             disabled=True,
             label_visibility="collapsed"
         )
 
-        # ================================================
-        # 無文字 PDF 提醒
-        # ================================================
+    if (
+        pages_with_text == 0
+    ):
 
-        if pages_with_text == 0:
+        st.warning(
+            "這份 PDF 沒有擷取到可讀文字，"
+            "目前無法進行 AI 分析。"
+        )
 
-            st.warning(
-                "這份 PDF 沒有擷取到可讀取文字。"
-                "它可能是掃描圖片型 PDF，"
-                "之後需要另外處理 OCR。"
-            )
+        return
 
-        elif (
-            pages_with_text
-            < page_count
-        ):
+    st.divider()
 
-            st.warning(
-                "部分頁面沒有擷取到文字。"
-                "可能包含圖片、掃描頁面或特殊排版。"
-            )
+    # =====================================================
+    # AI Analysis
+    # =====================================================
 
-        else:
+    if (
+        st.session_state
+        .document_analysis
+        is None
+    ):
 
-            st.success(
-                "PDF 文字擷取正常。"
-            )
+        st.subheader(
+            "AI 教材分析"
+        )
 
-        st.divider()
-
-        st.info(
-            "目前測驗仍使用 Prototype 假題目。"
-            "下一步才會把實際 PDF 內容送進 AI 分析。"
+        st.write(
+            "下一步讓 AI 根據這份教材辨識"
+            "科目、主要主題與核心 Knowledge Units。"
         )
 
         if st.button(
-            "開始 Prototype 測驗",
+            "AI 分析教材",
             use_container_width=True
         ):
 
-            st.session_state.page = (
-                "quiz"
+            try:
+
+                with st.spinner(
+                    "正在分析教材..."
+                ):
+
+                    analysis = (
+                        analyze_document_with_ai(
+                            document_text
+                        )
+                    )
+
+                st.session_state.document_analysis = (
+                    analysis
+                )
+
+                st.rerun()
+
+            except Exception as error:
+
+                st.error(
+                    "AI 分析失敗"
+                )
+
+                st.code(
+                    f"{type(error).__name__}: "
+                    f"{str(error)}"
+                )
+
+                return
+
+    # =====================================================
+    # 顯示 AI Analysis
+    # =====================================================
+
+    analysis = (
+        st.session_state
+        .document_analysis
+    )
+
+    if analysis is None:
+        return
+
+    st.subheader(
+        "教材分析"
+    )
+
+    # -----------------------------------------------------
+    # Subject
+    # -----------------------------------------------------
+
+    st.markdown(
+        "#### 建議科目"
+    )
+
+    st.write(
+        analysis["subject"]
+    )
+
+    # -----------------------------------------------------
+    # Summary
+    # -----------------------------------------------------
+
+    st.markdown(
+        "#### 教材摘要"
+    )
+
+    st.write(
+        analysis["summary"]
+    )
+
+    # -----------------------------------------------------
+    # Topics
+    # -----------------------------------------------------
+
+    st.markdown(
+        "#### 主要內容"
+    )
+
+    for topic in (
+        analysis[
+            "main_topics"
+        ]
+    ):
+
+        st.markdown(
+            f"- {topic}"
+        )
+
+    # -----------------------------------------------------
+    # Knowledge Units
+    # -----------------------------------------------------
+
+    st.markdown(
+        "#### 核心概念"
+    )
+
+    for (
+        index,
+        unit
+    ) in enumerate(
+        analysis[
+            "knowledge_units"
+        ],
+        start=1
+    ):
+
+        importance_map = {
+
+            "high":
+                "高",
+
+            "medium":
+                "中",
+
+            "low":
+                "低"
+        }
+
+        importance = (
+            importance_map.get(
+                unit[
+                    "importance"
+                ],
+                unit[
+                    "importance"
+                ]
+            )
+        )
+
+        with st.expander(
+            f"{index}. "
+            f"{unit['name']} "
+            f"· 重要度 {importance}"
+        ):
+
+            st.write(
+                unit[
+                    "description"
+                ]
             )
 
-            st.session_state.question_index = 0
+    st.divider()
 
-            st.session_state.answers = {}
+    st.metric(
+        "AI 建議測驗題數",
+        analysis[
+            "recommended_question_count"
+        ]
+    )
 
-            st.session_state.uncertain_answers = {}
+    st.info(
+        "目前這個步驟只分析教材，"
+        "還沒有讓 AI 產生題目。"
+    )
 
-            st.session_state.error_labels = {}
+    # =====================================================
+    # Prototype Quiz
+    # =====================================================
 
-            st.session_state.mistakes_saved = False
+    if st.button(
+        "開始 Prototype 測驗",
+        use_container_width=True
+    ):
 
-            st.session_state.mistake_record_ids = {}
+        st.session_state.page = (
+            "quiz"
+        )
 
-            st.session_state.label_sync_error = None
+        st.session_state.question_index = 0
 
-            for i in range(
-                len(questions)
+        st.session_state.answers = {}
+
+        st.session_state.uncertain_answers = {}
+
+        st.session_state.error_labels = {}
+
+        st.session_state.mistakes_saved = False
+
+        st.session_state.mistake_record_ids = {}
+
+        st.session_state.label_sync_error = None
+
+        for i in range(
+            len(questions)
+        ):
+
+            radio_key = (
+                f"radio_{i}"
+            )
+
+            uncertain_key = (
+                f"uncertain_{i}"
+            )
+
+            label_key = (
+                f"error_label_{i}"
+            )
+
+            if (
+                radio_key
+                in st.session_state
             ):
 
-                radio_key = (
-                    f"radio_{i}"
-                )
-
-                uncertain_key = (
-                    f"uncertain_{i}"
-                )
-
-                label_key = (
-                    f"error_label_{i}"
-                )
-
-                if (
+                del st.session_state[
                     radio_key
-                    in st.session_state
-                ):
+                ]
 
-                    del st.session_state[
-                        radio_key
-                    ]
+            if (
+                uncertain_key
+                in st.session_state
+            ):
 
-                if (
+                del st.session_state[
                     uncertain_key
-                    in st.session_state
-                ):
+                ]
 
-                    del st.session_state[
-                        uncertain_key
-                    ]
+            if (
+                label_key
+                in st.session_state
+            ):
 
-                if (
+                del st.session_state[
                     label_key
-                    in st.session_state
-                ):
+                ]
 
-                    del st.session_state[
-                        label_key
-                    ]
-
-            st.rerun()
+        st.rerun()
 
 
 # =========================================================
-# 測驗頁
+# Quiz
 # =========================================================
 
 def show_quiz():
@@ -1295,7 +1679,7 @@ def show_quiz():
 
 
 # =========================================================
-# 錯題檢討
+# Review
 # =========================================================
 
 def show_review_item(
@@ -1366,7 +1750,8 @@ def show_review_item(
     ):
 
         st.markdown(
-            f"### {question['question']}"
+            f"### "
+            f"{question['question']}"
         )
 
         render_answer_options(
@@ -1437,7 +1822,9 @@ def show_review_item(
                     }
                 )
 
-            st.table(rows)
+            st.table(
+                rows
+            )
 
         else:
 
@@ -1456,7 +1843,9 @@ def show_review_item(
         )
 
         st.caption(
-            question["source"]
+            question[
+                "source"
+            ]
         )
 
         st.divider()
@@ -1495,7 +1884,8 @@ def show_review_item(
             label_index = None
 
         label_key = (
-            f"error_label_{question_index}"
+            f"error_label_"
+            f"{question_index}"
         )
 
         st.radio(
@@ -1522,12 +1912,13 @@ def show_review_item(
         if selected_label:
 
             st.caption(
-                f"已標記：{selected_label}"
+                f"已標記："
+                f"{selected_label}"
             )
 
 
 # =========================================================
-# 結果頁
+# Result
 # =========================================================
 
 def show_result():
@@ -1737,7 +2128,7 @@ def show_result():
 
 
 # =========================================================
-# 錯題庫
+# Mistake Bank
 # =========================================================
 
 def show_mistake_bank():
@@ -1780,7 +2171,9 @@ def show_mistake_bank():
     unfamiliar = 0
     unseen = 0
 
-    for item in mistake_bank:
+    for item in (
+        mistake_bank
+    ):
 
         label = (
             item.get(
@@ -1837,7 +2230,9 @@ def show_mistake_bank():
 
     subjects = {}
 
-    for item in mistake_bank:
+    for item in (
+        mistake_bank
+    ):
 
         subject = (
             item.get(
