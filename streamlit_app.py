@@ -384,6 +384,188 @@ def generate_questions_with_ai(
     return result["questions"]
 
 
+
+# =========================================================
+# AI 第二層題目驗證
+# =========================================================
+
+def verify_questions_with_ai(
+    questions,
+):
+    """
+    第二層驗證只傳：
+    - 題目
+    - 四個選項
+    - AI 指定的正確答案
+    - PDF 原文證據
+
+    不再傳整份 PDF，降低成本。
+
+    驗證原則：
+    1. 正確答案必須能直接由 source_quote 支持。
+    2. 不可以依賴 source_quote 以外的知識。
+    3. 題目必須只有一個明確正確答案。
+    4. 如果證據不足、語意含糊或有多個可能答案，一律 reject。
+    """
+
+    if not questions:
+        return [], []
+
+    client = get_openai_client()
+
+    verification_items = []
+
+    for index, question in enumerate(
+        questions,
+        start=1,
+    ):
+        correct_answer = (
+            question["options"][
+                question["answer"]
+            ]
+        )
+
+        verification_items.append({
+            "id": index,
+            "question": question["question"],
+            "options": question["options"],
+            "claimed_correct_answer": correct_answer,
+            "source_quote": question["source_quote"],
+        })
+
+    schema = {
+        "type": "object",
+        "properties": {
+            "results": {
+                "type": "array",
+                "minItems": len(verification_items),
+                "maxItems": len(verification_items),
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "id": {
+                            "type": "integer",
+                            "minimum": 1
+                        },
+                        "approved": {
+                            "type": "boolean"
+                        },
+                        "reason": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "id",
+                        "approved",
+                        "reason"
+                    ],
+                    "additionalProperties": False
+                }
+            }
+        },
+        "required": [
+            "results"
+        ],
+        "additionalProperties": False
+    }
+
+    instructions = """
+你是一個嚴格的教材題目審核器。
+
+你會收到：
+- 題目
+- 四個選項
+- 系統宣稱的正確答案
+- 從教材原文逐字擷取的 source_quote
+
+你只能使用 source_quote 判斷，不可使用任何外部知識。
+
+每題只有在以下條件全部成立時 approved=true：
+
+1. source_quote 本身足以直接支持 claimed_correct_answer。
+2. 不需要教材其他頁、常識或外部知識才能得出答案。
+3. 題幹語意明確。
+4. 四個選項中只有 claimed_correct_answer 一個可以成立。
+5. 題目沒有把「可能、主要、唯一、總是」等語意強度搞混。
+6. source_quote 與題目實際測驗的概念一致。
+
+以下任一情況都必須 approved=false：
+- source_quote 只與主題相關，但不足以證明答案。
+- 需要推測。
+- 可能有兩個答案。
+- 題幹問得比 source_quote 能支持的範圍更廣。
+- claimed_correct_answer 與 source_quote 不一致。
+- source_quote 本身不足以排除其他選項。
+
+reason 請簡短說明核准或拒絕的關鍵理由。
+寧可拒絕可疑題目，也不要放行可能教錯學生的題目。
+"""
+
+    response = client.responses.create(
+        model="gpt-5.6-luna",
+        instructions=instructions,
+        input=json.dumps(
+            verification_items,
+            ensure_ascii=False,
+        ),
+        text={
+            "format": {
+                "type": "json_schema",
+                "name": "quiz_verification",
+                "strict": True,
+                "schema": schema
+            }
+        }
+    )
+
+    result = json.loads(
+        response.output_text
+    )
+
+    result_lookup = {
+        item["id"]: item
+        for item in result["results"]
+    }
+
+    approved_questions = []
+    rejected_questions = []
+
+    for index, question in enumerate(
+        questions,
+        start=1,
+    ):
+        verification = result_lookup.get(
+            index
+        )
+
+        if (
+            verification
+            and verification["approved"]
+        ):
+            approved_questions.append(
+                question
+            )
+
+        else:
+            reason = (
+                verification["reason"]
+                if verification
+                else "驗證器沒有回傳結果"
+            )
+
+            rejected_questions.append({
+                "number": index,
+                "reasons": [
+                    f"第二層 AI 驗證未通過：{reason}"
+                ]
+            })
+
+    return (
+        approved_questions,
+        rejected_questions,
+    )
+
+
 # =========================================================
 # Grounding 驗證
 # =========================================================
@@ -538,7 +720,7 @@ def show_sidebar():
             with st.expander("查看錯誤"):
                 st.code(error)
 
-        st.caption("Prototype v0.4")
+        st.caption("Prototype v0.5")
 
 
 # =========================================================
@@ -1117,7 +1299,7 @@ def show_home():
 
         st.caption(
             "Prototype 先產生 5 題，"
-            "每一題都必須通過教材來源驗證。"
+            "每一題都必須通過「來源存在」與「答案確實被原文支持」兩層驗證。"
         )
 
         if st.button(
@@ -1126,7 +1308,7 @@ def show_home():
         ):
             try:
                 with st.spinner(
-                    "正在根據教材出題並驗證來源..."
+                    "正在根據教材出題並進行兩層驗證..."
                 ):
                     raw_questions = (
                         generate_questions_with_ai(
@@ -1136,9 +1318,12 @@ def show_home():
                         )
                     )
 
+                    # 第一層：
+                    # Python 驗證頁碼、quote 是否真的存在、
+                    # 選項數量與重複選項
                     (
-                        valid_questions,
-                        rejected_questions,
+                        grounded_questions,
+                        grounding_rejections,
                     ) = (
                         validate_generated_questions(
                             raw_questions,
@@ -1148,14 +1333,31 @@ def show_home():
                         )
                     )
 
+                    # 第二層：
+                    # AI 只看題目 + 選項 + 正確答案 + 原文證據，
+                    # 判斷「這段原文是否真的足以支持答案」
+                    (
+                        verified_questions,
+                        semantic_rejections,
+                    ) = (
+                        verify_questions_with_ai(
+                            grounded_questions
+                        )
+                    )
+
                 st.session_state.generated_questions = (
-                    valid_questions
+                    verified_questions
                 )
 
-                if rejected_questions:
+                all_rejections = (
+                    grounding_rejections
+                    + semantic_rejections
+                )
+
+                if all_rejections:
                     rejected_text = []
 
-                    for item in rejected_questions:
+                    for item in all_rejections:
                         reasons = "、".join(
                             item["reasons"]
                         )
@@ -1190,7 +1392,7 @@ def show_home():
     st.subheader("測驗已產生")
 
     st.success(
-        f"已通過教材驗證："
+        f"已通過兩層教材驗證："
         f"{len(generated_questions)} 題"
     )
 
@@ -1198,7 +1400,7 @@ def show_home():
         st.session_state.question_generation_error
     ):
         st.warning(
-            "部分 AI 題目因來源驗證失敗，"
+            "部分 AI 題目因驗證失敗，"
             "已自動排除。"
         )
 
