@@ -22,46 +22,98 @@ st.set_page_config(
 @st.cache_resource
 def get_supabase():
 
-    url = str(st.secrets["SUPABASE_URL"]).strip()
-    key = str(st.secrets["SUPABASE_KEY"]).strip()
+    url = str(
+        st.secrets["SUPABASE_URL"]
+    ).strip()
 
-    # 移除常見的隱藏 Unicode 字元
-    url = url.replace("\ufeff", "").replace("\u200b", "")
-    key = key.replace("\ufeff", "").replace("\u200b", "")
+    key = str(
+        st.secrets["SUPABASE_KEY"]
+    ).strip()
+
+    # 移除可能的隱藏 Unicode 字元
+    url = (
+        url
+        .replace("\ufeff", "")
+        .replace("\u200b", "")
+    )
+
+    key = (
+        key
+        .replace("\ufeff", "")
+        .replace("\u200b", "")
+    )
 
     return create_client(
         url,
         key
     )
 
+
 def test_database_connection():
 
     try:
 
-        url = str(st.secrets["SUPABASE_URL"]).strip()
-        key = str(st.secrets["SUPABASE_KEY"]).strip()
+        url = str(
+            st.secrets["SUPABASE_URL"]
+        ).strip()
 
-        url = url.replace("\ufeff", "").replace("\u200b", "")
-        key = key.replace("\ufeff", "").replace("\u200b", "")
+        key = str(
+            st.secrets["SUPABASE_KEY"]
+        ).strip()
 
-        # 不顯示真正內容，只檢查格式
-        url_ascii = all(ord(c) < 128 for c in url)
-        key_ascii = all(ord(c) < 128 for c in key)
+        url = (
+            url
+            .replace("\ufeff", "")
+            .replace("\u200b", "")
+        )
+
+        key = (
+            key
+            .replace("\ufeff", "")
+            .replace("\u200b", "")
+        )
+
+        url_ascii = all(
+            ord(c) < 128
+            for c in url
+        )
+
+        key_ascii = all(
+            ord(c) < 128
+            for c in key
+        )
 
         if not url_ascii:
-            return False, "SUPABASE_URL 含有非 ASCII 的隱藏字元"
+
+            return (
+                False,
+                "SUPABASE_URL 含有非 ASCII 字元"
+            )
 
         if not key_ascii:
-            return False, "SUPABASE_KEY 含有非 ASCII 的隱藏字元"
 
-        if not url.startswith("https://"):
-            return False, "SUPABASE_URL 沒有以 https:// 開頭"
+            return (
+                False,
+                "SUPABASE_KEY 含有非 ASCII 字元"
+            )
 
-        if not url.endswith(".supabase.co"):
-            return False, "SUPABASE_URL 應該以 .supabase.co 結尾"
+        if not url.startswith(
+            "https://"
+        ):
 
-        if not key.startswith("sb_publishable_"):
-            return False, "目前 SUPABASE_KEY 不是 sb_publishable_ 開頭"
+            return (
+                False,
+                "SUPABASE_URL 格式錯誤"
+            )
+
+        if not url.endswith(
+            ".supabase.co"
+        ):
+
+            return (
+                False,
+                "SUPABASE_URL 格式錯誤"
+            )
 
         supabase = create_client(
             url,
@@ -76,11 +128,15 @@ def test_database_connection():
             .execute()
         )
 
-        return True, None
+        return (
+            True,
+            None
+        )
 
     except Exception as error:
 
-        return False, (
+        return (
+            False,
             f"{type(error).__name__}: {str(error)}"
         )
 
@@ -104,8 +160,8 @@ if "uncertain_answers" not in st.session_state:
 if "error_labels" not in st.session_state:
     st.session_state.error_labels = {}
 
-if "mistake_bank" not in st.session_state:
-    st.session_state.mistake_bank = []
+if "mistakes_saved" not in st.session_state:
+    st.session_state.mistakes_saved = False
 
 
 # =========================================================
@@ -201,20 +257,30 @@ def show_sidebar():
 
     with st.sidebar:
 
-        st.title("📚 Study Tool")
+        st.title(
+            "📚 Study Tool"
+        )
 
         if st.button(
             "首頁",
             use_container_width=True
         ):
-            st.session_state.page = "home"
+
+            st.session_state.page = (
+                "home"
+            )
+
             st.rerun()
 
         if st.button(
             "錯題庫",
             use_container_width=True
         ):
-            st.session_state.page = "mistakes"
+
+            st.session_state.page = (
+                "mistakes"
+            )
+
             st.rerun()
 
         st.button(
@@ -225,7 +291,9 @@ def show_sidebar():
 
         st.divider()
 
-        connected, error = test_database_connection()
+        connected, error = (
+            test_database_connection()
+        )
 
         if connected:
 
@@ -242,7 +310,10 @@ def show_sidebar():
             with st.expander(
                 "查看錯誤"
             ):
-                st.code(error)
+
+                st.code(
+                    error
+                )
 
         st.caption(
             "Prototype v0.1"
@@ -293,7 +364,7 @@ def render_answer_options(
             "rgba(128, 128, 128, 0.25)"
         )
 
-        # 正確答案
+        # 正確答案：淺綠色
         if is_correct:
 
             background = (
@@ -305,7 +376,7 @@ def render_answer_options(
                 "rgba(46, 204, 113, 0.55)"
             )
 
-        # 使用者答錯
+        # 使用者選錯：淺紅色
         if (
             is_user_answer
             and not is_correct
@@ -320,7 +391,7 @@ def render_answer_options(
                 "rgba(231, 76, 60, 0.55)"
             )
 
-        # 使用者答案 = 正確答案
+        # 使用者答對
         if (
             is_user_answer
             and is_correct
@@ -335,8 +406,10 @@ def render_answer_options(
                 "rgba(231, 76, 60, 0.70)"
             )
 
-        safe_option = html.escape(
-            str(option_text)
+        safe_option = (
+            html.escape(
+                str(option_text)
+            )
         )
 
         st.markdown(
@@ -368,7 +441,10 @@ def save_answer(
         f"radio_{question_index}"
     )
 
-    if widget_key in st.session_state:
+    if (
+        widget_key
+        in st.session_state
+    ):
 
         st.session_state.answers[
             question_index
@@ -387,7 +463,10 @@ def save_uncertain(
         f"uncertain_{question_index}"
     )
 
-    if widget_key in st.session_state:
+    if (
+        widget_key
+        in st.session_state
+    ):
 
         value = (
             st.session_state[
@@ -420,7 +499,10 @@ def save_error_label(
         f"error_label_{question_index}"
     )
 
-    if widget_key in st.session_state:
+    if (
+        widget_key
+        in st.session_state
+    ):
 
         st.session_state.error_labels[
             question_index
@@ -432,19 +514,27 @@ def save_error_label(
 
 
 # =========================================================
-# 錯題寫入目前 Session
+# 把錯題寫進 Supabase
 # =========================================================
 
-def save_current_mistakes():
+def save_mistakes_to_database():
+
+    # 避免同一次測驗重複寫入
+    if st.session_state.mistakes_saved:
+        return
+
+    supabase = get_supabase()
+
+    rows = []
 
     for i, question in enumerate(
         questions
     ):
 
         user_answer = (
-            st.session_state.answers.get(
-                i
-            )
+            st.session_state
+            .answers
+            .get(i)
         )
 
         uncertain = (
@@ -475,58 +565,76 @@ def save_current_mistakes():
         if not needs_review:
             continue
 
-        existing = None
-
-        for item in (
-            st.session_state
-            .mistake_bank
-        ):
-
-            if (
-                item["question_index"]
-                == i
-            ):
-
-                existing = item
-                break
-
-        item_data = {
-            "question_index": i,
+        row = {
             "subject":
                 question["subject"],
+
             "concept":
                 question["concept"],
+
             "question":
                 question["question"],
+
             "options":
                 question["options"],
+
             "user_answer":
                 user_answer,
+
             "correct_answer":
                 correct_answer,
+
             "uncertain":
                 uncertain,
+
             "is_correct":
                 is_correct,
+
             "label":
                 st.session_state
                 .error_labels
                 .get(i),
+
             "source":
                 question["source"]
         }
 
-        if existing is None:
+        rows.append(
+            row
+        )
 
-            st.session_state.mistake_bank.append(
-                item_data
-            )
+    if rows:
 
-        else:
+        (
+            supabase
+            .table("mistakes")
+            .insert(rows)
+            .execute()
+        )
 
-            existing.update(
-                item_data
-            )
+    st.session_state.mistakes_saved = True
+
+
+# =========================================================
+# 從 Supabase 讀錯題
+# =========================================================
+
+def load_mistakes_from_database():
+
+    supabase = get_supabase()
+
+    response = (
+        supabase
+        .table("mistakes")
+        .select("*")
+        .order(
+            "created_at",
+            desc=True
+        )
+        .execute()
+    )
+
+    return response.data
 
 
 # =========================================================
@@ -568,6 +676,7 @@ def finish_quiz_dialog():
                 i + 1
             )
 
+    # 有未作答
     if unanswered:
 
         question_list = (
@@ -610,7 +719,21 @@ def finish_quiz_dialog():
                 use_container_width=True
             ):
 
-                save_current_mistakes()
+                try:
+
+                    save_mistakes_to_database()
+
+                except Exception as error:
+
+                    st.error(
+                        "錯題儲存失敗"
+                    )
+
+                    st.code(
+                        str(error)
+                    )
+
+                    return
 
                 st.session_state.page = (
                     "result"
@@ -618,6 +741,7 @@ def finish_quiz_dialog():
 
                 st.rerun()
 
+    # 全部作答完成
     else:
 
         st.success(
@@ -629,7 +753,21 @@ def finish_quiz_dialog():
             use_container_width=True
         ):
 
-            save_current_mistakes()
+            try:
+
+                save_mistakes_to_database()
+
+            except Exception as error:
+
+                st.error(
+                    "錯題儲存失敗"
+                )
+
+                st.code(
+                    str(error)
+                )
+
+                return
 
             st.session_state.page = (
                 "result"
@@ -663,7 +801,10 @@ def show_home():
         )
     )
 
-    if uploaded_file is not None:
+    if (
+        uploaded_file
+        is not None
+    ):
 
         st.success(
             f"已成功上傳："
@@ -716,6 +857,8 @@ def show_home():
             st.session_state.uncertain_answers = {}
 
             st.session_state.error_labels = {}
+
+            st.session_state.mistakes_saved = False
 
             for i in range(
                 len(questions)
@@ -846,7 +989,9 @@ def show_quiz():
 
             st.session_state[
                 radio_key
-            ] = saved_answer
+            ] = (
+                saved_answer
+            )
 
     st.radio(
         "請選擇答案",
@@ -877,7 +1022,9 @@ def show_quiz():
 
         st.session_state[
             uncertain_key
-        ] = saved_uncertain
+        ] = (
+            saved_uncertain
+        )
 
     st.checkbox(
         "❓ 我不確定",
@@ -927,6 +1074,7 @@ def show_quiz():
         len(questions)
     )
 
+    # 第一題
     if current == 0:
 
         empty_col, next_col = (
@@ -945,6 +1093,7 @@ def show_quiz():
 
                 st.rerun()
 
+    # 最後一題
     elif (
         current
         == total_questions - 1
@@ -966,6 +1115,7 @@ def show_quiz():
 
                 st.rerun()
 
+    # 中間題目
     else:
 
         prev_col, next_col = (
@@ -1050,7 +1200,8 @@ def show_review_item(
         )
 
     elif (
-        user_answer is None
+        user_answer
+        is None
         and uncertain
     ):
 
@@ -1082,7 +1233,10 @@ def show_review_item(
             user_answer
         )
 
-        if user_answer is None:
+        if (
+            user_answer
+            is None
+        ):
 
             st.caption(
                 "你沒有選擇答案，"
@@ -1414,8 +1568,6 @@ def show_result():
             use_container_width=True
         ):
 
-            save_current_mistakes()
-
             st.session_state.page = (
                 "mistakes"
             )
@@ -1428,8 +1580,6 @@ def show_result():
             "回首頁",
             use_container_width=True
         ):
-
-            save_current_mistakes()
 
             st.session_state.page = (
                 "home"
@@ -1450,10 +1600,29 @@ def show_mistake_bank():
         "📘 錯題庫"
     )
 
-    if (
-        not st.session_state
-        .mistake_bank
-    ):
+    try:
+
+        mistake_bank = (
+            load_mistakes_from_database()
+        )
+
+    except Exception as error:
+
+        st.error(
+            "無法讀取錯題庫"
+        )
+
+        st.code(
+            str(error)
+        )
+
+        return
+
+    # =====================================================
+    # 沒有錯題
+    # =====================================================
+
+    if not mistake_bank:
 
         st.info(
             "目前還沒有錯題紀錄。"
@@ -1461,19 +1630,19 @@ def show_mistake_bank():
 
         return
 
+    # =====================================================
+    # 統計
+    # =====================================================
+
     total = len(
-        st.session_state
-        .mistake_bank
+        mistake_bank
     )
 
     careless = 0
     unfamiliar = 0
     unseen = 0
 
-    for item in (
-        st.session_state
-        .mistake_bank
-    ):
+    for item in mistake_bank:
 
         label = (
             item.get(
@@ -1528,15 +1697,19 @@ def show_mistake_bank():
 
     st.divider()
 
+    # =====================================================
+    # Subject 分類
+    # =====================================================
+
     subjects = {}
 
-    for item in (
-        st.session_state
-        .mistake_bank
-    ):
+    for item in mistake_bank:
 
         subject = (
-            item["subject"]
+            item.get(
+                "subject",
+                "未分類"
+            )
         )
 
         if (
@@ -1553,6 +1726,10 @@ def show_mistake_bank():
         ].append(
             item
         )
+
+    # =====================================================
+    # Subject → Concept
+    # =====================================================
 
     for (
         subject,
@@ -1571,7 +1748,10 @@ def show_mistake_bank():
         ):
 
             concept = (
-                item["concept"]
+                item.get(
+                    "concept",
+                    "未分類概念"
+                )
             )
 
             if (
@@ -1612,9 +1792,10 @@ def show_mistake_bank():
                     info_parts = []
 
                     if (
-                        item[
-                            "uncertain"
-                        ]
+                        item.get(
+                            "uncertain",
+                            False
+                        )
                     ):
 
                         info_parts.append(
@@ -1622,9 +1803,9 @@ def show_mistake_bank():
                         )
 
                     if (
-                        item[
+                        item.get(
                             "label"
-                        ]
+                        )
                     ):
 
                         info_parts.append(
@@ -1665,6 +1846,17 @@ def show_mistake_bank():
                         f"教材來源："
                         f"{item['source']}"
                     )
+
+                    if (
+                        item.get(
+                            "created_at"
+                        )
+                    ):
+
+                        st.caption(
+                            f"紀錄時間："
+                            f"{item['created_at']}"
+                        )
 
                     st.divider()
 
