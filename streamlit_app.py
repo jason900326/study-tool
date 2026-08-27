@@ -91,6 +91,10 @@ default_states = {
     "question_generation_error": None,
     "question_generation_stats": None,
 
+    # 同一份 PDF 在目前 session 中曾經產生過的題目，
+    # 用來避免重新產生時重複。
+    "previous_questions": [],
+
     # 全站字體大小
     "font_size": 18,
 }
@@ -148,6 +152,7 @@ QUIZ_SIZE = 5
 
 def prepare_study_session_with_ai(
     document_text,
+    existing_questions=None,
 ):
     """
     首次只呼叫一次 AI：
@@ -159,6 +164,18 @@ def prepare_study_session_with_ai(
     """
 
     client = get_openai_client()
+
+    if existing_questions is None:
+        existing_questions = []
+
+    existing_summary = [
+        {
+            "question": item.get("question", ""),
+            "concept": item.get("concept", ""),
+            "source_page": item.get("source_page"),
+        }
+        for item in existing_questions
+    ]
 
     schema = {
         "type": "object",
@@ -250,14 +267,41 @@ def prepare_study_session_with_ai(
 A. 先整理 4～7 個非常精簡的「這份教材先掌握」重點。
 B. 同時準備剛好 {QUIZ_SIZE} 題單選題。
 
+【最重要：術語忠實規則】
+這一區規則的優先級高於語句自然度。
+
+1. 教材中出現的專有名詞一律保留原文，不得翻譯、意譯、漢化、改寫或自行換成中文名稱。
+2. 只要教材使用英文術語，題幹、選項、答案、解析、複習重點都必須保留相同英文術語。
+3. 如果不確定某個詞是不是專有名詞，寧可保留原文，也不要翻譯。
+4. 特別包含但不限於：
+   - drug / antibiotic names
+   - drug classes
+   - bacterial / fungal / parasitic names
+   - genes
+   - proteins
+   - enzymes
+   - receptors
+   - biomarkers
+   - laboratory tests
+   - pathways
+   - molecular names
+   - abbreviations
+   - syndromes / disease abbreviations
+   - named mechanisms
+5. 例如教材寫 `Beta-lactam`，輸出必須仍是 `Beta-lactam`，不得寫成 `Beta-內醯胺`、`β-內醯胺` 或其他中文譯名。
+6. 教材寫 `vancomycin`，不得改成中文藥名。
+7. 教材寫 `Staphylococcus aureus`，不得自行改成中文菌名。
+8. 教材寫 `MRSA`，不得自行翻譯或改寫；除非教材本身同時提供完整名稱且題目確實需要。
+9. 一般敘述與問句可以用繁體中文，但專業名詞本體必須維持教材原文。
+10. 不要為了讓中文句子更順，而翻譯任何專有名詞。
+
 【教材重點規則】
 1. 每個重點用一句短句表達。
 2. 優先列出理解教材最有幫助的核心概念、差異、機轉、流程或判讀原則。
 3. 不要寫成長篇摘要。
 4. 不要宣稱「最常考」「高頻考點」，除非教材本身明確這樣說。
 5. 只能依照教材內容，不得補充外部知識。
-6. 專有名詞、藥名、菌名、蛋白質名稱、基因名稱、檢驗項目、縮寫與教材原本使用的英文術語，原則上保留教材原文，不要自行翻譯成中文。
-7. 若教材同時提供中英文，優先保留教材主要使用的寫法；不要把英文藥名改成中文譯名。
+6. 所有專有名詞都必須遵守上方「術語忠實規則」。
 
 【出題規則】
 1. 所有題目、答案、解析都只能根據提供的教材。
@@ -275,10 +319,13 @@ B. 同時準備剛好 {QUIZ_SIZE} 題單選題。
 13. explanation 要解釋正確答案，但不可加入教材外資訊。
 14. review_points 為 2～4 個短而有用的複習重點。
 15. 如果某個概念無法產生無歧義題目，就換另一個概念。
-16. 題幹、選項、答案與解析中的專有名詞必須忠實保留教材原本術語，不要自行翻譯。
-17. 藥名尤其重要：如果教材使用英文 generic name，例如 vancomycin、gentamicin、ciprofloxacin，就必須維持英文，不得改成中文名稱。
-18. 細菌名稱、抗生素名稱、分子名稱、基因/蛋白質名稱、檢驗縮寫、疾病縮寫等，也應優先保留教材原文。
-19. 一般敘述可以用中文，但不要把考試實際會看到的英文術語翻成中文後拿來當選項。
+16. 題幹、四個選項、正確答案、concept、explanation、review_points 中的所有專有名詞都必須遵守「術語忠實規則」。
+
+【避免重複】
+以下是同一份教材在目前 session 已經產生過的題目。
+本次不得重複相同題幹，也不要只是換句話說測完全相同的內容：
+
+{json.dumps(existing_summary, ensure_ascii=False)}
 """
 
     response = client.responses.create(
@@ -412,6 +459,13 @@ def generate_questions_with_ai(
 這份教材先掌握：
 {json.dumps(study_points, ensure_ascii=False)}
 
+【最重要：術語忠實規則】
+1. 教材中的專有名詞一律保留原文，不得翻譯、意譯、漢化或改寫。
+2. 如果教材使用英文 drug name、antibiotic class、菌名、gene、protein、enzyme、receptor、marker、test、pathway、molecule 或 abbreviation，就必須維持教材原本英文寫法。
+3. 如果不確定是不是專有名詞，保留原文。
+4. 例如 `Beta-lactam` 必須保持 `Beta-lactam`，不得輸出 `Beta-內醯胺` 或 `β-內醯胺`。
+5. 一般句子可以是繁體中文，但專有名詞本體不可翻譯。
+
 【規則】
 1. 所有題目、答案、解析只能根據教材。
 2. 不得使用外部知識。
@@ -422,9 +476,8 @@ def generate_questions_with_ai(
 7. source_quote 必須逐字摘自該頁，且足以支持答案。
 8. 不要改寫 source_quote。
 9. explanation 與 review_points 都不得加入教材外資訊。
-10. 題幹、選項、答案、解析中的專有名詞要保留教材原文，不要自行翻譯。
-11. 如果教材使用英文藥名、菌名、基因名、蛋白質名、檢驗縮寫或其他專業術語，必須維持原寫法，尤其不要把英文抗生素名稱翻成中文。
-12. 不要重複以下已經通過的題目，也不要只換句話說：
+10. 題幹、選項、答案、解析、複習重點的專有名詞全部遵守「術語忠實規則」。
+11. 不要重複以下已經通過的題目，也不要只換句話說：
 
 {json.dumps(existing_summary, ensure_ascii=False)}
 """
@@ -992,7 +1045,7 @@ def show_sidebar():
             with st.expander("查看錯誤"):
                 st.code(error)
 
-        st.caption("Prototype v0.11")
+        st.caption("Prototype v0.12")
 
 
 # =========================================================
@@ -1432,6 +1485,7 @@ def show_home():
         st.session_state.generated_questions = None
         st.session_state.question_generation_error = None
         st.session_state.question_generation_stats = None
+        st.session_state.previous_questions = []
 
     # =====================================================
     # PDF parsing 在後台進行
@@ -1495,7 +1549,10 @@ def show_home():
                 ):
                     package = (
                         prepare_study_session_with_ai(
-                            document_text
+                            document_text,
+                            existing_questions=(
+                                st.session_state.previous_questions
+                            ),
                         )
                     )
 
@@ -1535,6 +1592,11 @@ def show_home():
                 )
 
                 st.session_state.generated_questions = (
+                    final_questions
+                )
+
+                # 記住這一組，之後同一 session 重新產生時避免重複
+                st.session_state.previous_questions.extend(
                     final_questions
                 )
 
@@ -1648,6 +1710,19 @@ def show_home():
             "quiz"
         )
 
+        st.rerun()
+
+    if st.button(
+        "換一組新的 5 題",
+        use_container_width=True,
+    ):
+        # 保留 previous_questions，
+        # 只清掉目前這一組，讓同一份 PDF 重新產生不同題目。
+        st.session_state.document_subject = None
+        st.session_state.study_points = None
+        st.session_state.generated_questions = None
+        st.session_state.question_generation_error = None
+        st.session_state.question_generation_stats = None
         st.rerun()
 
 
