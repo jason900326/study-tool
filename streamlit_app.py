@@ -95,6 +95,10 @@ default_states = {
     # 用來避免重新產生時重複。
     "previous_questions": [],
 
+    # 已生成試卷（prototype 先存在 session）
+    # 每一組保存 PDF 名稱、hash、重點與 5 題
+    "generated_exam_sets": [],
+
     # 全站字體大小
     "font_size": 18,
 }
@@ -267,13 +271,12 @@ def prepare_study_session_with_ai(
 A. 先整理 4～7 個非常精簡的「這份教材先掌握」重點。
 B. 同時準備剛好 {QUIZ_SIZE} 題單選題。
 
-【最重要：術語忠實規則】
-這一區規則的優先級高於語句自然度。
+【語言與術語規則】
+這一區規則優先級非常高。
 
-1. 教材中出現的專有名詞一律保留原文，不得翻譯、意譯、漢化、改寫或自行換成中文名稱。
-2. 只要教材使用英文術語，題幹、選項、答案、解析、複習重點都必須保留相同英文術語。
-3. 如果不確定某個詞是不是專有名詞，寧可保留原文，也不要翻譯。
-4. 特別包含但不限於：
+1. 題幹、選項、解析與複習重點的「一般敘述」使用自然、完整、流暢的繁體中文。
+2. 教材中真正的專有名詞保留教材原文，不得翻譯、意譯、漢化或改寫。
+3. 專有名詞包含但不限於：
    - drug / antibiotic names
    - drug classes
    - bacterial / fungal / parasitic names
@@ -286,14 +289,16 @@ B. 同時準備剛好 {QUIZ_SIZE} 題單選題。
    - pathways
    - molecular names
    - abbreviations
-   - syndromes / disease abbreviations
    - named mechanisms
-5. 例如教材寫 `Beta-lactam`，輸出必須仍是 `Beta-lactam`，不得寫成 `Beta-內醯胺`、`β-內醯胺` 或其他中文譯名。
-6. 教材寫 `vancomycin`，不得改成中文藥名。
-7. 教材寫 `Staphylococcus aureus`，不得自行改成中文菌名。
-8. 教材寫 `MRSA`，不得自行翻譯或改寫；除非教材本身同時提供完整名稱且題目確實需要。
-9. 一般敘述與問句可以用繁體中文，但專業名詞本體必須維持教材原文。
-10. 不要為了讓中文句子更順，而翻譯任何專有名詞。
+4. 例如教材寫 `Beta-lactam`，題目中必須仍寫 `Beta-lactam`，不得寫成 `Beta-內醯胺` 或 `β-內醯胺`。
+5. 教材寫 `vancomycin`，不得改成中文藥名。
+6. 教材寫 `Staphylococcus aureus`，不得自行改成中文菌名。
+7. 一般英文敘述不要整段照抄。應改寫成自然繁體中文句法，只保留真正需要保留的專有名詞。
+8. 不要因為「保留英文專有名詞」而讓整個題幹或整個選項變成英文。
+9. 不要把 PDF 原文片段東拼西湊成不自然的中英混合句。
+10. 題幹與四個選項都必須各自是完整、自然、可獨立理解的句子或片語。
+11. 若某段英文只是一般敘述而非專有名詞，應翻成自然繁體中文。
+12. 如果不確定某個英文詞是否屬於專有名詞，優先保留原文。
 
 【教材重點規則】
 1. 每個重點用一句短句表達。
@@ -301,7 +306,7 @@ B. 同時準備剛好 {QUIZ_SIZE} 題單選題。
 3. 不要寫成長篇摘要。
 4. 不要宣稱「最常考」「高頻考點」，除非教材本身明確這樣說。
 5. 只能依照教材內容，不得補充外部知識。
-6. 所有專有名詞都必須遵守上方「術語忠實規則」。
+6. 文字風格以自然繁體中文為主，專有名詞遵守上方規則。
 
 【出題規則】
 1. 所有題目、答案、解析都只能根據提供的教材。
@@ -319,7 +324,9 @@ B. 同時準備剛好 {QUIZ_SIZE} 題單選題。
 13. explanation 要解釋正確答案，但不可加入教材外資訊。
 14. review_points 為 2～4 個短而有用的複習重點。
 15. 如果某個概念無法產生無歧義題目，就換另一個概念。
-16. 題幹、四個選項、正確答案、concept、explanation、review_points 中的所有專有名詞都必須遵守「術語忠實規則」。
+16. 題幹與選項要有語意邏輯，避免生硬翻譯或片段拼接。
+17. 四個選項應使用一致的語法層級與表達方式，讓使用者比較的是知識，而不是語句格式。
+18. 一般描述使用繁體中文，專有名詞保持教材原文。
 
 【避免重複】
 以下是同一份教材在目前 session 已經產生過的題目。
@@ -459,12 +466,15 @@ def generate_questions_with_ai(
 這份教材先掌握：
 {json.dumps(study_points, ensure_ascii=False)}
 
-【最重要：術語忠實規則】
-1. 教材中的專有名詞一律保留原文，不得翻譯、意譯、漢化或改寫。
-2. 如果教材使用英文 drug name、antibiotic class、菌名、gene、protein、enzyme、receptor、marker、test、pathway、molecule 或 abbreviation，就必須維持教材原本英文寫法。
-3. 如果不確定是不是專有名詞，保留原文。
-4. 例如 `Beta-lactam` 必須保持 `Beta-lactam`，不得輸出 `Beta-內醯胺` 或 `β-內醯胺`。
-5. 一般句子可以是繁體中文，但專有名詞本體不可翻譯。
+【語言與術語規則】
+1. 題幹、選項、解析與複習重點的一般敘述使用自然繁體中文。
+2. 教材中的專有名詞保留原文，不得翻譯、意譯、漢化或改寫。
+3. `Beta-lactam` 必須保持 `Beta-lactam`，不得輸出 `Beta-內醯胺` 或 `β-內醯胺`。
+4. 英文藥名、菌名、gene、protein、enzyme、receptor、marker、test、pathway、molecule、abbreviation 等保持教材原文。
+5. 不要把整個題幹或整個選項照抄成英文；若英文部分只是一般敘述，請轉成自然繁體中文。
+6. 不要把 PDF 英文片段東拼西湊成不自然的中英混合句。
+7. 題幹與選項都必須是完整、自然、具邏輯的句子或片語。
+8. 四個選項使用一致的語法層級與表達方式。
 
 【規則】
 1. 所有題目、答案、解析只能根據教材。
@@ -476,8 +486,7 @@ def generate_questions_with_ai(
 7. source_quote 必須逐字摘自該頁，且足以支持答案。
 8. 不要改寫 source_quote。
 9. explanation 與 review_points 都不得加入教材外資訊。
-10. 題幹、選項、答案、解析、複習重點的專有名詞全部遵守「術語忠實規則」。
-11. 不要重複以下已經通過的題目，也不要只換句話說：
+10. 不要重複以下已經通過的題目，也不要只換句話說：
 
 {json.dumps(existing_summary, ensure_ascii=False)}
 """
@@ -959,6 +968,183 @@ def apply_font_size():
 
 
 # =========================================================
+# 已生成試卷
+# =========================================================
+
+def save_current_exam_set():
+    """
+    將目前這組題目存進 session 裡的「已生成試卷」。
+    同一組題目不重複存。
+    """
+
+    questions = get_questions()
+
+    if not questions:
+        return
+
+    filename = (
+        st.session_state.uploaded_filename
+        or "未命名教材"
+    )
+
+    file_hash = (
+        st.session_state.uploaded_file_hash
+    )
+
+    question_signature = tuple(
+        question.get("question", "")
+        for question in questions
+    )
+
+    for exam in (
+        st.session_state.generated_exam_sets
+    ):
+        existing_signature = tuple(
+            question.get("question", "")
+            for question in exam.get(
+                "questions",
+                []
+            )
+        )
+
+        if (
+            exam.get("file_hash") == file_hash
+            and existing_signature
+            == question_signature
+        ):
+            return
+
+    same_document_count = sum(
+        1
+        for exam in st.session_state.generated_exam_sets
+        if exam.get("file_hash")
+        == file_hash
+    )
+
+    st.session_state.generated_exam_sets.append({
+        "id":
+            len(
+                st.session_state.generated_exam_sets
+            ) + 1,
+
+        "file_hash":
+            file_hash,
+
+        "filename":
+            filename,
+
+        "set_number":
+            same_document_count + 1,
+
+        "study_points":
+            list(
+                st.session_state.study_points
+                or []
+            ),
+
+        "subject":
+            st.session_state.document_subject,
+
+        "questions":
+            [
+                dict(question)
+                for question in questions
+            ],
+    })
+
+
+def load_exam_set(
+    exam
+):
+    """
+    將已生成試卷載回目前測驗狀態，
+    供使用者重新複習 / 作答。
+    """
+
+    st.session_state.generated_questions = [
+        dict(question)
+        for question in exam["questions"]
+    ]
+
+    st.session_state.study_points = list(
+        exam.get(
+            "study_points",
+            []
+        )
+    )
+
+    st.session_state.document_subject = (
+        exam.get(
+            "subject"
+        )
+    )
+
+    st.session_state.uploaded_filename = (
+        exam.get(
+            "filename"
+        )
+    )
+
+    st.session_state.uploaded_file_hash = (
+        exam.get(
+            "file_hash"
+        )
+    )
+
+    reset_quiz_state()
+
+    st.session_state.page = "quiz"
+
+
+def prepare_new_set_from_exam(
+    exam
+):
+    """
+    從某份已生成試卷底下要求「換一組新的 5 題」。
+
+    因為 prototype 沒有永久保存原 PDF，
+    這裡只先把該教材標記為目標。
+    使用者需要回首頁重新上傳相同 PDF。
+    """
+
+    st.session_state.uploaded_filename = (
+        exam.get(
+            "filename"
+        )
+    )
+
+    st.session_state.uploaded_file_hash = (
+        exam.get(
+            "file_hash"
+        )
+    )
+
+    st.session_state.previous_questions = []
+
+    for item in (
+        st.session_state.generated_exam_sets
+    ):
+        if (
+            item.get("file_hash")
+            == exam.get("file_hash")
+        ):
+            st.session_state.previous_questions.extend(
+                item.get(
+                    "questions",
+                    []
+                )
+            )
+
+    st.session_state.generated_questions = None
+    st.session_state.study_points = None
+    st.session_state.document_subject = None
+    st.session_state.question_generation_error = None
+    st.session_state.question_generation_stats = None
+
+    st.session_state.page = "home"
+
+
+# =========================================================
 # Sidebar
 # =========================================================
 
@@ -971,6 +1157,13 @@ def show_sidebar():
             use_container_width=True,
         ):
             st.session_state.page = "home"
+            st.rerun()
+
+        if st.button(
+            "已生成試卷",
+            use_container_width=True,
+        ):
+            st.session_state.page = "exams"
             st.rerun()
 
         if st.button(
@@ -1045,7 +1238,7 @@ def show_sidebar():
             with st.expander("查看錯誤"):
                 st.code(error)
 
-        st.caption("Prototype v0.12")
+        st.caption("Prototype v0.13")
 
 
 # =========================================================
@@ -1331,7 +1524,7 @@ def load_mistakes_from_database():
 # 結束測驗
 # =========================================================
 
-@st.dialog("結束測驗")
+@st.dialog("確認繳卷")
 def finish_quiz_dialog():
     questions = get_questions()
     unanswered = []
@@ -1361,7 +1554,11 @@ def finish_quiz_dialog():
         )
 
         st.warning(
-            f"你還有未作答的題目：{question_list}"
+            f"尚未作答：{question_list}"
+        )
+
+        st.write(
+            "確定要結束這次測驗並繳卷嗎？"
         )
 
         col1, col2 = st.columns(2)
@@ -1375,7 +1572,7 @@ def finish_quiz_dialog():
 
         with col2:
             if st.button(
-                "仍然結束",
+                "確認繳卷",
                 use_container_width=True,
             ):
                 try:
@@ -1390,10 +1587,16 @@ def finish_quiz_dialog():
                 st.rerun()
 
     else:
-        st.success("所有題目皆已完成。")
+        st.success(
+            "所有題目皆已完成。"
+        )
+
+        st.write(
+            "確定要結束這次測驗並繳卷嗎？"
+        )
 
         if st.button(
-            "查看結果",
+            "確認繳卷",
             use_container_width=True,
         ):
             try:
@@ -1704,6 +1907,8 @@ def show_home():
         use_container_width=True,
         type="primary",
     ):
+        save_current_exam_set()
+
         reset_quiz_state()
 
         st.session_state.page = (
@@ -1712,73 +1917,59 @@ def show_home():
 
         st.rerun()
 
-    if st.button(
-        "換一組新的 5 題",
-        use_container_width=True,
-    ):
-        # 保留 previous_questions，
-        # 只清掉目前這一組，讓同一份 PDF 重新產生不同題目。
-        st.session_state.document_subject = None
-        st.session_state.study_points = None
-        st.session_state.generated_questions = None
-        st.session_state.question_generation_error = None
-        st.session_state.question_generation_stats = None
-        st.rerun()
-
 
 # =========================================================
 # Quiz
 # =========================================================
 
 def show_quiz():
-    questions = get_questions()
+
+    questions = (
+        get_questions()
+    )
 
     if not questions:
+
         st.error(
             "目前沒有可用的測驗題目。"
         )
+
         return
 
-    current = st.session_state.question_index
-    question = questions[current]
-
-    top_left, top_right = st.columns(
-        [7, 1.4]
+    current = (
+        st.session_state
+        .question_index
     )
 
-    with top_left:
-        st.markdown(
-            f"""
-            <div style="
-                padding-top:8px;
-                font-size:18px;
-                font-weight:600;
-            ">
-                Question {current + 1}
-                /
-                {len(questions)}
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+    question = (
+        questions[
+            current
+        ]
+    )
 
-    with top_right:
-        if st.button(
-            "結束測驗",
-            use_container_width=True,
-            key=f"finish_top_{current}",
-        ):
-            finish_quiz_dialog()
+    total = len(
+        questions
+    )
+
+    # =====================================================
+    # 顯眼進度
+    # =====================================================
+
+    st.markdown(
+        f"### 第 {current + 1} / {total} 題"
+    )
 
     st.progress(
         (current + 1)
-        / len(questions)
+        / total
     )
 
     st.divider()
 
     st.subheader(
-        question["question"]
+        question[
+            "question"
+        ]
     )
 
     radio_key = (
@@ -1789,20 +1980,27 @@ def show_quiz():
         radio_key
         not in st.session_state
     ):
+
         saved_answer = (
             st.session_state
             .answers
             .get(current)
         )
 
-        if saved_answer is not None:
+        if (
+            saved_answer
+            is not None
+        ):
+
             st.session_state[
                 radio_key
             ] = saved_answer
 
     st.radio(
         "請選擇答案",
-        question["options"],
+        question[
+            "options"
+        ],
         index=None,
         key=radio_key,
         on_change=save_answer,
@@ -1817,6 +2015,7 @@ def show_quiz():
         uncertain_key
         not in st.session_state
     ):
+
         st.session_state[
             uncertain_key
         ] = (
@@ -1824,7 +2023,7 @@ def show_quiz():
             .uncertain_answers
             .get(
                 current,
-                False,
+                False
             )
         )
 
@@ -1845,77 +2044,132 @@ def show_quiz():
         .uncertain_answers
         .get(
             current,
-            False,
+            False
         )
     )
 
-    if answer_exists and uncertain:
+    if (
+        answer_exists
+        and uncertain
+    ):
+
         st.caption(
             "已作答 · ❓ 不確定"
         )
 
     elif answer_exists:
-        st.caption("已作答")
+
+        st.caption(
+            "已作答"
+        )
 
     elif uncertain:
+
         st.caption(
             "❓ 已標記為不確定"
         )
 
     st.divider()
 
-    total = len(questions)
+    # =====================================================
+    # 底部 navigation
+    #
+    # 第 1 題：        下一題
+    # 中間題：上一題  下一題
+    # 最後題：上一題  結束測驗
+    # =====================================================
 
     if current == 0:
+
         empty_col, next_col = (
             st.columns(2)
         )
 
         with next_col:
-            if current < total - 1:
+
+            if total == 1:
+
+                if st.button(
+                    "結束測驗",
+                    use_container_width=True,
+                    type="primary",
+                    key="finish_only_question",
+                ):
+
+                    finish_quiz_dialog()
+
+            else:
+
                 if st.button(
                     "下一題 →",
                     use_container_width=True,
                     key=f"next_{current}",
                 ):
+
                     st.session_state.question_index += 1
+
                     st.rerun()
 
-    elif current == total - 1:
-        prev_col, empty_col = (
+    elif (
+        current
+        == total - 1
+    ):
+
+        prev_col, finish_col = (
             st.columns(2)
         )
 
         with prev_col:
+
             if st.button(
                 "← 上一題",
                 use_container_width=True,
                 key=f"prev_{current}",
             ):
+
                 st.session_state.question_index -= 1
+
                 st.rerun()
 
+        with finish_col:
+
+            if st.button(
+                "結束測驗",
+                use_container_width=True,
+                type="primary",
+                key=f"finish_{current}",
+            ):
+
+                finish_quiz_dialog()
+
     else:
+
         prev_col, next_col = (
             st.columns(2)
         )
 
         with prev_col:
+
             if st.button(
                 "← 上一題",
                 use_container_width=True,
                 key=f"prev_{current}",
             ):
+
                 st.session_state.question_index -= 1
+
                 st.rerun()
 
         with next_col:
+
             if st.button(
                 "下一題 →",
                 use_container_width=True,
                 key=f"next_{current}",
             ):
+
                 st.session_state.question_index += 1
+
                 st.rerun()
 
 
@@ -2193,6 +2447,137 @@ def show_result():
         ):
             st.session_state.page = "home"
             st.rerun()
+
+
+# =========================================================
+# Generated Exams
+# =========================================================
+
+def show_generated_exams():
+
+    st.title(
+        "📝 已生成試卷"
+    )
+
+    exam_sets = (
+        st.session_state
+        .generated_exam_sets
+    )
+
+    if not exam_sets:
+
+        st.info(
+            "目前還沒有已生成的試卷。"
+        )
+
+        return
+
+    grouped = {}
+
+    for exam in exam_sets:
+
+        key = (
+            exam.get(
+                "file_hash"
+            )
+        )
+
+        if key not in grouped:
+
+            grouped[key] = {
+                "filename":
+                    exam.get(
+                        "filename",
+                        "未命名教材"
+                    ),
+
+                "sets": []
+            }
+
+        grouped[key][
+            "sets"
+        ].append(
+            exam
+        )
+
+    for group in grouped.values():
+
+        filename = (
+            group[
+                "filename"
+            ]
+        )
+
+        sets = (
+            group[
+                "sets"
+            ]
+        )
+
+        st.subheader(
+            filename
+        )
+
+        for exam in sets:
+
+            with st.expander(
+                f"第 {exam['set_number']} 份試卷 "
+                f"· {len(exam['questions'])} 題"
+            ):
+
+                for index, question in enumerate(
+                    exam[
+                        "questions"
+                    ],
+                    start=1,
+                ):
+
+                    st.write(
+                        f"{index}. "
+                        f"{question['question']}"
+                    )
+
+                st.divider()
+
+                col1, col2 = (
+                    st.columns(2)
+                )
+
+                with col1:
+
+                    if st.button(
+                        "複習試卷",
+                        key=(
+                            f"review_exam_"
+                            f"{exam['id']}"
+                        ),
+                        use_container_width=True,
+                    ):
+
+                        load_exam_set(
+                            exam
+                        )
+
+                        st.rerun()
+
+                with col2:
+
+                    if st.button(
+                        "換一組新的 5 題",
+                        key=(
+                            f"new_exam_"
+                            f"{exam['id']}"
+                        ),
+                        use_container_width=True,
+                    ):
+
+                        prepare_new_set_from_exam(
+                            exam
+                        )
+
+                        st.rerun()
+
+        st.divider()
 
 
 # =========================================================
@@ -2485,6 +2870,9 @@ elif st.session_state.page == "quiz":
 
 elif st.session_state.page == "result":
     show_result()
+
+elif st.session_state.page == "exams":
+    show_generated_exams()
 
 elif st.session_state.page == "mistakes":
     show_mistake_bank()
