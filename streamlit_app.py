@@ -77,11 +77,16 @@ default_states = {
     "mistakes_saved": False,
     "mistake_record_ids": {},
     "label_sync_error": None,
-    "document_analysis": None,
     "document_text": None,
     "document_pages": None,
     "uploaded_filename": None,
     "uploaded_file_hash": None,
+
+    # AI 一次處理後留下的內容
+    "document_subject": None,
+    "study_points": None,
+
+    # 第一輪固定 5 題
     "generated_questions": None,
     "question_generation_error": None,
     "question_generation_stats": None,
@@ -134,35 +139,25 @@ def build_document_text(pages):
     return "\n\n".join(parts)
 
 
-def create_pdf_preview(
-    pages,
-    max_pages=3,
-    max_chars_per_page=1500,
+# =========================================================
+# AI：一次整理教材重點 + 準備第一組 5 題
+# =========================================================
+
+QUIZ_SIZE = 5
+
+
+def prepare_study_session_with_ai(
+    document_text,
 ):
-    preview_parts = []
+    """
+    首次只呼叫一次 AI：
+    1. 產生非常精簡的教材重點
+    2. 同時產生第一組固定 5 題
 
-    for page_data in pages[:max_pages]:
-        page_number = page_data["page"]
-        text = page_data["text"]
+    使用者看到教材重點時，題目其實已經準備好了，
+    所以按「開始 5 題測驗」不需要再等待一次 AI。
+    """
 
-        if not text:
-            text = "（此頁未擷取到可讀取文字）"
-
-        if len(text) > max_chars_per_page:
-            text = text[:max_chars_per_page] + "..."
-
-        preview_parts.append(
-            f"--- 第 {page_number} 頁 ---\n{text}"
-        )
-
-    return "\n\n".join(preview_parts)
-
-
-# =========================================================
-# AI 教材分析
-# =========================================================
-
-def analyze_document_with_ai(document_text):
     client = get_openai_client()
 
     schema = {
@@ -171,72 +166,113 @@ def analyze_document_with_ai(document_text):
             "subject": {
                 "type": "string"
             },
-            "summary": {
-                "type": "string"
-            },
-            "main_topics": {
+            "study_points": {
                 "type": "array",
+                "minItems": 4,
+                "maxItems": 7,
                 "items": {
                     "type": "string"
                 }
             },
-            "knowledge_units": {
+            "questions": {
                 "type": "array",
+                "minItems": QUIZ_SIZE,
+                "maxItems": QUIZ_SIZE,
                 "items": {
                     "type": "object",
                     "properties": {
-                        "name": {
+                        "question": {
                             "type": "string"
                         },
-                        "description": {
+                        "options": {
+                            "type": "array",
+                            "minItems": 4,
+                            "maxItems": 4,
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "correct_index": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 3
+                        },
+                        "concept": {
                             "type": "string"
                         },
-                        "importance": {
-                            "type": "string",
-                            "enum": [
-                                "high",
-                                "medium",
-                                "low"
-                            ]
+                        "explanation": {
+                            "type": "string"
+                        },
+                        "review_points": {
+                            "type": "array",
+                            "minItems": 2,
+                            "maxItems": 4,
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "source_page": {
+                            "type": "integer",
+                            "minimum": 1
+                        },
+                        "source_quote": {
+                            "type": "string"
                         }
                     },
                     "required": [
-                        "name",
-                        "description",
-                        "importance"
+                        "question",
+                        "options",
+                        "correct_index",
+                        "concept",
+                        "explanation",
+                        "review_points",
+                        "source_page",
+                        "source_quote"
                     ],
                     "additionalProperties": False
                 }
-            },
-            "recommended_question_count": {
-                "type": "integer",
-                "minimum": 5,
-                "maximum": 20
             }
         },
         "required": [
             "subject",
-            "summary",
-            "main_topics",
-            "knowledge_units",
-            "recommended_question_count"
+            "study_points",
+            "questions"
         ],
         "additionalProperties": False
     }
 
-    instructions = """
-你是一個教材分析系統。
+    instructions = f"""
+你是一個以「先做題再學」為核心的教材學習系統。
 
-你只能根據使用者提供的教材文字進行分析。
+使用者很可能還沒有讀過這份教材。
+你的任務不是寫長篇摘要，而是：
 
-規則：
-1. 不可以加入教材沒有出現的外部知識。
-2. subject 使用適合學生理解的大分類。
-3. Knowledge Unit 是可以被測驗與追蹤學習狀態的核心概念。
-4. Knowledge Unit 不要切得過細。
-5. importance 只表示此教材中的重要程度。
-6. recommended_question_count 依照非重複的重要概念數量決定。
-7. 如果教材不足以支持某個判斷，不要猜。
+A. 先整理 4～7 個非常精簡的「這份教材先掌握」重點。
+B. 同時準備剛好 {QUIZ_SIZE} 題單選題。
+
+【教材重點規則】
+1. 每個重點用一句短句表達。
+2. 優先列出理解教材最有幫助的核心概念、差異、機轉、流程或判讀原則。
+3. 不要寫成長篇摘要。
+4. 不要宣稱「最常考」「高頻考點」，除非教材本身明確這樣說。
+5. 只能依照教材內容，不得補充外部知識。
+
+【出題規則】
+1. 所有題目、答案、解析都只能根據提供的教材。
+2. 不可以用外部知識補答案。
+3. 每題只能有一個明確正確答案。
+4. 每題必須有四個不同選項。
+5. distractors 要合理，但不能讓兩個答案同時成立。
+6. correct_index 使用 0、1、2、3。
+7. concept 是該題真正測驗的核心概念。
+8. 優先讓 {QUIZ_SIZE} 題涵蓋不同概念，不要大量重複同一件事。
+9. source_page 必須是教材中的實際 Page 編號。
+10. source_quote 必須逐字摘自該頁教材。
+11. source_quote 必須足以支持正確答案。
+12. source_quote 不可以改寫。
+13. explanation 要解釋正確答案，但不可加入教材外資訊。
+14. review_points 為 2～4 個短而有用的複習重點。
+15. 如果某個概念無法產生無歧義題目，就換另一個概念。
 """
 
     response = client.responses.create(
@@ -249,14 +285,16 @@ def analyze_document_with_ai(document_text):
         text={
             "format": {
                 "type": "json_schema",
-                "name": "document_analysis",
+                "name": "study_session",
                 "strict": True,
                 "schema": schema
             }
         }
     )
 
-    return json.loads(response.output_text)
+    return json.loads(
+        response.output_text
+    )
 
 
 # =========================================================
@@ -265,25 +303,20 @@ def analyze_document_with_ai(document_text):
 
 def generate_questions_with_ai(
     document_text,
-    analysis,
-    question_count=5,
+    subject,
+    study_points,
+    question_count,
     existing_questions=None,
 ):
     """
-    一次批量產生指定數量的題目。
-    補題時會把已通過題目的摘要告訴 AI，
-    降低重複出題機率。
+    只有第一組題目被 Python 驗證淘汰時才呼叫。
+    一次批量補足缺額，不逐題驗證。
     """
 
     client = get_openai_client()
 
     if existing_questions is None:
         existing_questions = []
-
-    knowledge_units = [
-        unit["name"]
-        for unit in analysis["knowledge_units"]
-    ]
 
     existing_summary = [
         {
@@ -363,35 +396,28 @@ def generate_questions_with_ai(
     }
 
     instructions = f"""
-你是一個嚴格的教材測驗出題系統。
+你是一個嚴格的教材測驗補題系統。
 
-請產生剛好 {question_count} 題單選題。
+目前只缺 {question_count} 題，請產生剛好 {question_count} 題。
 
-這些題目將直接用於學生測驗，因此正確性比題目數量更重要。
+教材後台分類：
+{subject}
 
-【最重要規則】
+這份教材先掌握：
+{json.dumps(study_points, ensure_ascii=False)}
 
-1. 所有題目、答案、解釋都只能根據提供的教材。
-2. 絕對不可以用外部知識補充答案。
-3. 每題必須只有一個明確正確答案。
-4. 每題一定要有四個不同的選項。
-5. distractors 必須合理，但不能造成兩個答案都成立。
-6. correct_index 使用 0、1、2、3。
-7. concept 優先使用以下 Knowledge Units：
+【規則】
+1. 所有題目、答案、解析只能根據教材。
+2. 不得使用外部知識。
+3. 每題只有一個明確正確答案。
+4. 四個選項必須不同。
+5. correct_index 使用 0、1、2、3。
+6. source_page 必須是教材實際 Page 編號。
+7. source_quote 必須逐字摘自該頁，且足以支持答案。
+8. 不要改寫 source_quote。
+9. explanation 與 review_points 都不得加入教材外資訊。
+10. 不要重複以下已經通過的題目，也不要只換句話說：
 
-{json.dumps(knowledge_units, ensure_ascii=False)}
-
-8. source_page 必須是教材中實際提供的 Page 編號。
-9. source_quote 必須逐字摘自該頁教材。
-10. source_quote 必須足以支持正確答案。
-11. 不要改寫 source_quote。
-12. 如果某個概念無法從教材中產生無歧義題目，就換另一個概念。
-13. explanation 必須解釋為什麼正確答案成立，但不能加入教材外資訊。
-14. review_points 應為 2～4 個簡短、可複習的教材重點。
-15. 優先涵蓋不同 Knowledge Units，避免大量題目測同一件事。
-16. 不要重複已經通過的題目，也不要只是把原題換句話說。
-
-【已經通過、不可重複的題目】
 {json.dumps(existing_summary, ensure_ascii=False)}
 """
 
@@ -405,7 +431,7 @@ def generate_questions_with_ai(
         text={
             "format": {
                 "type": "json_schema",
-                "name": "quiz_generation",
+                "name": "quiz_refill",
                 "strict": True,
                 "schema": schema
             }
@@ -498,38 +524,89 @@ def remove_duplicate_questions(
     return unique_questions, rejected
 
 
-def generate_and_refill_quiz(
+def validate_and_refill_quiz(
+    initial_questions,
     document_text,
-    analysis,
+    subject,
+    study_points,
     pages,
     filename,
-    target_count=5,
+    target_count=QUIZ_SIZE,
     max_refill_rounds=2,
 ):
     """
-    成本控制策略：
-
-    1. 第一次一次產生 target_count 題。
-    2. 只用 Python 做驗證。
-    3. 若不足，只針對缺額再批量補題。
-    4. 最多補題 max_refill_rounds 輪。
-    5. 還是不足就直接使用已通過題目，不無限重試。
-
-    沒有逐題 AI 二次驗證。
+    1. 先驗證首次同一個 AI request 產生的 5 題。
+    2. 若有題目被 Python 淘汰，只批量補缺額。
+    3. 最多補 2 輪，避免無限 API 呼叫。
     """
 
     accepted = []
     all_rejections = []
     generation_rounds = []
 
-    total_rounds = (
-        1
-        + max_refill_rounds
+    # -----------------------------------------------------
+    # 第 0 輪：首次 AI request 已經產生好的題目
+    # -----------------------------------------------------
+
+    (
+        non_duplicate_questions,
+        duplicate_rejections,
+    ) = (
+        remove_duplicate_questions(
+            initial_questions,
+            existing_questions=[],
+        )
     )
 
-    for round_number in range(
+    (
+        valid_questions,
+        validation_rejections,
+    ) = (
+        validate_generated_questions(
+            non_duplicate_questions,
+            pages,
+            filename,
+            subject,
+        )
+    )
+
+    accepted.extend(
+        valid_questions[
+            :target_count
+        ]
+    )
+
+    initial_rejections = (
+        duplicate_rejections
+        + validation_rejections
+    )
+
+    all_rejections.extend(
+        [
+            {
+                "round": 0,
+                "number": item["number"],
+                "reasons": item["reasons"],
+            }
+            for item in initial_rejections
+        ]
+    )
+
+    generation_rounds.append({
+        "round": 0,
+        "requested": len(initial_questions),
+        "accepted": len(accepted),
+        "rejected": len(initial_rejections),
+        "total_accepted": len(accepted),
+    })
+
+    # -----------------------------------------------------
+    # 缺幾題就一次補幾題
+    # -----------------------------------------------------
+
+    for refill_round in range(
         1,
-        total_rounds + 1,
+        max_refill_rounds + 1,
     ):
         missing_count = (
             target_count
@@ -539,17 +616,12 @@ def generate_and_refill_quiz(
         if missing_count <= 0:
             break
 
-        request_count = (
-            target_count
-            if round_number == 1
-            else missing_count
-        )
-
         raw_questions = (
             generate_questions_with_ai(
-                document_text,
-                analysis,
-                question_count=request_count,
+                document_text=document_text,
+                subject=subject,
+                study_points=study_points,
+                question_count=missing_count,
                 existing_questions=accepted,
             )
         )
@@ -572,7 +644,7 @@ def generate_and_refill_quiz(
                 non_duplicate_questions,
                 pages,
                 filename,
-                analysis["subject"],
+                subject,
             )
         )
 
@@ -599,27 +671,20 @@ def generate_and_refill_quiz(
         all_rejections.extend(
             [
                 {
-                    "round": round_number,
+                    "round": refill_round,
                     "number": item["number"],
                     "reasons": item["reasons"],
                 }
-                for item
-                in round_rejections
+                for item in round_rejections
             ]
         )
 
         generation_rounds.append({
-            "round": round_number,
-            "requested": request_count,
-            "accepted": len(
-                newly_accepted
-            ),
-            "rejected": len(
-                round_rejections
-            ),
-            "total_accepted": len(
-                accepted
-            ),
+            "round": refill_round,
+            "requested": missing_count,
+            "accepted": len(newly_accepted),
+            "rejected": len(round_rejections),
+            "total_accepted": len(accepted),
         })
 
     return (
@@ -627,6 +692,7 @@ def generate_and_refill_quiz(
         all_rejections,
         generation_rounds,
     )
+
 
 
 def validate_generated_questions(
@@ -718,40 +784,6 @@ def validate_generated_questions(
             })
 
     return valid_questions, rejected_questions
-
-
-# =========================================================
-# 動態題數
-# =========================================================
-
-def get_target_question_count(
-    analysis,
-):
-    """
-    使用 AI 建議題數，但程式端限制：
-    最少 5 題，最多 20 題。
-    """
-
-    recommended = analysis.get(
-        "recommended_question_count",
-        5,
-    )
-
-    try:
-        recommended = int(
-            recommended
-        )
-
-    except Exception:
-        recommended = 5
-
-    return max(
-        5,
-        min(
-            20,
-            recommended,
-        ),
-    )
 
 
 # =========================================================
@@ -952,7 +984,7 @@ def show_sidebar():
             with st.expander("查看錯誤"):
                 st.code(error)
 
-        st.caption("Prototype v0.9")
+        st.caption("Prototype v0.10")
 
 
 # =========================================================
@@ -1345,11 +1377,11 @@ def reset_quiz_state():
 # =========================================================
 
 def show_home():
-    st.title("📚 把教材變成你的測驗")
+    st.title("📚 把教材丟進來，先做 5 題")
 
     st.write(
-        "上傳教材 → AI 分析 → "
-        "產生有教材證據的測驗。"
+        "不用先把整份講義讀完。"
+        "先用 5 題找出你還不熟的地方。"
     )
 
     st.divider()
@@ -1365,9 +1397,15 @@ def show_home():
     file_bytes = uploaded_file.getvalue()
 
     file_hash = (
-        hashlib.sha256(file_bytes)
+        hashlib.sha256(
+            file_bytes
+        )
         .hexdigest()
     )
+
+    # =====================================================
+    # 換了一份教材
+    # =====================================================
 
     if (
         st.session_state.uploaded_file_hash
@@ -1381,15 +1419,16 @@ def show_home():
             uploaded_file.name
         )
 
-        st.session_state.document_analysis = None
+        st.session_state.document_subject = None
+        st.session_state.study_points = None
         st.session_state.generated_questions = None
         st.session_state.question_generation_error = None
-
         st.session_state.question_generation_stats = None
 
-    st.success(
-        f"已成功上傳：{uploaded_file.name}"
-    )
+    # =====================================================
+    # PDF parsing 在後台進行
+    # 不把頁數、字元數、文字預覽等工程資訊顯示給使用者
+    # =====================================================
 
     try:
         page_count, pages = (
@@ -1398,22 +1437,20 @@ def show_home():
             )
         )
 
-    except Exception as error:
-        st.error("PDF 讀取失敗")
-        st.code(str(error))
+    except Exception:
+        st.error(
+            "這份 PDF 無法讀取，請換一份檔案再試一次。"
+        )
         return
 
     document_text = (
-        build_document_text(pages)
+        build_document_text(
+            pages
+        )
     )
 
     st.session_state.document_pages = pages
     st.session_state.document_text = document_text
-
-    total_chars = sum(
-        len(page["text"])
-        for page in pages
-    )
 
     pages_with_text = sum(
         1
@@ -1421,131 +1458,73 @@ def show_home():
         if page["text"]
     )
 
-    col1, col2, col3 = st.columns(3)
-
-    col1.metric(
-        "PDF 頁數",
-        page_count,
-    )
-
-    col2.metric(
-        "可讀文字頁",
-        f"{pages_with_text} / {page_count}",
-    )
-
-    col3.metric(
-        "擷取字元數",
-        f"{total_chars:,}",
-    )
-
-    with st.expander(
-        "查看文字預覽"
-    ):
-        st.text_area(
-            "PDF 文字",
-            value=create_pdf_preview(
-                pages
-            ),
-            height=350,
-            disabled=True,
-            label_visibility="collapsed",
-        )
-
     if pages_with_text == 0:
         st.warning(
-            "這份 PDF 沒有可讀取文字。"
+            "這份 PDF 沒有可讀取的文字。"
+            "如果是掃描檔，目前這個版本還無法處理。"
         )
         return
 
     st.divider()
 
-    if (
-        st.session_state.document_analysis
-        is None
-    ):
-        st.subheader("AI 教材分析")
-
-        if st.button(
-            "AI 分析教材",
-            use_container_width=True,
-        ):
-            try:
-                with st.spinner(
-                    "正在分析教材..."
-                ):
-                    st.session_state.document_analysis = (
-                        analyze_document_with_ai(
-                            document_text
-                        )
-                    )
-
-                st.rerun()
-
-            except Exception as error:
-                st.error("AI 分析失敗")
-                st.code(
-                    f"{type(error).__name__}: "
-                    f"{str(error)}"
-                )
-
-        return
-
-    analysis = st.session_state.document_analysis
-
-    st.subheader("教材分析")
-
-    st.markdown("#### 教材摘要")
-    st.write(analysis["summary"])
-
-    st.markdown("#### 主要內容")
-
-    for topic in analysis["main_topics"]:
-        st.markdown(f"- {topic}")
-
-    # AI 的 recommended_question_count 仍在後端使用，
-    # 但首頁不另外顯示這個 metric。
-    target_question_count = (
-        get_target_question_count(
-            analysis
-        )
-    )
-
-    st.divider()
+    # =====================================================
+    # 還沒處理：
+    # 一個按鈕一次完成教材重點 + 第一組 5 題
+    # =====================================================
 
     if (
         st.session_state.generated_questions
         is None
     ):
-        st.subheader("產生測驗")
-
-        st.caption(
-            f"AI 建議本份教材產生 "
-            f"{target_question_count} 題。"
-        )
-
         if st.button(
-            f"產生 {target_question_count} 題測驗",
+            "AI 分析教材",
             use_container_width=True,
+            type="primary",
         ):
             try:
                 with st.spinner(
-                    "正在根據教材出題、驗證並批量補足缺額..."
+                    "正在整理教材並準備 5 題..."
                 ):
+                    package = (
+                        prepare_study_session_with_ai(
+                            document_text
+                        )
+                    )
+
+                    subject = package[
+                        "subject"
+                    ]
+
+                    study_points = package[
+                        "study_points"
+                    ]
 
                     (
                         final_questions,
                         all_rejections,
                         generation_rounds,
                     ) = (
-                        generate_and_refill_quiz(
-                            document_text,
-                            analysis,
-                            pages,
-                            uploaded_file.name,
-                            target_count=target_question_count,
+                        validate_and_refill_quiz(
+                            initial_questions=package[
+                                "questions"
+                            ],
+                            document_text=document_text,
+                            subject=subject,
+                            study_points=study_points,
+                            pages=pages,
+                            filename=uploaded_file.name,
+                            target_count=QUIZ_SIZE,
                             max_refill_rounds=2,
                         )
                     )
+
+                st.session_state.document_subject = (
+                    subject
+                )
+
+                st.session_state.study_points = (
+                    study_points
+                )
 
                 st.session_state.generated_questions = (
                     final_questions
@@ -1564,11 +1543,13 @@ def show_home():
                         )
 
                         rejected_text.append(
-                            f"第 {item['round']} 輪・"
-                            f"第 {item['number']} 題："
+                            f"round={item['round']}, "
+                            f"question={item['number']}: "
                             f"{reasons}"
                         )
 
+                    # 只留在 session 方便之後 debug，
+                    # 不在正常使用者畫面展示。
                     st.session_state.question_generation_error = (
                         "\n".join(
                             rejected_text
@@ -1581,115 +1562,85 @@ def show_home():
                 st.rerun()
 
             except Exception as error:
-                st.error("題目生成失敗")
-                st.code(
-                    f"{type(error).__name__}: "
-                    f"{str(error)}"
+                st.error(
+                    "AI 處理失敗，請稍後再試一次。"
                 )
+
+                with st.expander(
+                    "查看技術錯誤"
+                ):
+                    st.code(
+                        f"{type(error).__name__}: "
+                        f"{str(error)}"
+                    )
 
         return
 
-    generated_questions = get_questions()
+    # =====================================================
+    # 已經處理完成
+    # =====================================================
 
-    st.subheader("測驗已產生")
-
-    st.success(
-        f"最終可用題目："
-        f"{len(generated_questions)} 題"
+    study_points = (
+        st.session_state.study_points
+        or []
     )
 
-
-    generation_stats = (
-        st.session_state
-        .question_generation_stats
+    generated_questions = (
+        get_questions()
     )
 
-    if generation_stats:
-
-        with st.expander(
-            "查看出題 / 補題紀錄"
-        ):
-
-            for item in generation_stats:
-
-                if item["round"] == 1:
-                    round_name = "初次出題"
-
-                else:
-                    round_name = (
-                        f"第 {item['round'] - 1} 輪補題"
-                    )
-
-                st.write(
-                    f"**{round_name}**："
-                    f"要求 {item['requested']} 題，"
-                    f"本輪通過 {item['accepted']} 題，"
-                    f"淘汰 {item['rejected']} 題，"
-                    f"累計 {item['total_accepted']} 題"
-                )
-
-    if (
-        st.session_state.question_generation_error
-    ):
-        st.warning(
-            "部分題目未通過 Python 驗證，"
-            "已自動排除。"
+    if study_points:
+        st.subheader(
+            "這份教材先掌握"
         )
 
-        with st.expander(
-            "查看驗證結果"
-        ):
-            st.text(
-                st.session_state
-                .question_generation_error
+        for point in study_points:
+            st.markdown(
+                f"- {point}"
             )
+
+    st.divider()
 
     if not generated_questions:
         st.error(
-            "這次沒有題目通過來源驗證。"
+            "這次沒有題目通過來源驗證，"
+            "請重新分析一次。"
         )
 
         if st.button(
-            "重新產生題目"
+            "重新分析教材",
+            use_container_width=True,
         ):
+            st.session_state.document_subject = None
+            st.session_state.study_points = None
             st.session_state.generated_questions = None
             st.session_state.question_generation_error = None
+            st.session_state.question_generation_stats = None
             st.rerun()
 
         return
 
-    with st.expander(
-        "查看測驗涵蓋概念"
+    if (
+        len(generated_questions)
+        < QUIZ_SIZE
     ):
-        for index, question in enumerate(
-            generated_questions,
-            start=1,
-        ):
-            st.write(
-                f"{index}. "
-                f"{question['concept']}"
-            )
+        st.warning(
+            f"這次有 {len(generated_questions)} 題通過驗證，"
+            "先從這些題目開始。"
+        )
 
-    col1, col2 = st.columns(2)
+    if st.button(
+        f"開始 {len(generated_questions)} 題測驗",
+        use_container_width=True,
+        type="primary",
+    ):
+        reset_quiz_state()
 
-    with col1:
-        if st.button(
-            "重新產生題目",
-            use_container_width=True,
-        ):
-            st.session_state.generated_questions = None
-            st.session_state.question_generation_error = None
-            st.rerun()
+        st.session_state.page = (
+            "quiz"
+        )
 
-    with col2:
-        if st.button(
-            "開始測驗",
-            use_container_width=True,
-        ):
-            reset_quiz_state()
-
-            st.session_state.page = "quiz"
-            st.rerun()
+        st.rerun()
 
 
 # =========================================================
