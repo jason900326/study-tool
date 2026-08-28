@@ -1519,7 +1519,7 @@ def show_sidebar():
             with st.expander("查看錯誤"):
                 st.code(error)
 
-        st.caption("Prototype v0.18.1")
+        st.caption("Prototype v0.20")
 
 
 # =========================================================
@@ -1782,6 +1782,66 @@ def save_mistakes_to_database():
             ] = response.data[0]["id"]
 
     st.session_state.mistakes_saved = True
+
+
+def clear_all_mistakes_from_database():
+    """
+    清除目前 prototype mistakes table 的所有錯題資料。
+
+    注意：目前尚未加入帳號系統，所以這是整張 mistakes table。
+    未來加入 user_id 後，應改成只刪除目前登入使用者的資料。
+    """
+
+    supabase = get_supabase()
+
+    (
+        supabase
+        .table("mistakes")
+        .delete()
+        .gte("id", 0)
+        .execute()
+    )
+
+
+@st.dialog("清除錯題庫")
+def clear_mistakes_dialog():
+    st.warning(
+        "這會永久刪除目前錯題庫中的所有資料，且無法復原。"
+    )
+
+    st.write(
+        "確定要清除整個錯題庫嗎？"
+    )
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        if st.button(
+            "取消",
+            use_container_width=True,
+        ):
+            st.rerun()
+
+    with col2:
+        if st.button(
+            "確認清除",
+            type="primary",
+            use_container_width=True,
+        ):
+            try:
+                clear_all_mistakes_from_database()
+
+                st.session_state.mistakes_saved = False
+                st.session_state.mistake_record_ids = {}
+                st.session_state.error_labels = {}
+
+                st.rerun()
+
+            except Exception as error:
+                st.error("清除錯題庫失敗。")
+                st.code(
+                    f"{type(error).__name__}: {str(error)}"
+                )
 
 
 def load_mistakes_from_database():
@@ -2375,11 +2435,6 @@ def show_quiz():
         args=(current,),
     )
 
-    answer_exists = (
-        current
-        in st.session_state.answers
-    )
-
     uncertain = (
         st.session_state
         .uncertain_answers
@@ -2389,26 +2444,8 @@ def show_quiz():
         )
     )
 
-    if (
-        answer_exists
-        and uncertain
-    ):
-
-        st.caption(
-            "已作答 · ❓ 不確定"
-        )
-
-    elif answer_exists:
-
-        st.caption(
-            "已作答"
-        )
-
-    elif uncertain:
-
-        st.caption(
-            "❓ 已標記為不確定"
-        )
+    # 不另外顯示「已作答」狀態。
+    # 若使用者勾選「我不確定」，checkbox 本身已足以表達狀態。
 
     st.divider()
 
@@ -2840,8 +2877,114 @@ def show_generated_exams():
                 f"第 {exam.get('set_number', 1)} 份試卷 · "
                 f"{len(questions)} 題 · {created_label}"
             ):
-                for index, question in enumerate(questions, start=1):
-                    st.write(f"{index}. {question.get('question', '')}")
+                for index, question in enumerate(
+                    questions,
+                    start=1,
+                ):
+                    question_text = question.get(
+                        "question",
+                        ""
+                    )
+
+                    options = question.get(
+                        "options",
+                        []
+                    )
+
+                    answer_index = question.get(
+                        "answer"
+                    )
+
+                    correct_answer = ""
+
+                    if (
+                        isinstance(answer_index, int)
+                        and 0 <= answer_index < len(options)
+                    ):
+                        correct_answer = options[
+                            answer_index
+                        ]
+
+                    with st.expander(
+                        f"第 {index} 題｜{question_text}"
+                    ):
+                        if options:
+                            for option_index, option in enumerate(
+                                options
+                            ):
+                                prefix = chr(
+                                    65 + option_index
+                                )
+
+                                if (
+                                    option_index
+                                    == answer_index
+                                ):
+                                    st.markdown(
+                                        f"**{prefix}. {option} ✅**"
+                                    )
+                                else:
+                                    st.write(
+                                        f"{prefix}. {option}"
+                                    )
+
+                        if correct_answer:
+                            st.markdown(
+                                f"**答案：{correct_answer}**"
+                            )
+
+                        concept = question.get(
+                            "concept"
+                        )
+
+                        if concept:
+                            st.markdown(
+                                f"**核心觀念：** {concept}"
+                            )
+
+                        explanation = question.get(
+                            "explanation"
+                        )
+
+                        if explanation:
+                            st.markdown(
+                                "**詳解**"
+                            )
+                            st.write(
+                                explanation
+                            )
+
+                        review_points = question.get(
+                            "review_points"
+                        ) or []
+
+                        if review_points:
+                            st.markdown(
+                                "**複習重點**"
+                            )
+
+                            for point in review_points:
+                                st.markdown(
+                                    f"- {point}"
+                                )
+
+                        source = question.get(
+                            "source"
+                        )
+
+                        source_quote = question.get(
+                            "source_quote"
+                        )
+
+                        if source:
+                            st.caption(
+                                f"來源：{source}"
+                            )
+
+                        if source_quote:
+                            st.caption(
+                                f"教材原文：{source_quote}"
+                            )
 
                 st.divider()
 
@@ -2977,7 +3120,20 @@ def show_generated_exams():
 # =========================================================
 
 def show_mistake_bank():
-    st.title("📘 錯題庫")
+    title_col, clear_col = st.columns(
+        [4, 1]
+    )
+
+    with title_col:
+        st.title("📘 錯題庫")
+
+    with clear_col:
+        st.write("")
+        if st.button(
+            "清除錯題庫",
+            use_container_width=True,
+        ):
+            clear_mistakes_dialog()
 
     try:
         mistake_bank = (
