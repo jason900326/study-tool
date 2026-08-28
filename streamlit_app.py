@@ -987,31 +987,31 @@ def apply_font_size():
    Compact quiz progress
    ======================================================= */
 
-.quiz-progress-wrap {
+.quiz-progress-wrap {{
     margin: 0.15rem 0 0.55rem 0;
-}
+}}
 
-.quiz-progress-label {
+.quiz-progress-label {{
     font-size: 0.95rem;
     font-weight: 700;
     line-height: 1.15;
     margin-bottom: 0.28rem;
-}
+}}
 
-.quiz-progress-track {
+.quiz-progress-track {{
     width: 100%;
     height: 6px;
     background: rgba(128, 128, 128, 0.22);
     border-radius: 999px;
     overflow: hidden;
-}
+}}
 
-.quiz-progress-fill {
+.quiz-progress-fill {{
     height: 100%;
     background: currentColor;
     border-radius: 999px;
     transition: width 0.2s ease;
-}
+}}
 
 </style>
         """,
@@ -1519,7 +1519,7 @@ def show_sidebar():
             with st.expander("查看錯誤"):
                 st.code(error)
 
-        st.caption("Prototype v0.18")
+        st.caption("Prototype v0.18.1")
 
 
 # =========================================================
