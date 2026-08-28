@@ -603,12 +603,16 @@ def validate_and_refill_quiz(
     filename,
     target_count=QUIZ_SIZE,
     max_refill_rounds=2,
+    existing_questions=None,
 ):
     """
     1. 先驗證首次同一個 AI request 產生的 5 題。
     2. 若有題目被 Python 淘汰，只批量補缺額。
     3. 最多補 2 輪，避免無限 API 呼叫。
     """
+
+    if existing_questions is None:
+        existing_questions = []
 
     accepted = []
     all_rejections = []
@@ -624,7 +628,7 @@ def validate_and_refill_quiz(
     ) = (
         remove_duplicate_questions(
             initial_questions,
-            existing_questions=[],
+            existing_questions=existing_questions,
         )
     )
 
@@ -692,7 +696,9 @@ def validate_and_refill_quiz(
                 subject=subject,
                 study_points=study_points,
                 question_count=missing_count,
-                existing_questions=accepted,
+                existing_questions=(
+                    existing_questions + accepted
+                ),
             )
         )
 
@@ -968,6 +974,205 @@ def apply_font_size():
 
 
 # =========================================================
+# Documents：只保存擷取文字，不保存原始 PDF
+# =========================================================
+
+def save_document_to_database(
+    filename,
+    file_hash,
+    extracted_text,
+    subject,
+    study_points,
+):
+    """保存教材文字；同一 file_hash 更新同一筆資料。"""
+
+    supabase = get_supabase()
+
+    row = {
+        "filename": filename,
+        "file_hash": file_hash,
+        "extracted_text": extracted_text,
+        "subject": subject,
+        "study_points": study_points,
+    }
+
+    existing = (
+        supabase
+        .table("documents")
+        .select("id")
+        .eq("file_hash", file_hash)
+        .limit(1)
+        .execute()
+    )
+
+    if existing.data:
+        response = (
+            supabase
+            .table("documents")
+            .update(row)
+            .eq("id", existing.data[0]["id"])
+            .execute()
+        )
+    else:
+        response = (
+            supabase
+            .table("documents")
+            .insert(row)
+            .execute()
+        )
+
+    if not response.data:
+        raise RuntimeError("documents 寫入 Supabase 後沒有回傳資料。")
+
+    return response.data[0]
+
+
+def load_document_by_hash(file_hash):
+    supabase = get_supabase()
+
+    response = (
+        supabase
+        .table("documents")
+        .select("*")
+        .eq("file_hash", file_hash)
+        .limit(1)
+        .execute()
+    )
+
+    if response.data:
+        return response.data[0]
+
+    return None
+
+
+def parse_document_pages(document_text):
+    """把儲存的 [Page N] 文字重新還原成 validator 需要的 pages。"""
+
+    pattern = re.compile(
+        r"\[Page\s+(\d+)\]\n(.*?)(?=\n\n\[Page\s+\d+\]\n|\Z)",
+        re.DOTALL,
+    )
+
+    pages = []
+
+    for page_number, text in pattern.findall(document_text or ""):
+        pages.append({
+            "page": int(page_number),
+            "text": text.strip(),
+        })
+
+    return pages
+
+
+# =========================================================
+# Generated Exams：保存已生成試卷
+# =========================================================
+
+def question_set_signature(questions):
+    payload = json.dumps(
+        [
+            {
+                "question": item.get("question", ""),
+                "options": item.get("options", []),
+            }
+            for item in questions
+        ],
+        ensure_ascii=False,
+        sort_keys=True,
+    )
+
+    return hashlib.sha256(
+        payload.encode("utf-8")
+    ).hexdigest()
+
+
+def save_exam_to_database(
+    document_row,
+    filename,
+    file_hash,
+    subject,
+    study_points,
+    questions,
+):
+    """保存一份已生成試卷；同一組題目不重複新增。"""
+
+    if not questions:
+        return None
+
+    supabase = get_supabase()
+    signature = question_set_signature(questions)
+
+    existing = (
+        supabase
+        .table("generated_exams")
+        .select("*")
+        .eq("question_signature", signature)
+        .limit(1)
+        .execute()
+    )
+
+    if existing.data:
+        return existing.data[0]
+
+    prior = (
+        supabase
+        .table("generated_exams")
+        .select("id")
+        .eq("file_hash", file_hash)
+        .execute()
+    )
+
+    set_number = len(prior.data or []) + 1
+
+    row = {
+        "document_id": document_row["id"],
+        "file_hash": file_hash,
+        "filename": filename,
+        "set_number": set_number,
+        "subject": subject,
+        "study_points": study_points,
+        "questions": questions,
+        "question_signature": signature,
+    }
+
+    response = (
+        supabase
+        .table("generated_exams")
+        .insert(row)
+        .execute()
+    )
+
+    if not response.data:
+        raise RuntimeError("generated_exams 寫入 Supabase 後沒有回傳資料。")
+
+    return response.data[0]
+
+
+def load_generated_exams_from_database():
+    supabase = get_supabase()
+
+    response = (
+        supabase
+        .table("generated_exams")
+        .select("*")
+        .order("created_at", desc=True)
+        .execute()
+    )
+
+    return response.data or []
+
+
+def load_previous_questions_for_document(file_hash):
+    exams = load_generated_exams_from_database()
+    questions = []
+
+    for exam in exams:
+        if exam.get("file_hash") == file_hash:
+            questions.extend(exam.get("questions") or [])
+
+    return questions
+
+# =========================================================
 # 已生成試卷
 # =========================================================
 
@@ -1096,52 +1301,6 @@ def load_exam_set(
     st.session_state.page = "quiz"
 
 
-def prepare_new_set_from_exam(
-    exam
-):
-    """
-    從某份已生成試卷底下要求「換一組新的 5 題」。
-
-    因為 prototype 沒有永久保存原 PDF，
-    這裡只先把該教材標記為目標。
-    使用者需要回首頁重新上傳相同 PDF。
-    """
-
-    st.session_state.uploaded_filename = (
-        exam.get(
-            "filename"
-        )
-    )
-
-    st.session_state.uploaded_file_hash = (
-        exam.get(
-            "file_hash"
-        )
-    )
-
-    st.session_state.previous_questions = []
-
-    for item in (
-        st.session_state.generated_exam_sets
-    ):
-        if (
-            item.get("file_hash")
-            == exam.get("file_hash")
-        ):
-            st.session_state.previous_questions.extend(
-                item.get(
-                    "questions",
-                    []
-                )
-            )
-
-    st.session_state.generated_questions = None
-    st.session_state.study_points = None
-    st.session_state.document_subject = None
-    st.session_state.question_generation_error = None
-    st.session_state.question_generation_stats = None
-
-    st.session_state.page = "home"
 
 
 # =========================================================
@@ -1238,7 +1397,7 @@ def show_sidebar():
             with st.expander("查看錯誤"):
                 st.code(error)
 
-        st.caption("Prototype v0.13")
+        st.caption("Prototype v0.15")
 
 
 # =========================================================
@@ -1655,6 +1814,12 @@ def show_home():
         type=["pdf"],
     )
 
+    st.info(
+        "建議上傳含有可選取文字的 PDF。"
+        "圖片、掃描頁與圖表內容可能無法完整納入分析，"
+        "AI 分析與出題結果可能因此有所差異。"
+    )
+
     if uploaded_file is None:
         return
 
@@ -1798,6 +1963,25 @@ def show_home():
                     final_questions
                 )
 
+                # 保存 extracted text 與這一份已生成試卷。
+                # 不保存原始 PDF。
+                document_row = save_document_to_database(
+                    filename=uploaded_file.name,
+                    file_hash=file_hash,
+                    extracted_text=document_text,
+                    subject=subject,
+                    study_points=study_points,
+                )
+
+                save_exam_to_database(
+                    document_row=document_row,
+                    filename=uploaded_file.name,
+                    file_hash=file_hash,
+                    subject=subject,
+                    study_points=study_points,
+                    questions=final_questions,
+                )
+
                 # 記住這一組，之後同一 session 重新產生時避免重複
                 st.session_state.previous_questions.extend(
                     final_questions
@@ -1907,8 +2091,6 @@ def show_home():
         use_container_width=True,
         type="primary",
     ):
-        save_current_exam_set()
-
         reset_quiz_state()
 
         st.session_state.page = (
@@ -2455,127 +2637,150 @@ def show_result():
 
 def show_generated_exams():
 
-    st.title(
-        "📝 已生成試卷"
-    )
+    st.title("📝 已生成試卷")
 
-    exam_sets = (
-        st.session_state
-        .generated_exam_sets
-    )
+    try:
+        exam_sets = load_generated_exams_from_database()
+    except Exception as error:
+        st.error("目前無法讀取已生成試卷。")
+        with st.expander("查看技術錯誤"):
+            st.code(f"{type(error).__name__}: {str(error)}")
+        return
 
     if not exam_sets:
-
-        st.info(
-            "目前還沒有已生成的試卷。"
-        )
-
+        st.info("目前還沒有已生成的試卷。")
         return
 
     grouped = {}
 
     for exam in exam_sets:
-
-        key = (
-            exam.get(
-                "file_hash"
-            )
-        )
+        key = exam.get("file_hash")
 
         if key not in grouped:
-
             grouped[key] = {
-                "filename":
-                    exam.get(
-                        "filename",
-                        "未命名教材"
-                    ),
-
-                "sets": []
+                "filename": exam.get("filename", "未命名教材"),
+                "sets": [],
             }
 
-        grouped[key][
-            "sets"
-        ].append(
-            exam
-        )
+        grouped[key]["sets"].append(exam)
 
     for group in grouped.values():
+        st.subheader(group["filename"])
 
-        filename = (
-            group[
-                "filename"
-            ]
-        )
-
-        sets = (
-            group[
-                "sets"
-            ]
-        )
-
-        st.subheader(
-            filename
-        )
-
-        for exam in sets:
+        for exam in sorted(
+            group["sets"],
+            key=lambda item: item.get("set_number", 0),
+        ):
+            questions = exam.get("questions") or []
 
             with st.expander(
-                f"第 {exam['set_number']} 份試卷 "
-                f"· {len(exam['questions'])} 題"
+                f"第 {exam.get('set_number', 1)} 份試卷 · {len(questions)} 題"
             ):
-
-                for index, question in enumerate(
-                    exam[
-                        "questions"
-                    ],
-                    start=1,
-                ):
-
-                    st.write(
-                        f"{index}. "
-                        f"{question['question']}"
-                    )
+                for index, question in enumerate(questions, start=1):
+                    st.write(f"{index}. {question.get('question', '')}")
 
                 st.divider()
 
-                col1, col2 = (
-                    st.columns(2)
-                )
+                col1, col2 = st.columns(2)
 
                 with col1:
-
                     if st.button(
                         "複習試卷",
-                        key=(
-                            f"review_exam_"
-                            f"{exam['id']}"
-                        ),
+                        key=f"review_exam_{exam['id']}",
                         use_container_width=True,
                     ):
-
-                        load_exam_set(
-                            exam
-                        )
-
+                        load_exam_set({
+                            "questions": questions,
+                            "study_points": exam.get("study_points") or [],
+                            "subject": exam.get("subject"),
+                            "filename": exam.get("filename"),
+                            "file_hash": exam.get("file_hash"),
+                        })
                         st.rerun()
 
                 with col2:
-
                     if st.button(
-                        "換一組新的 5 題",
-                        key=(
-                            f"new_exam_"
-                            f"{exam['id']}"
-                        ),
+                        "再生成新的 5 題",
+                        key=f"new_exam_{exam['id']}",
                         use_container_width=True,
                     ):
+                        try:
+                            with st.spinner("正在根據已保存的教材準備新的 5 題..."):
+                                document = load_document_by_hash(
+                                    exam.get("file_hash")
+                                )
 
-                        prepare_new_set_from_exam(
-                            exam
-                        )
+                                if not document:
+                                    raise RuntimeError(
+                                        "找不到這份試卷對應的教材文字。"
+                                    )
 
-                        st.rerun()
+                                document_text = document.get("extracted_text") or ""
+                                pages = parse_document_pages(document_text)
+
+                                if not pages:
+                                    raise RuntimeError(
+                                        "已保存的教材文字無法還原頁碼。"
+                                    )
+
+                                existing_questions = (
+                                    load_previous_questions_for_document(
+                                        exam.get("file_hash")
+                                    )
+                                )
+
+                                subject = document.get("subject") or exam.get("subject") or "教材"
+                                study_points = document.get("study_points") or exam.get("study_points") or []
+
+                                package = generate_questions_with_ai(
+                                    document_text=document_text,
+                                    subject=subject,
+                                    study_points=study_points,
+                                    question_count=QUIZ_SIZE,
+                                    existing_questions=existing_questions,
+                                )
+
+                                (
+                                    final_questions,
+                                    _,
+                                    _,
+                                ) = validate_and_refill_quiz(
+                                    initial_questions=package["questions"],
+                                    document_text=document_text,
+                                    subject=subject,
+                                    study_points=study_points,
+                                    pages=pages,
+                                    filename=document.get("filename") or exam.get("filename") or "教材",
+                                    target_count=QUIZ_SIZE,
+                                    max_refill_rounds=2,
+                                    existing_questions=existing_questions,
+                                )
+
+                                if not final_questions:
+                                    raise RuntimeError(
+                                        "這次沒有題目通過來源驗證。"
+                                    )
+
+                                new_exam = save_exam_to_database(
+                                    document_row=document,
+                                    filename=document.get("filename") or exam.get("filename") or "教材",
+                                    file_hash=exam.get("file_hash"),
+                                    subject=subject,
+                                    study_points=study_points,
+                                    questions=final_questions,
+                                )
+
+                            st.success(
+                                f"已生成第 {new_exam.get('set_number', '')} 份試卷。"
+                            )
+                            st.rerun()
+
+                        except Exception as error:
+                            st.error("新的 5 題生成失敗。")
+                            with st.expander("查看技術錯誤"):
+                                st.code(
+                                    f"{type(error).__name__}: {str(error)}"
+                                )
 
         st.divider()
 
