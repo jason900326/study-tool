@@ -1469,11 +1469,6 @@ def show_sidebar():
             st.session_state.page = "mistakes"
             st.rerun()
 
-        st.button(
-            "弱點分析",
-            use_container_width=True,
-            disabled=True,
-        )
 
         st.divider()
 
@@ -1534,7 +1529,7 @@ def show_sidebar():
             with st.expander("查看錯誤"):
                 st.code(error)
 
-        st.caption("Prototype v0.23")
+        st.caption("Prototype v0.24")
 
 
 # =========================================================
@@ -3694,26 +3689,28 @@ def show_generated_exams():
 def render_mistake_item(
     item,
     is_national_exam=False,
+    render_title=True,
 ):
-    if is_national_exam:
-        number = item.get(
-            "official_question_number"
-        )
-
-        if number is not None:
-            st.markdown(
-                f"### 第 {number} 題｜"
-                f"{item['question']}"
+    if render_title:
+        if is_national_exam:
+            number = item.get(
+                "official_question_number"
             )
+
+            if number is not None:
+                st.markdown(
+                    f"### 第 {number} 題｜"
+                    f"{item['question']}"
+                )
+            else:
+                st.markdown(
+                    f"### {item['question']}"
+                )
+
         else:
             st.markdown(
                 f"### {item['question']}"
             )
-
-    else:
-        st.markdown(
-            f"### {item['question']}"
-        )
 
     if item.get(
         "uncertain",
@@ -4041,97 +4038,138 @@ def show_national_exam_mistakes(
 
     st.divider()
 
-    # 年份 → 考次 → 科目
+    # 科目 → 年份 / 考次 → 每一題獨立 expander
     grouped = {}
 
     for item in rows:
-        year = item.get(
-            "exam_year"
-        ) or "年份未記錄"
+        subject = (
+            item.get("subject")
+            or "未分類科目"
+        )
 
-        exam_round = item.get(
-            "exam_round"
-        ) or "考次未記錄"
+        year = (
+            item.get("exam_year")
+            or "年份未記錄"
+        )
 
-        subject = item.get(
-            "subject"
-        ) or "未分類科目"
+        exam_round = (
+            item.get("exam_round")
+            or "考次未記錄"
+        )
 
         grouped.setdefault(
-            year,
-            {}
-        ).setdefault(
-            exam_round,
-            {}
-        ).setdefault(
             subject,
+            {}
+        ).setdefault(
+            (year, exam_round),
             []
         ).append(
             item
         )
 
-    # 新年份優先
-    def year_sort_key(
-        value,
+    for subject in sorted(
+        grouped.keys()
     ):
-        try:
-            return int(value)
-        except Exception:
-            return 0
-
-    for year in sorted(
-        grouped.keys(),
-        key=year_sort_key,
-        reverse=True,
-    ):
-        st.subheader(
-            str(year)
+        subject_rows = sum(
+            len(items)
+            for items in grouped[
+                subject
+            ].values()
         )
 
-        for exam_round in [
-            "第一次",
-            "第二次",
-            "考次未記錄",
-        ]:
-            if exam_round not in grouped[
-                year
-            ]:
-                continue
+        st.subheader(
+            f"{subject} · {subject_rows} 題"
+        )
 
-            round_items = grouped[
-                year
-            ][
-                exam_round
+        exam_groups = grouped[
+            subject
+        ]
+
+        def exam_sort_key(
+            pair,
+        ):
+            year, exam_round = pair
+
+            try:
+                year_value = int(
+                    year
+                )
+            except Exception:
+                year_value = 0
+
+            round_value = (
+                1
+                if exam_round
+                == "第一次"
+                else 2
+                if exam_round
+                == "第二次"
+                else 9
+            )
+
+            return (
+                -year_value,
+                round_value,
+            )
+
+        for (
+            year,
+            exam_round,
+        ) in sorted(
+            exam_groups.keys(),
+            key=exam_sort_key,
+        ):
+            items = exam_groups[
+                (
+                    year,
+                    exam_round,
+                )
             ]
 
-            with st.expander(
-                exam_round,
-                expanded=False,
-            ):
-                for (
-                    subject,
-                    subject_items,
-                ) in round_items.items():
-                    st.markdown(
-                        f"#### {subject} · "
-                        f"{len(subject_items)} 題"
+            st.caption(
+                f"{year} · {exam_round}"
+            )
+
+            items = sorted(
+                items,
+                key=lambda item: (
+                    item.get(
+                        "official_question_number"
+                    )
+                    or 9999
+                ),
+            )
+
+            for item in items:
+                number = item.get(
+                    "official_question_number"
+                )
+
+                question_text = item.get(
+                    "question",
+                    ""
+                )
+
+                if number is not None:
+                    title = (
+                        f"第 {number} 題｜"
+                        f"{question_text}"
+                    )
+                else:
+                    title = (
+                        question_text
+                        or "未命名題目"
                     )
 
-                    subject_items = sorted(
-                        subject_items,
-                        key=lambda item: (
-                            item.get(
-                                "official_question_number"
-                            )
-                            or 9999
-                        ),
+                with st.expander(
+                    title,
+                    expanded=False,
+                ):
+                    render_mistake_item(
+                        item,
+                        is_national_exam=True,
+                        render_title=False,
                     )
-
-                    for item in subject_items:
-                        render_mistake_item(
-                            item,
-                            is_national_exam=True,
-                        )
 
 
 def show_mistake_bank():
