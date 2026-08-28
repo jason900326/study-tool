@@ -4,6 +4,8 @@ import json
 import re
 import hashlib
 from io import BytesIO
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from supabase import create_client
 from pypdf import PdfReader
@@ -1161,6 +1163,40 @@ def save_exam_to_database(
     return response.data[0]
 
 
+def format_exam_created_at(created_at):
+    """
+    將 Supabase created_at 轉成台灣時間顯示。
+    顯示格式：2026/08/28 10:30
+    """
+
+    if not created_at:
+        return "時間未知"
+
+    try:
+        value = str(created_at).strip()
+
+        if value.endswith("Z"):
+            value = value[:-1] + "+00:00"
+
+        dt = datetime.fromisoformat(value)
+
+        if dt.tzinfo is None:
+            dt = dt.replace(
+                tzinfo=ZoneInfo("UTC")
+            )
+
+        dt = dt.astimezone(
+            ZoneInfo("Asia/Taipei")
+        )
+
+        return dt.strftime(
+            "%Y/%m/%d %H:%M"
+        )
+
+    except Exception:
+        return str(created_at)
+
+
 def load_generated_exams_from_database():
     supabase = get_supabase()
 
@@ -1452,7 +1488,7 @@ def show_sidebar():
             with st.expander("查看錯誤"):
                 st.code(error)
 
-        st.caption("Prototype v0.16")
+        st.caption("Prototype v0.17")
 
 
 # =========================================================
@@ -2755,8 +2791,13 @@ def show_generated_exams():
         ):
             questions = exam.get("questions") or []
 
+            created_label = format_exam_created_at(
+                exam.get("created_at")
+            )
+
             with st.expander(
-                f"第 {exam.get('set_number', 1)} 份試卷 · {len(questions)} 題"
+                f"第 {exam.get('set_number', 1)} 份試卷 · "
+                f"{len(questions)} 題 · {created_label}"
             ):
                 for index, question in enumerate(questions, start=1):
                     st.write(f"{index}. {question.get('question', '')}")
@@ -2852,9 +2893,32 @@ def show_generated_exams():
                                     questions=final_questions,
                                 )
 
-                            st.success(
-                                f"已生成第 {new_exam.get('set_number', '')} 份試卷。"
-                            )
+                            # 新題生成並保存完成後，
+                            # 直接載入這份新試卷並進入作答頁面。
+                            load_exam_set({
+                                "questions":
+                                    new_exam.get("questions")
+                                    or final_questions,
+
+                                "study_points":
+                                    new_exam.get("study_points")
+                                    or study_points,
+
+                                "subject":
+                                    new_exam.get("subject")
+                                    or subject,
+
+                                "filename":
+                                    new_exam.get("filename")
+                                    or document.get("filename")
+                                    or exam.get("filename")
+                                    or "教材",
+
+                                "file_hash":
+                                    new_exam.get("file_hash")
+                                    or exam.get("file_hash"),
+                            })
+
                             st.rerun()
 
                         except Exception as error:
