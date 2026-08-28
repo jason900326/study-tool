@@ -49,6 +49,7 @@ def test_database_connection():
             "mistakes",
             "documents",
             "generated_exams",
+            "national_exam_questions",
         ]:
             (
                 supabase
@@ -113,6 +114,10 @@ default_states = {
     # Supabase 教材 / 試卷保存狀態
     "database_sync_success": None,
     "database_sync_error": None,
+
+    # 目前測驗來源
+    "quiz_mode": "ai_document",
+    "national_exam_meta": None,
 
     # 全站字體大小
     "font_size": 18,
@@ -1418,6 +1423,9 @@ def load_exam_set(
         )
     )
 
+    st.session_state.quiz_mode = "ai_document"
+    st.session_state.national_exam_meta = None
+
     reset_quiz_state()
 
     st.session_state.page = "quiz"
@@ -1438,6 +1446,13 @@ def show_sidebar():
             use_container_width=True,
         ):
             st.session_state.page = "home"
+            st.rerun()
+
+        if st.button(
+            "歷屆國考",
+            use_container_width=True,
+        ):
+            st.session_state.page = "national_exam"
             st.rerun()
 
         if st.button(
@@ -1519,7 +1534,7 @@ def show_sidebar():
             with st.expander("查看錯誤"):
                 st.code(error)
 
-        st.caption("Prototype v0.20")
+        st.caption("Prototype v0.21")
 
 
 # =========================================================
@@ -1978,6 +1993,275 @@ def reset_quiz_state():
 
 
 # =========================================================
+# 歷屆國考
+# =========================================================
+
+NATIONAL_EXAM_YEARS = list(
+    range(2026, 2016, -1)
+)
+
+NATIONAL_EXAM_ROUNDS = [
+    "第一次",
+    "第二次",
+]
+
+
+def load_national_exam_subjects(
+    exam_year,
+    exam_round,
+):
+    supabase = get_supabase()
+
+    response = (
+        supabase
+        .table("national_exam_questions")
+        .select("subject")
+        .eq("exam_year", exam_year)
+        .eq("exam_round", exam_round)
+        .limit(1000)
+        .execute()
+    )
+
+    return sorted({
+        row.get("subject")
+        for row in (response.data or [])
+        if row.get("subject")
+    })
+
+
+def load_national_exam_paper(
+    exam_year,
+    exam_round,
+    subject,
+):
+    """
+    第一版只納入可直接單選作答的官方題目：
+    - parse_status == ok
+    - 不需要圖片
+    - 四個選項完整
+    - 官方可接受答案只有一個
+    """
+    supabase = get_supabase()
+
+    response = (
+        supabase
+        .table("national_exam_questions")
+        .select(
+            "id, exam_year, exam_round, subject, "
+            "question_number, question, options, "
+            "correct_answers, source_page_url, "
+            "question_pdf_url, has_image_hint, parse_status"
+        )
+        .eq("exam_year", exam_year)
+        .eq("exam_round", exam_round)
+        .eq("subject", subject)
+        .order("question_number")
+        .limit(100)
+        .execute()
+    )
+
+    rows = response.data or []
+
+    answer_map = {
+        "A": 0,
+        "B": 1,
+        "C": 2,
+        "D": 3,
+    }
+
+    usable = []
+    excluded = []
+
+    for row in rows:
+        options = row.get("options") or []
+        correct_answers = row.get("correct_answers") or []
+
+        reason = None
+
+        if row.get("parse_status") != "ok":
+            reason = "解析異常"
+
+        elif row.get("has_image_hint"):
+            reason = "需要圖片"
+
+        elif len(options) != 4:
+            reason = "選項不完整"
+
+        elif (
+            len(correct_answers) != 1
+            or correct_answers[0] not in answer_map
+        ):
+            reason = "多答案或答案格式特殊"
+
+        if reason:
+            excluded.append({
+                "question_number": row.get("question_number"),
+                "reason": reason,
+            })
+            continue
+
+        question_number = row.get("question_number")
+
+        usable.append({
+            "question": row.get("question") or "",
+            "options": options,
+            "answer": answer_map[correct_answers[0]],
+            "subject": subject,
+            "concept": "歷屆國考真題",
+            "review_type": "official_exam",
+            "review_points": [],
+            "explanation": "",
+            "source": (
+                f"考選部 · {exam_year} {exam_round} · "
+                f"{subject} · 第 {question_number} 題"
+            ),
+            "source_quote": "",
+            "source_page": None,
+            "source_url": (
+                row.get("question_pdf_url")
+                or row.get("source_page_url")
+            ),
+            "quiz_source_type": "national_exam",
+            "official_question_number": question_number,
+            "national_exam_id": row.get("id"),
+        })
+
+    return usable, excluded, len(rows)
+
+
+def start_national_exam_quiz(
+    questions,
+    exam_year,
+    exam_round,
+    subject,
+):
+    st.session_state.generated_questions = [
+        dict(question)
+        for question in questions
+    ]
+
+    st.session_state.quiz_mode = "national_exam"
+
+    st.session_state.national_exam_meta = {
+        "exam_year": exam_year,
+        "exam_round": exam_round,
+        "subject": subject,
+    }
+
+    reset_quiz_state()
+
+    st.session_state.page = "quiz"
+
+
+def show_national_exam():
+    st.title("🧪 歷屆國考")
+
+    st.write(
+        "直接練習考選部歷屆醫事檢驗師官方真題。"
+    )
+
+    st.caption(
+        "第一版先排除需要圖片、解析異常，"
+        "以及官方接受多個答案的特殊題目。"
+    )
+
+    st.divider()
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        exam_year = st.selectbox(
+            "年份",
+            NATIONAL_EXAM_YEARS,
+            index=0,
+        )
+
+    with col2:
+        exam_round = st.selectbox(
+            "考次",
+            NATIONAL_EXAM_ROUNDS,
+            index=0,
+        )
+
+    try:
+        subjects = load_national_exam_subjects(
+            exam_year,
+            exam_round,
+        )
+
+    except Exception as error:
+        st.error("目前無法讀取國考題庫。")
+        with st.expander("查看技術錯誤"):
+            st.code(
+                f"{type(error).__name__}: {str(error)}"
+            )
+        return
+
+    if not subjects:
+        st.warning(
+            "這個年份 / 考次目前沒有可用科目。"
+        )
+        return
+
+    subject = st.selectbox(
+        "科目",
+        subjects,
+    )
+
+    try:
+        (
+            usable_questions,
+            excluded_questions,
+            total_questions,
+        ) = load_national_exam_paper(
+            exam_year,
+            exam_round,
+            subject,
+        )
+
+    except Exception as error:
+        st.error("這份國考試卷目前無法載入。")
+        with st.expander("查看技術錯誤"):
+            st.code(
+                f"{type(error).__name__}: {str(error)}"
+            )
+        return
+
+    st.info(
+        f"官方試卷共 {total_questions} 題；"
+        f"目前可直接作答 {len(usable_questions)} 題，"
+        f"暫時排除 {len(excluded_questions)} 題。"
+    )
+
+    if excluded_questions:
+        with st.expander("查看暫時排除的題目"):
+            for item in excluded_questions:
+                st.caption(
+                    f"第 {item['question_number']} 題 · "
+                    f"{item['reason']}"
+                )
+
+    if not usable_questions:
+        st.warning(
+            "這份試卷目前沒有可直接作答的題目。"
+        )
+        return
+
+    if st.button(
+        f"開始作答 · {len(usable_questions)} 題",
+        type="primary",
+        use_container_width=True,
+    ):
+        start_national_exam_quiz(
+            usable_questions,
+            exam_year,
+            exam_round,
+            subject,
+        )
+        st.rerun()
+
+
+# =========================================================
 # 首頁
 # =========================================================
 
@@ -2300,6 +2584,9 @@ def show_home():
         use_container_width=True,
         type="primary",
     ):
+        st.session_state.quiz_mode = "ai_document"
+        st.session_state.national_exam_meta = None
+
         reset_quiz_state()
 
         st.session_state.page = (
@@ -2341,6 +2628,18 @@ def show_quiz():
     total = len(
         questions
     )
+
+    if (
+        st.session_state.quiz_mode == "national_exam"
+        and st.session_state.national_exam_meta
+    ):
+        meta = st.session_state.national_exam_meta
+
+        st.caption(
+            f"{meta['exam_year']} · "
+            f"{meta['exam_round']} · "
+            f"{meta['subject']}"
+        )
 
     # =====================================================
     # 精簡做題進度
@@ -2625,32 +2924,68 @@ def show_review_item(question_index):
 
         st.divider()
 
-        st.markdown("### 核心觀念")
-        st.write(question["concept"])
+        if (
+            question.get("quiz_source_type")
+            == "national_exam"
+        ):
+            st.markdown("### 官方答案")
 
-        st.markdown("### 為什麼？")
-        st.write(question["explanation"])
-
-        st.markdown("### 複習重點")
-
-        for point in question[
-            "review_points"
-        ]:
-            st.markdown(
-                f"- {point}"
+            st.write(
+                "此題來自考選部歷屆國考。"
+                "目前版本保留官方題目與標準答案，"
+                "尚未另外使用 AI 生成詳解。"
             )
 
-        st.markdown(
-            "### 📖 教材根據"
-        )
+            st.markdown("### 📖 官方來源")
 
-        st.caption(
-            question["source"]
-        )
+            st.caption(
+                question.get(
+                    "source",
+                    "考選部歷屆國考",
+                )
+            )
 
-        st.info(
-            question["source_quote"]
-        )
+            source_url = question.get("source_url")
+
+            if source_url:
+                st.link_button(
+                    "查看考選部原始試題",
+                    source_url,
+                    use_container_width=True,
+                )
+
+        else:
+            st.markdown("### 核心觀念")
+            st.write(
+                question.get("concept", "")
+            )
+
+            st.markdown("### 為什麼？")
+            st.write(
+                question.get("explanation", "")
+            )
+
+            st.markdown("### 複習重點")
+
+            for point in question.get(
+                "review_points",
+                []
+            ):
+                st.markdown(f"- {point}")
+
+            st.markdown("### 📖 教材根據")
+
+            st.caption(
+                question.get("source", "")
+            )
+
+            source_quote = question.get(
+                "source_quote",
+                ""
+            )
+
+            if source_quote:
+                st.info(source_quote)
 
         st.divider()
 
@@ -2819,11 +3154,23 @@ def show_result():
             st.rerun()
 
     with nav2:
+        return_label = (
+            "回歷屆國考"
+            if st.session_state.quiz_mode
+            == "national_exam"
+            else "回首頁"
+        )
+
         if st.button(
-            "回首頁",
+            return_label,
             use_container_width=True,
         ):
-            st.session_state.page = "home"
+            st.session_state.page = (
+                "national_exam"
+                if st.session_state.quiz_mode
+                == "national_exam"
+                else "home"
+            )
             st.rerun()
 
 
@@ -3418,6 +3765,9 @@ elif st.session_state.page == "quiz":
 
 elif st.session_state.page == "result":
     show_result()
+
+elif st.session_state.page == "national_exam":
+    show_national_exam()
 
 elif st.session_state.page == "exams":
     show_generated_exams()
