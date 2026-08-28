@@ -982,7 +982,38 @@ def apply_font_size():
             font-size: {size}px !important;
         }}
 
-        </style>
+        
+/* =======================================================
+   Compact quiz progress
+   ======================================================= */
+
+.quiz-progress-wrap {
+    margin: 0.15rem 0 0.55rem 0;
+}
+
+.quiz-progress-label {
+    font-size: 0.95rem;
+    font-weight: 700;
+    line-height: 1.15;
+    margin-bottom: 0.28rem;
+}
+
+.quiz-progress-track {
+    width: 100%;
+    height: 6px;
+    background: rgba(128, 128, 128, 0.22);
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.quiz-progress-fill {
+    height: 100%;
+    background: currentColor;
+    border-radius: 999px;
+    transition: width 0.2s ease;
+}
+
+</style>
         """,
         unsafe_allow_html=True,
     )
@@ -1488,7 +1519,7 @@ def show_sidebar():
             with st.expander("查看錯誤"):
                 st.code(error)
 
-        st.caption("Prototype v0.17")
+        st.caption("Prototype v0.18")
 
 
 # =========================================================
@@ -2252,19 +2283,29 @@ def show_quiz():
     )
 
     # =====================================================
-    # 顯眼進度
+    # 精簡做題進度
     # =====================================================
 
+    progress_percent = int(
+        ((current + 1) / total) * 100
+    )
+
     st.markdown(
-        f"### 第 {current + 1} / {total} 題"
+        f"""
+        <div class="quiz-progress-wrap">
+            <div class="quiz-progress-label">
+                {current + 1} / {total}
+            </div>
+            <div class="quiz-progress-track">
+                <div
+                    class="quiz-progress-fill"
+                    style="width: {progress_percent}%;">
+                </div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
-
-    st.progress(
-        (current + 1)
-        / total
-    )
-
-    st.divider()
 
     st.subheader(
         question[
