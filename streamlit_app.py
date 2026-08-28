@@ -1534,7 +1534,7 @@ def show_sidebar():
             with st.expander("查看錯誤"):
                 st.code(error)
 
-        st.caption("Prototype v0.21")
+        st.caption("Prototype v0.22")
 
 
 # =========================================================
@@ -1981,6 +1981,13 @@ def reset_quiz_state():
     st.session_state.mistakes_saved = False
     st.session_state.mistake_record_ids = {}
     st.session_state.label_sync_error = None
+
+    for key in [
+        "national_exam_jump",
+        "_national_exam_jump_sync",
+    ]:
+        if key in st.session_state:
+            del st.session_state[key]
 
     for i in range(len(questions)):
         for key in [
@@ -2600,6 +2607,29 @@ def show_home():
 # Quiz
 # =========================================================
 
+def jump_to_national_exam_question():
+    """
+    國考模式題號跳轉。
+    selectbox 顯示 1-based 題號，session_state 內仍使用 0-based index。
+    """
+    selected = st.session_state.get(
+        "national_exam_jump"
+    )
+
+    if selected is None:
+        return
+
+    try:
+        target = int(selected) - 1
+    except (TypeError, ValueError):
+        return
+
+    questions = get_questions()
+
+    if 0 <= target < len(questions):
+        st.session_state.question_index = target
+
+
 def show_quiz():
 
     questions = (
@@ -2629,8 +2659,13 @@ def show_quiz():
         questions
     )
 
+    is_national_exam = (
+        st.session_state.quiz_mode
+        == "national_exam"
+    )
+
     if (
-        st.session_state.quiz_mode == "national_exam"
+        is_national_exam
         and st.session_state.national_exam_meta
     ):
         meta = st.session_state.national_exam_meta
@@ -2649,22 +2684,97 @@ def show_quiz():
         ((current + 1) / total) * 100
     )
 
-    st.markdown(
-        f"""
-        <div class="quiz-progress-wrap">
-            <div class="quiz-progress-label">
-                {current + 1} / {total}
-            </div>
-            <div class="quiz-progress-track">
-                <div
-                    class="quiz-progress-fill"
-                    style="width: {progress_percent}%;">
+    if is_national_exam:
+        header_left, header_right = st.columns(
+            [4, 1]
+        )
+
+        with header_left:
+            st.markdown(
+                f"""
+                <div class="quiz-progress-wrap">
+                    <div class="quiz-progress-label">
+                        {current + 1} / {total}
+                    </div>
+                    <div class="quiz-progress-track">
+                        <div
+                            class="quiz-progress-fill"
+                            style="width: {progress_percent}%;">
+                        </div>
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+        with header_right:
+            if st.button(
+                "結束測驗",
+                key=f"top_finish_{current}",
+                use_container_width=True,
+            ):
+                finish_quiz_dialog()
+
+        jump_col, spacer_col = st.columns(
+            [2, 3]
+        )
+
+        with jump_col:
+            jump_key = "national_exam_jump"
+
+            # 當使用者用上一題 / 下一題移動後，
+            # 同步 selector 顯示目前題號。
+            if (
+                jump_key not in st.session_state
+                or st.session_state.get(
+                    "_national_exam_jump_sync"
+                )
+                != current + 1
+            ):
+                st.session_state[
+                    jump_key
+                ] = current + 1
+
+                st.session_state[
+                    "_national_exam_jump_sync"
+                ] = current + 1
+
+            st.selectbox(
+                "跳至題目",
+                options=list(
+                    range(1, total + 1)
+                ),
+                key=jump_key,
+                on_change=(
+                    jump_to_national_exam_question
+                ),
+            )
+
+            # callback 執行後，讓下一次 rerun 知道目前 selector 已同步。
+            st.session_state[
+                "_national_exam_jump_sync"
+            ] = (
+                st.session_state.question_index
+                + 1
+            )
+
+    else:
+        st.markdown(
+            f"""
+            <div class="quiz-progress-wrap">
+                <div class="quiz-progress-label">
+                    {current + 1} / {total}
+                </div>
+                <div class="quiz-progress-track">
+                    <div
+                        class="quiz-progress-fill"
+                        style="width: {progress_percent}%;">
+                    </div>
                 </div>
             </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+            """,
+            unsafe_allow_html=True,
+        )
 
     st.subheader(
         question[
