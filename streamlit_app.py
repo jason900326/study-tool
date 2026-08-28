@@ -1534,7 +1534,7 @@ def show_sidebar():
             with st.expander("查看錯誤"):
                 st.code(error)
 
-        st.caption("Prototype v0.22")
+        st.caption("Prototype v0.23")
 
 
 # =========================================================
@@ -1734,6 +1734,11 @@ def save_mistakes_to_database():
             .get(i, False)
         )
 
+        # 完全未作答、也沒有標記「我不確定」：
+        # 不視為錯題，不寫入錯題庫。
+        if user_answer is None and not uncertain:
+            continue
+
         correct_answer = (
             question["options"][
                 question["answer"]
@@ -1751,6 +1756,11 @@ def save_mistakes_to_database():
 
         if not needs_review:
             continue
+
+        source_type = question.get(
+            "quiz_source_type",
+            "ai_document",
+        )
 
         row = {
             "subject": question["subject"],
@@ -1781,6 +1791,37 @@ def save_mistakes_to_database():
             "source_quote": question.get(
                 "source_quote",
                 ""
+            ),
+
+            # 來源分類與國考 metadata
+            "source_type": source_type,
+            "exam_year": (
+                st.session_state
+                .national_exam_meta
+                .get("exam_year")
+                if source_type == "national_exam"
+                and st.session_state.national_exam_meta
+                else None
+            ),
+            "exam_round": (
+                st.session_state
+                .national_exam_meta
+                .get("exam_round")
+                if source_type == "national_exam"
+                and st.session_state.national_exam_meta
+                else None
+            ),
+            "official_question_number": (
+                question.get(
+                    "official_question_number"
+                )
+                if source_type == "national_exam"
+                else None
+            ),
+            "source_url": (
+                question.get("source_url")
+                if source_type == "national_exam"
+                else None
             ),
         }
 
@@ -2776,6 +2817,34 @@ def show_quiz():
             unsafe_allow_html=True,
         )
 
+    if is_national_exam:
+        official_number = question.get(
+            "official_question_number"
+        )
+
+        source_url = question.get(
+            "source_url"
+        )
+
+        if official_number is not None:
+            st.caption(
+                f"官方題號：第 {official_number} 題"
+            )
+
+        if source_url:
+            st.link_button(
+                (
+                    f"查看官方考卷"
+                    + (
+                        f"（第 {official_number} 題）"
+                        if official_number is not None
+                        else ""
+                    )
+                ),
+                source_url,
+                use_container_width=False,
+            )
+
     st.subheader(
         question[
             "question"
@@ -3160,6 +3229,7 @@ def show_result():
     # =====================================================
 
     correct_count = 0
+    attempted_count = 0
 
     for i, question in enumerate(
         questions
@@ -3169,6 +3239,17 @@ def show_result():
             .answers
             .get(i)
         )
+
+        uncertain = (
+            st.session_state
+            .uncertain_answers
+            .get(i, False)
+        )
+
+        # 有選答案才算已作答。
+        # 只有勾「我不確定」但沒選答案，不計入分母。
+        if user_answer is not None:
+            attempted_count += 1
 
         correct_answer = (
             question["options"][
@@ -3184,17 +3265,47 @@ def show_result():
 
     total = len(questions)
 
-    percentage = round(
-        correct_count
-        / total
-        * 100
-    )
+    if (
+        st.session_state.quiz_mode
+        == "national_exam"
+    ):
+        percentage = (
+            round(
+                correct_count
+                / attempted_count
+                * 100
+            )
+            if attempted_count > 0
+            else 0
+        )
 
-    st.subheader(
-        f"{correct_count} / "
-        f"{total}"
-        f"（{percentage}%）"
-    )
+        unanswered_count = (
+            total - attempted_count
+        )
+
+        st.subheader(
+            f"答對 {correct_count} / "
+            f"{attempted_count}"
+            f"（{percentage}%）"
+        )
+
+        st.caption(
+            f"已作答 {attempted_count} / {total} 題 · "
+            f"未作答 {unanswered_count} 題"
+        )
+
+    else:
+        percentage = round(
+            correct_count
+            / total
+            * 100
+        )
+
+        st.subheader(
+            f"{correct_count} / "
+            f"{total}"
+            f"（{percentage}%）"
+        )
 
     # =====================================================
     # 只整理需要檢討的題目
@@ -3223,6 +3334,10 @@ def show_result():
                 question["answer"]
             ]
         )
+
+        # 完全未作答且沒有標記不確定，不列入檢討。
+        if user_answer is None and not uncertain:
+            continue
 
         is_correct = (
             user_answer
@@ -3576,72 +3691,238 @@ def show_generated_exams():
 # Mistake Bank
 # =========================================================
 
-def show_mistake_bank():
-    title_col, clear_col = st.columns(
-        [4, 1]
+def render_mistake_item(
+    item,
+    is_national_exam=False,
+):
+    if is_national_exam:
+        number = item.get(
+            "official_question_number"
+        )
+
+        if number is not None:
+            st.markdown(
+                f"### 第 {number} 題｜"
+                f"{item['question']}"
+            )
+        else:
+            st.markdown(
+                f"### {item['question']}"
+            )
+
+    else:
+        st.markdown(
+            f"### {item['question']}"
+        )
+
+    if item.get(
+        "uncertain",
+        False,
+    ):
+        st.write("❓")
+
+    render_answer_options(
+        item["options"],
+        item["correct_answer"],
+        item["user_answer"],
     )
 
-    with title_col:
-        st.title("📘 錯題庫")
+    st.divider()
 
-    with clear_col:
-        st.write("")
-        if st.button(
-            "清除錯題庫",
-            use_container_width=True,
+    if is_national_exam:
+        st.markdown("### 📖 國考來源")
+
+        source_parts = []
+
+        if item.get("exam_year"):
+            source_parts.append(
+                str(item["exam_year"])
+            )
+
+        if item.get("exam_round"):
+            source_parts.append(
+                item["exam_round"]
+            )
+
+        if item.get("subject"):
+            source_parts.append(
+                item["subject"]
+            )
+
+        if item.get(
+            "official_question_number"
+        ) is not None:
+            source_parts.append(
+                f"第 "
+                f"{item['official_question_number']} 題"
+            )
+
+        if source_parts:
+            st.caption(
+                " · ".join(source_parts)
+            )
+        else:
+            st.caption(
+                item.get(
+                    "source",
+                    "考選部歷屆國考"
+                )
+            )
+
+        source_url = item.get(
+            "source_url"
+        )
+
+        if source_url:
+            st.link_button(
+                "查看官方考卷",
+                source_url,
+                use_container_width=True,
+            )
+
+        if item.get("created_at"):
+            st.caption(
+                f"紀錄時間："
+                f"{item['created_at']}"
+            )
+
+    else:
+        # =====================================
+        # 教材錯題完整檢討內容
+        # =====================================
+
+        st.markdown("### 核心觀念")
+        st.write(
+            item.get(
+                "concept",
+                "未分類概念"
+            )
+        )
+
+        explanation = item.get(
+            "explanation"
+        )
+
+        if explanation:
+            st.markdown("### 為什麼？")
+            st.write(
+                explanation
+            )
+
+        review_points = item.get(
+            "review_points"
+        )
+
+        if review_points:
+            st.markdown("### 複習重點")
+
+            for point in review_points:
+                st.markdown(
+                    f"- {point}"
+                )
+
+        source_quote = item.get(
+            "source_quote"
+        )
+
+        st.markdown("### 📖 教材根據")
+
+        st.caption(
+            f"教材來源："
+            f"{item['source']}"
+        )
+
+        if source_quote:
+            st.info(
+                source_quote
+            )
+
+        if item.get(
+            "created_at"
         ):
-            clear_mistakes_dialog()
+            st.caption(
+                f"紀錄時間："
+                f"{item['created_at']}"
+            )
 
-    try:
-        mistake_bank = (
-            load_mistakes_from_database()
+    # =====================================
+    # 錯題原因
+    # =====================================
+
+    st.markdown(
+        "**錯誤原因**"
+    )
+
+    label_options = [
+        "粗心大意",
+        "觀念不熟",
+        "完全沒看過",
+    ]
+
+    saved_label = item.get(
+        "label"
+    )
+
+    if (
+        saved_label
+        in label_options
+    ):
+        label_index = (
+            label_options.index(
+                saved_label
+            )
         )
+    else:
+        label_index = None
 
-    except Exception as error:
-        st.error("無法讀取錯題庫")
-        st.code(str(error))
-        return
+    record_id = item["id"]
 
-    if not mistake_bank:
-        st.info(
-            "目前還沒有錯題紀錄。"
-        )
-        return
+    st.radio(
+        "錯誤原因",
+        label_options,
+        index=label_index,
+        horizontal=True,
+        key=(
+            f"bank_label_"
+            f"{record_id}"
+        ),
+        on_change=save_bank_error_label,
+        args=(record_id,),
+        label_visibility="collapsed",
+    )
 
-    # -----------------------------------------------------
-    # 統計
-    #
-    # 每一筆錯題只能有一個 label。
-    # 修改 label 時是 UPDATE 同一筆資料，
-    # 所以不會重複計算。
-    # -----------------------------------------------------
+    st.divider()
 
-    total = len(mistake_bank)
+
+def show_mistake_stats(
+    rows,
+):
+    total = len(rows)
 
     careless = sum(
         1
-        for item in mistake_bank
+        for item in rows
         if item.get("label")
         == "粗心大意"
     )
 
     unfamiliar = sum(
         1
-        for item in mistake_bank
+        for item in rows
         if item.get("label")
         == "觀念不熟"
     )
 
     unseen = sum(
         1
-        for item in mistake_bank
+        for item in rows
         if item.get("label")
         == "完全沒看過"
     )
 
     unclassified = sum(
         1
-        for item in mistake_bank
+        for item in rows
         if not item.get("label")
     )
 
@@ -3674,20 +3955,34 @@ def show_mistake_bank():
         unclassified,
     )
 
+
+def show_document_mistakes(
+    rows,
+):
+    if not rows:
+        st.info(
+            "目前沒有教材錯題。"
+        )
+        return
+
+    show_mistake_stats(
+        rows
+    )
+
     st.divider()
 
     subjects = {}
 
-    for item in mistake_bank:
+    for item in rows:
         subject = item.get(
             "subject",
             "未分類",
         )
 
-        if subject not in subjects:
-            subjects[subject] = []
-
-        subjects[subject].append(
+        subjects.setdefault(
+            subject,
+            []
+        ).append(
             item
         )
 
@@ -3708,10 +4003,10 @@ def show_mistake_bank():
                 "未分類概念",
             )
 
-            if concept not in concepts:
-                concepts[concept] = []
-
-            concepts[concept].append(
+            concepts.setdefault(
+                concept,
+                []
+            ).append(
                 item
             )
 
@@ -3725,139 +4020,183 @@ def show_mistake_bank():
                 expanded=False,
             ):
                 for item in concept_items:
+                    render_mistake_item(
+                        item,
+                        is_national_exam=False,
+                    )
+
+
+def show_national_exam_mistakes(
+    rows,
+):
+    if not rows:
+        st.info(
+            "目前沒有國考錯題。"
+        )
+        return
+
+    show_mistake_stats(
+        rows
+    )
+
+    st.divider()
+
+    # 年份 → 考次 → 科目
+    grouped = {}
+
+    for item in rows:
+        year = item.get(
+            "exam_year"
+        ) or "年份未記錄"
+
+        exam_round = item.get(
+            "exam_round"
+        ) or "考次未記錄"
+
+        subject = item.get(
+            "subject"
+        ) or "未分類科目"
+
+        grouped.setdefault(
+            year,
+            {}
+        ).setdefault(
+            exam_round,
+            {}
+        ).setdefault(
+            subject,
+            []
+        ).append(
+            item
+        )
+
+    # 新年份優先
+    def year_sort_key(
+        value,
+    ):
+        try:
+            return int(value)
+        except Exception:
+            return 0
+
+    for year in sorted(
+        grouped.keys(),
+        key=year_sort_key,
+        reverse=True,
+    ):
+        st.subheader(
+            str(year)
+        )
+
+        for exam_round in [
+            "第一次",
+            "第二次",
+            "考次未記錄",
+        ]:
+            if exam_round not in grouped[
+                year
+            ]:
+                continue
+
+            round_items = grouped[
+                year
+            ][
+                exam_round
+            ]
+
+            with st.expander(
+                exam_round,
+                expanded=False,
+            ):
+                for (
+                    subject,
+                    subject_items,
+                ) in round_items.items():
                     st.markdown(
-                        f"### "
-                        f"{item['question']}"
+                        f"#### {subject} · "
+                        f"{len(subject_items)} 題"
                     )
 
-                    if item.get(
-                        "uncertain",
-                        False,
-                    ):
-                        st.write("❓")
-
-                    render_answer_options(
-                        item["options"],
-                        item["correct_answer"],
-                        item["user_answer"],
-                    )
-
-                    if (
-                        item["user_answer"]
-                        is None
-                    ):
-                        st.caption(
-                            "本題沒有選擇答案。"
-                        )
-
-                    st.divider()
-
-                    # =====================================
-                    # 完整檢討內容
-                    # =====================================
-
-                    st.markdown("### 核心觀念")
-                    st.write(
-                        item.get(
-                            "concept",
-                            "未分類概念"
-                        )
-                    )
-
-                    explanation = item.get(
-                        "explanation"
-                    )
-
-                    if explanation:
-                        st.markdown("### 為什麼？")
-                        st.write(
-                            explanation
-                        )
-
-                    review_points = item.get(
-                        "review_points"
-                    )
-
-                    if review_points:
-                        st.markdown("### 複習重點")
-
-                        for point in review_points:
-                            st.markdown(
-                                f"- {point}"
+                    subject_items = sorted(
+                        subject_items,
+                        key=lambda item: (
+                            item.get(
+                                "official_question_number"
                             )
-
-                    source_quote = item.get(
-                        "source_quote"
-                    )
-
-                    st.markdown("### 📖 教材根據")
-
-                    st.caption(
-                        f"教材來源："
-                        f"{item['source']}"
-                    )
-
-                    if source_quote:
-                        st.info(
-                            source_quote
-                        )
-
-                    if item.get(
-                        "created_at"
-                    ):
-                        st.caption(
-                            f"紀錄時間："
-                            f"{item['created_at']}"
-                        )
-
-                    # =====================================
-                    # 錯題庫也可修改原因
-                    # =====================================
-
-                    st.markdown(
-                        "**錯誤原因**"
-                    )
-
-                    label_options = [
-                        "粗心大意",
-                        "觀念不熟",
-                        "完全沒看過",
-                    ]
-
-                    saved_label = item.get(
-                        "label"
-                    )
-
-                    if (
-                        saved_label
-                        in label_options
-                    ):
-                        label_index = (
-                            label_options.index(
-                                saved_label
-                            )
-                        )
-
-                    else:
-                        label_index = None
-
-                    record_id = item["id"]
-
-                    st.radio(
-                        "錯誤原因",
-                        label_options,
-                        index=label_index,
-                        horizontal=True,
-                        key=(
-                            f"bank_label_"
-                            f"{record_id}"
+                            or 9999
                         ),
-                        on_change=save_bank_error_label,
-                        args=(record_id,),
-                        label_visibility="collapsed",
                     )
 
-                    st.divider()
+                    for item in subject_items:
+                        render_mistake_item(
+                            item,
+                            is_national_exam=True,
+                        )
+
+
+def show_mistake_bank():
+    title_col, clear_col = st.columns(
+        [4, 1]
+    )
+
+    with title_col:
+        st.title("📘 錯題庫")
+
+    with clear_col:
+        st.write("")
+        if st.button(
+            "清除錯題庫",
+            use_container_width=True,
+        ):
+            clear_mistakes_dialog()
+
+    try:
+        mistake_bank = (
+            load_mistakes_from_database()
+        )
+
+    except Exception as error:
+        st.error("無法讀取錯題庫")
+        st.code(str(error))
+        return
+
+    if not mistake_bank:
+        st.info(
+            "目前還沒有錯題紀錄。"
+        )
+        return
+
+    # 舊資料沒有 source_type 時視為教材錯題。
+    document_mistakes = [
+        item
+        for item in mistake_bank
+        if item.get(
+            "source_type"
+        ) != "national_exam"
+    ]
+
+    national_exam_mistakes = [
+        item
+        for item in mistake_bank
+        if item.get(
+            "source_type"
+        ) == "national_exam"
+    ]
+
+    tab1, tab2 = st.tabs([
+        f"教材錯題 · {len(document_mistakes)}",
+        f"國考錯題 · {len(national_exam_mistakes)}",
+    ])
+
+    with tab1:
+        show_document_mistakes(
+            document_mistakes
+        )
+
+    with tab2:
+        show_national_exam_mistakes(
+            national_exam_mistakes
+        )
 
 
 # =========================================================
