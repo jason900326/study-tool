@@ -38,15 +38,24 @@ def get_supabase():
 
 
 def test_database_connection():
+    """確認 Study Tool 目前需要的三張表都至少可讀取。"""
+
     try:
         supabase = get_supabase()
-        (
-            supabase
-            .table("mistakes")
-            .select("id")
-            .limit(1)
-            .execute()
-        )
+
+        for table_name in [
+            "mistakes",
+            "documents",
+            "generated_exams",
+        ]:
+            (
+                supabase
+                .table(table_name)
+                .select("id")
+                .limit(1)
+                .execute()
+            )
+
         return True, None
 
     except Exception as error:
@@ -98,6 +107,10 @@ default_states = {
     # 已生成試卷（prototype 先存在 session）
     # 每一組保存 PDF 名稱、hash、重點與 5 題
     "generated_exam_sets": [],
+
+    # Supabase 教材 / 試卷保存狀態
+    "database_sync_success": None,
+    "database_sync_error": None,
 
     # 全站字體大小
     "font_size": 18,
@@ -1172,6 +1185,48 @@ def load_previous_questions_for_document(file_hash):
 
     return questions
 
+
+def persist_current_study_session():
+    """
+    將目前已經產生好的教材文字 + 試卷寫入 Supabase。
+    這個函式不會重新呼叫 AI，可安全重試。
+    """
+
+    filename = st.session_state.uploaded_filename
+    file_hash = st.session_state.uploaded_file_hash
+    document_text = st.session_state.document_text
+    subject = st.session_state.document_subject
+    study_points = st.session_state.study_points or []
+    questions = get_questions()
+
+    if not filename or not file_hash or not document_text:
+        raise RuntimeError("目前缺少教材資料，無法保存。")
+
+    if not questions:
+        raise RuntimeError("目前沒有可保存的試卷題目。")
+
+    document_row = save_document_to_database(
+        filename=filename,
+        file_hash=file_hash,
+        extracted_text=document_text,
+        subject=subject,
+        study_points=study_points,
+    )
+
+    exam_row = save_exam_to_database(
+        document_row=document_row,
+        filename=filename,
+        file_hash=file_hash,
+        subject=subject,
+        study_points=study_points,
+        questions=questions,
+    )
+
+    st.session_state.database_sync_success = True
+    st.session_state.database_sync_error = None
+
+    return document_row, exam_row
+
 # =========================================================
 # 已生成試卷
 # =========================================================
@@ -1397,7 +1452,7 @@ def show_sidebar():
             with st.expander("查看錯誤"):
                 st.code(error)
 
-        st.caption("Prototype v0.15")
+        st.caption("Prototype v0.16")
 
 
 # =========================================================
@@ -1854,6 +1909,8 @@ def show_home():
         st.session_state.question_generation_error = None
         st.session_state.question_generation_stats = None
         st.session_state.previous_questions = []
+        st.session_state.database_sync_success = None
+        st.session_state.database_sync_error = None
 
     # =====================================================
     # PDF parsing 在後台進行
@@ -1963,24 +2020,18 @@ def show_home():
                     final_questions
                 )
 
-                # 保存 extracted text 與這一份已生成試卷。
-                # 不保存原始 PDF。
-                document_row = save_document_to_database(
-                    filename=uploaded_file.name,
-                    file_hash=file_hash,
-                    extracted_text=document_text,
-                    subject=subject,
-                    study_points=study_points,
-                )
+                # AI 已完成。接著獨立嘗試保存到 Supabase。
+                # 即使資料庫寫入失敗，也保留已生成題目，
+                # 並讓使用者可以不重新花 AI 成本直接重試保存。
+                try:
+                    persist_current_study_session()
 
-                save_exam_to_database(
-                    document_row=document_row,
-                    filename=uploaded_file.name,
-                    file_hash=file_hash,
-                    subject=subject,
-                    study_points=study_points,
-                    questions=final_questions,
-                )
+                except Exception as database_error:
+                    st.session_state.database_sync_success = False
+                    st.session_state.database_sync_error = (
+                        f"{type(database_error).__name__}: "
+                        f"{str(database_error)}"
+                    )
 
                 # 記住這一組，之後同一 session 重新產生時避免重複
                 st.session_state.previous_questions.extend(
@@ -2036,6 +2087,37 @@ def show_home():
     # =====================================================
     # 已經處理完成
     # =====================================================
+
+    if st.session_state.database_sync_success is False:
+        st.error(
+            "題目已經生成，但教材與試卷尚未成功保存到資料庫。"
+            "因此目前不會出現在『已生成試卷』。"
+        )
+
+        if st.session_state.database_sync_error:
+            with st.expander("查看資料庫錯誤"):
+                st.code(st.session_state.database_sync_error)
+
+        if st.button(
+            "重新嘗試保存到資料庫",
+            use_container_width=True,
+        ):
+            try:
+                with st.spinner("正在重新保存教材與試卷..."):
+                    persist_current_study_session()
+
+                st.success("教材與試卷已成功保存。")
+                st.rerun()
+
+            except Exception as error:
+                st.session_state.database_sync_success = False
+                st.session_state.database_sync_error = (
+                    f"{type(error).__name__}: {str(error)}"
+                )
+                st.rerun()
+
+    elif st.session_state.database_sync_success is True:
+        st.success("這份教材與試卷已保存。")
 
     study_points = (
         st.session_state.study_points
@@ -2732,7 +2814,7 @@ def show_generated_exams():
                                 subject = document.get("subject") or exam.get("subject") or "教材"
                                 study_points = document.get("study_points") or exam.get("study_points") or []
 
-                                package = generate_questions_with_ai(
+                                raw_questions = generate_questions_with_ai(
                                     document_text=document_text,
                                     subject=subject,
                                     study_points=study_points,
@@ -2745,7 +2827,7 @@ def show_generated_exams():
                                     _,
                                     _,
                                 ) = validate_and_refill_quiz(
-                                    initial_questions=package["questions"],
+                                    initial_questions=raw_questions,
                                     document_text=document_text,
                                     subject=subject,
                                     study_points=study_points,
