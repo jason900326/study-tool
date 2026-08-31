@@ -1,0 +1,31 @@
+name: Final MedSlime mobile and transition fix
+
+on:
+  push:
+    paths:
+      - 'scripts/final_mobile_transition_fix.py'
+      - '.github/workflows/final_mobile_transition_fix.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply patch
+        run: python scripts/final_mobile_transition_fix.py
+      - name: Syntax check
+        run: python -m py_compile streamlit_app.py
+      - name: Commit updated app
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add streamlit_app.py
+          git diff --cached --quiet && exit 0
+          git commit -m "Fix mobile intro typography and exam transition"
+          git push
