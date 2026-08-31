@@ -51,6 +51,8 @@ DEFAULT_STATE = {
     "national_exam_excluded": [],
     "national_exam_total": 0,
     "national_exam_load_error": None,
+    "national_exam_pending_choice": None,
+    "national_exam_picker_version": 0,
 }
 
 for key, value in DEFAULT_STATE.items():
@@ -364,6 +366,8 @@ def start_national_exam_quiz(questions, exam_year, exam_round, subject, excluded
     }
     st.session_state.national_exam_excluded = excluded
     st.session_state.national_exam_total = total
+    st.session_state.national_exam_pending_choice = None
+    st.session_state.national_exam_picker_version += 1
     clear_national_exam_answers()
     st.session_state.medslime_page = "national_exam_quiz"
     st.session_state.menu_open = False
@@ -510,16 +514,96 @@ st.markdown(
         opacity:.85;
     }
     .mini-progress-slime.future .mini-progress-mouth { opacity:.22; }
-    .exam-group-track { display:flex; justify-content:center; align-items:center; gap:.7rem; flex-wrap:wrap; margin:.25rem 0 .45rem; }
-    .exam-group-slime { width:38px; height:30px; border-radius:50% 50% 42% 42%/62% 62% 38% 38%; background:#e3eee7; border:1px solid #d1e1d7; position:relative; opacity:.62; }
-    .exam-group-slime.done { background:linear-gradient(145deg,#84e5a3,#43c879); opacity:1; }
-    .exam-group-slime.current { background:linear-gradient(145deg,#9af0b3,#35c878); border-color:#31bd70; opacity:1; transform:scale(1.15); box-shadow:0 0 0 4px rgba(49,201,120,.12); }
-    .exam-group-slime:before,.exam-group-slime:after { content:""; position:absolute; top:40%; width:4px; height:6px; border-radius:50%; background:#173b2b; }
-    .exam-group-slime:before { left:29%; }
-    .exam-group-slime:after { right:29%; }
-    .exam-progress-label { text-align:center; color:#688476; font-size:.85rem; font-weight:800; margin:.35rem 0 .1rem; }
-    [class*="st-key-exam_year_"] button { min-height:68px !important; font-size:1.02rem !important; }
-    [class*="st-key-exam_subject_"] button { min-height:70px !important; white-space:normal !important; line-height:1.4 !important; }
+    .exam-round-chip { width:max-content; margin:1rem auto .45rem; padding:.28rem .78rem; border-radius:999px; background:#eaf9ef; border:1px solid #cde8d7; color:#278657; font-size:.84rem; font-weight:900; letter-spacing:.03em; }
+    .exam-progress-label { text-align:center; color:#688476; font-size:.85rem; font-weight:800; margin:.35rem 0 .15rem; }
+
+    /* Clickable exam progress. These are our own keyed Streamlit buttons. */
+    [class*="st-key-exam_group_nav"] [data-testid="stHorizontalBlock"],
+    [class*="st-key-exam_small_nav"] [data-testid="stHorizontalBlock"] {
+        flex-wrap:nowrap !important;
+        justify-content:center !important;
+        align-items:center !important;
+        gap:.34rem !important;
+    }
+    [class*="st-key-exam_group_nav"] [data-testid="stColumn"] {
+        flex:0 1 42px !important;
+        width:42px !important;
+        min-width:0 !important;
+    }
+    [class*="st-key-exam_small_nav"] [data-testid="stColumn"] {
+        flex:0 1 30px !important;
+        width:30px !important;
+        min-width:0 !important;
+    }
+    [class*="st-key-exam_group_"] button,
+    [class*="st-key-exam_small_"] button {
+        margin:0 auto !important;
+        padding:0 !important;
+        position:relative !important;
+        border-radius:50% 50% 42% 42% / 62% 62% 38% 38% !important;
+        color:#173b2b !important;
+        border:1px solid #d1e1d7 !important;
+        box-shadow:none !important;
+        transform:none !important;
+    }
+    [class*="st-key-exam_group_"] button {
+        width:38px !important;
+        height:30px !important;
+        min-width:38px !important;
+        min-height:30px !important;
+        background:#e3eee7 !important;
+    }
+    [class*="st-key-exam_small_"] button {
+        width:27px !important;
+        height:21px !important;
+        min-width:27px !important;
+        min-height:21px !important;
+        background:#e4eee8 !important;
+    }
+    [class*="st-key-exam_group_"] button::before,
+    [class*="st-key-exam_group_"] button::after,
+    [class*="st-key-exam_small_"] button::before,
+    [class*="st-key-exam_small_"] button::after {
+        content:"";
+        position:absolute;
+        top:38%;
+        border-radius:50%;
+        background:#173b2b;
+    }
+    [class*="st-key-exam_group_"] button::before,
+    [class*="st-key-exam_group_"] button::after { width:4px; height:6px; }
+    [class*="st-key-exam_small_"] button::before,
+    [class*="st-key-exam_small_"] button::after { width:3px; height:4px; }
+    [class*="st-key-exam_group_"] button::before,
+    [class*="st-key-exam_small_"] button::before { left:28%; }
+    [class*="st-key-exam_group_"] button::after,
+    [class*="st-key-exam_small_"] button::after { right:28%; }
+    [class*="st-key-exam_group_"] button p,
+    [class*="st-key-exam_small_"] button p {
+        position:absolute !important;
+        left:50% !important;
+        top:48% !important;
+        transform:translateX(-50%) !important;
+        margin:0 !important;
+        line-height:1 !important;
+        font-size:.7rem !important;
+        font-weight:700 !important;
+    }
+    [class*="st-key-exam_small_"] button p { font-size:.55rem !important; }
+    [class*="st-key-exam_group_done_"] button,
+    [class*="st-key-exam_small_done_"] button {
+        background:linear-gradient(145deg,#84e5a3,#43c879) !important;
+        border-color:#6fd391 !important;
+        opacity:1 !important;
+    }
+    [class*="st-key-exam_group_current_"] button,
+    [class*="st-key-exam_small_current_"] button {
+        background:linear-gradient(145deg,#9af0b3,#35c878) !important;
+        border-color:#31bd70 !important;
+        box-shadow:0 0 0 3px rgba(49,201,120,.13) !important;
+    }
+    [class*="st-key-exam_group_future_"] button,
+    [class*="st-key-exam_small_future_"] button { opacity:.55 !important; }
     .quiz-card { background:rgba(255,255,255,.96); border:1px solid #dceae2; border-radius:27px; padding:1.55rem 1.6rem; box-shadow:0 14px 34px rgba(31,83,53,.06); animation:questionIn .22s ease-out both; margin-bottom:.8rem; }
     .quiz-question { color:#173b2b; font-size:1.22rem; line-height:1.65; font-weight:850; }
 
@@ -577,6 +661,16 @@ st.markdown(
         .quiz-card { padding:1.2rem 1.1rem; }
         .quiz-question { font-size:1.08rem; }
         .slime-track { grid-template-columns:repeat(10, minmax(19px, 30px)); gap:.22rem; padding:.4rem 0 1rem; }
+        [class*="st-key-exam_group_nav"] [data-testid="stHorizontalBlock"],
+        [class*="st-key-exam_small_nav"] [data-testid="stHorizontalBlock"] { gap:.14rem !important; }
+        [class*="st-key-exam_group_nav"] [data-testid="stColumn"] { flex-basis:28px !important; width:28px !important; }
+        [class*="st-key-exam_small_nav"] [data-testid="stColumn"] { flex-basis:23px !important; width:23px !important; }
+        [class*="st-key-exam_group_"] button { width:27px !important; height:21px !important; min-width:27px !important; min-height:21px !important; }
+        [class*="st-key-exam_small_"] button { width:21px !important; height:17px !important; min-width:21px !important; min-height:17px !important; }
+        [class*="st-key-exam_group_"] button::before,[class*="st-key-exam_group_"] button::after { width:3px; height:4px; }
+        [class*="st-key-exam_small_"] button::before,[class*="st-key-exam_small_"] button::after { width:2px; height:3px; }
+        [class*="st-key-exam_group_"] button p { font-size:.52rem !important; }
+        [class*="st-key-exam_small_"] button p { font-size:.42rem !important; }
         [data-testid="stHorizontalBlock"]:has([class*="st-key-nav_toggle"]) { gap:.18rem !important; }
         [data-testid="stHorizontalBlock"]:has([class*="st-key-nav_toggle"]) > div:nth-child(1) { min-width:42px !important; width:42px !important; flex:0 0 42px !important; }
         [data-testid="stHorizontalBlock"]:has([class*="st-key-nav_toggle"]) > div:nth-child(2) { min-width:112px !important; }
@@ -699,25 +793,31 @@ def study_home():
         st.write("")
 
 
+def _queue_national_exam_choice(widget_key, exam_round):
+    subject = st.session_state.get(widget_key)
+    if subject and subject != "請選擇科目":
+        st.session_state.national_exam_pending_choice = (subject, exam_round)
+
+
 def national_exam_home():
     topbar()
-    st.markdown('<div class="study-header"><div class="eyebrow">NATIONAL EXAM</div><div class="hero-title" style="font-size:2.05rem">我要刷國考</div><div class="hero-copy">先選年份，再選科目；點下科目後直接開始第 1 題。</div></div>', unsafe_allow_html=True)
+    st.markdown('<div class="study-header"><div class="eyebrow">NATIONAL EXAM</div><div class="hero-title" style="font-size:2.05rem">我要刷國考</div><div class="hero-copy">先選年份，再選科目；選好科目後直接開始第 1 題。</div></div>', unsafe_allow_html=True)
 
     st.markdown('<div class="section-title" style="margin-top:.9rem">① 選擇年份</div>', unsafe_allow_html=True)
     years = NATIONAL_EXAM_YEARS
-    year_cols = st.columns(5)
-    selected_year = int(st.session_state.national_exam_year)
-    for i, year in enumerate(years):
-        with year_cols[i % 5]:
-            if st.button(
-                roc_year_label(year),
-                key=f"exam_year_{year}",
-                use_container_width=True,
-                type="primary" if year == selected_year else "secondary",
-            ):
-                st.session_state.national_exam_year = year
-                st.session_state.national_exam_load_error = None
-                st.rerun()
+    current_year = int(st.session_state.national_exam_year)
+    selected_year = st.selectbox(
+        "年份",
+        years,
+        index=years.index(current_year) if current_year in years else 0,
+        format_func=roc_year_label,
+        key="national_exam_year_select",
+        label_visibility="collapsed",
+    )
+    if selected_year != current_year:
+        st.session_state.national_exam_year = selected_year
+        st.session_state.national_exam_load_error = None
+        st.session_state.national_exam_pending_choice = None
 
     st.markdown(f'<div class="section-title">② 選擇科目 · {roc_year_label(selected_year)}</div>', unsafe_allow_html=True)
     try:
@@ -732,62 +832,92 @@ def national_exam_home():
         st.info("這個年份目前沒有可用的國考科目。")
         return
 
-    subject_cols = st.columns(3)
-    for i, entry in enumerate(entries):
-        subject = entry["subject"]
-        exam_round = entry["exam_round"]
-        with subject_cols[i % 3]:
-            label = f"{subject} · {exam_round}"
-            if st.button(label, key=f"exam_subject_{selected_year}_{i}", use_container_width=True):
-                with st.spinner("正在載入國考題目…"):
-                    try:
-                        usable, excluded, total = load_national_exam_paper(selected_year, exam_round, subject)
-                    except Exception as error:
-                        st.session_state.national_exam_load_error = f"{type(error).__name__}: {error}"
-                        st.rerun()
-                if not usable:
-                    st.session_state.national_exam_load_error = "這份試卷目前沒有可直接作答的題目。"
-                    st.rerun()
-                start_national_exam_quiz(usable, selected_year, exam_round, subject, excluded, total)
+    version = int(st.session_state.national_exam_picker_version)
+    for exam_round in NATIONAL_EXAM_ROUNDS:
+        subjects = [item["subject"] for item in entries if item["exam_round"] == exam_round]
+        if not subjects:
+            continue
+        st.markdown(f'<div class="exam-round-chip">{exam_round}</div>', unsafe_allow_html=True)
+        widget_key = f"national_exam_subject_select_{selected_year}_{exam_round}_{version}"
+        st.selectbox(
+            f"{exam_round}科目",
+            ["請選擇科目"] + subjects,
+            index=0,
+            key=widget_key,
+            label_visibility="collapsed",
+            on_change=_queue_national_exam_choice,
+            args=(widget_key, exam_round),
+        )
+
+    pending = st.session_state.national_exam_pending_choice
+    if pending:
+        st.session_state.national_exam_pending_choice = None
+        subject, exam_round = pending
+        with st.spinner("正在載入國考題目…"):
+            try:
+                usable, excluded, total = load_national_exam_paper(selected_year, exam_round, subject)
+            except Exception as error:
+                st.session_state.national_exam_load_error = f"{type(error).__name__}: {error}"
+                usable = []
+                excluded = []
+                total = 0
+        if usable:
+            start_national_exam_quiz(usable, selected_year, exam_round, subject, excluded, total)
+        elif not st.session_state.national_exam_load_error:
+            st.session_state.national_exam_load_error = "這份試卷目前沒有可直接作答的題目。"
 
     if st.session_state.national_exam_load_error:
         st.error(st.session_state.national_exam_load_error)
 
 
-def national_exam_progress_markup(current_index, question_count):
+def render_national_exam_progress(current_index, question_count):
     answers = st.session_state.national_exam_answers
     group_size = 10
     current_group = current_index // group_size
     group_count = (question_count + group_size - 1) // group_size
-    groups = []
-    for group in range(group_count):
-        start = group * group_size
-        end = min(start + group_size, question_count)
-        if group == current_group:
-            state = "current"
-        elif all(i in answers for i in range(start, end)):
-            state = "done"
-        else:
-            state = "future"
-        groups.append(f'<div class="exam-group-slime {state}" title="第 {start + 1}–{end} 題"></div>')
+
+    with st.container(key="exam_group_nav"):
+        group_cols = st.columns(group_count)
+        for group, col in enumerate(group_cols):
+            start = group * group_size
+            end = min(start + group_size, question_count)
+            if group == current_group:
+                state = "current"
+            elif all(i in answers for i in range(start, end)):
+                state = "done"
+            else:
+                state = "future"
+            with col:
+                if st.button(
+                    "⌣",
+                    key=f"exam_group_{state}_{group}_{current_index}",
+                    help=f"跳到第 {start + 1}–{end} 題",
+                ):
+                    st.session_state.national_exam_index = start
+                    st.rerun()
 
     start = current_group * group_size
     end = min(start + group_size, question_count)
-    minis = []
-    for i in range(start, end):
-        if i == current_index:
-            state = "current"
-        elif i in answers:
-            state = "done"
-        else:
-            state = "future"
-        minis.append(f'<div class="mini-progress-slime {state}" title="第 {i + 1} 題"><span class="mini-progress-mouth"></span></div>')
+    st.markdown(f'<div class="exam-progress-label">目前區段：第 {start + 1}–{end} 題</div>', unsafe_allow_html=True)
 
-    return (
-        '<div class="exam-group-track">' + ''.join(groups) + '</div>'
-        + f'<div class="exam-progress-label">目前區段：第 {start + 1}–{end} 題</div>'
-        + '<div class="slime-track">' + ''.join(minis) + '</div>'
-    )
+    with st.container(key="exam_small_nav"):
+        small_cols = st.columns(end - start)
+        for offset, col in enumerate(small_cols):
+            question_index = start + offset
+            if question_index == current_index:
+                state = "current"
+            elif question_index in answers:
+                state = "done"
+            else:
+                state = "future"
+            with col:
+                if st.button(
+                    "⌣",
+                    key=f"exam_small_{state}_{question_index}_{current_index}",
+                    help=f"跳到第 {question_index + 1} 題",
+                ):
+                    st.session_state.national_exam_index = question_index
+                    st.rerun()
 
 
 def save_current_national_exam_state(index, options):
@@ -836,7 +966,7 @@ def national_exam_quiz_page():
     official_number = question.get("official_question_number")
 
     st.markdown(f'<div class="quiz-topline"><span class="quiz-count">第 {index + 1} / {len(questions)} 題</span></div>', unsafe_allow_html=True)
-    st.markdown(national_exam_progress_markup(index, len(questions)), unsafe_allow_html=True)
+    render_national_exam_progress(index, len(questions))
     official = f'<div class="eyebrow">官方第 {official_number} 題</div>' if official_number is not None else ''
     st.markdown(f'<div class="quiz-card">{official}<div class="quiz-question" style="margin-top:.25rem">{html.escape(str(question["question"]))}</div></div>', unsafe_allow_html=True)
 
