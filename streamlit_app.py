@@ -981,6 +981,10 @@ st.markdown(
     .focus-path-fill { position:absolute; left:4%; bottom:25px; height:5px; max-width:91%; border-radius:999px; background:linear-gradient(90deg,#60d790,#31c978); z-index:1; transition:width .8s linear; }
     .focus-finish { position:absolute; right:3.5%; bottom:33px; font-size:1.45rem; z-index:2; }
     .focus-runner { position:absolute; bottom:34px; width:70px; height:55px; border-radius:50% 50% 40% 40%/62% 62% 38% 38%; transform:translateX(-50%); box-shadow:inset -7px -9px 0 rgba(20,70,45,.08),0 8px 15px rgba(35,118,69,.13); z-index:4; transition:left .85s linear; animation:focusHop .65s ease-in-out infinite; }
+    .focus-runner.has-art { width:88px; height:72px; bottom:28px; border-radius:0; box-shadow:none; background:transparent !important; overflow:visible; }
+    .focus-runner.has-art::before,.focus-runner.has-art::after { display:none; }
+    .focus-runner.has-art .focus-runner-mouth { display:none; }
+    .focus-runner-art { width:100%; height:100%; object-fit:contain; display:block; filter:drop-shadow(0 7px 8px rgba(35,118,69,.12)); }
     .focus-runner::before,.focus-runner::after { content:""; position:absolute; top:22px; width:6px; height:9px; border-radius:50%; background:#173b2b; }
     .focus-runner::before { left:20px; }
     .focus-runner::after { right:20px; }
@@ -1113,6 +1117,7 @@ st.markdown(
         .focus-clock { font-size:3.8rem; }
         .focus-path { height:108px; margin-left:0; margin-right:0; }
         .focus-runner { width:60px; height:47px; }
+        .focus-runner.has-art { width:76px; height:62px; bottom:27px; }
         .focus-runner::before,.focus-runner::after { top:19px; width:5px; height:8px; }
         .focus-runner::before { left:17px; }
         .focus-runner::after { right:17px; }
@@ -2007,11 +2012,22 @@ def _focus_runner_markup(progress, resting=False, runner_progress=None):
     background = selected_slime_background()
     resting_class = " resting" if resting else ""
     sleep = '<span class="focus-sleep">💤</span>' if resting else ""
+    selected_item = slime_data(st.session_state.selected_slime)
+    asset_path = Path(f"assets/slimes/{selected_item.get('theme')}.PNG")
+    if asset_path.exists():
+        art_uri = _local_asset_data_uri(asset_path)
+        safe_alt = html.escape(st.session_state.selected_slime)
+        runner_class = f"focus-runner has-art{resting_class}"
+        runner_inner = f'{sleep}<img class="focus-runner-art" src="{art_uri}" alt="{safe_alt}">'
+        runner_style = f"left:{left:.2f}%;"
+    else:
+        runner_class = f"focus-runner{resting_class}"
+        runner_inner = f'{sleep}<div class="focus-runner-mouth"></div>'
+        runner_style = f"left:{left:.2f}%;background:{background}"
     return (
         '<div class="focus-path">'
         f'<div class="focus-path-fill" style="width:{fill:.2f}%"></div>'
-        f'<div class="focus-runner{resting_class}" style="left:{left:.2f}%;background:{background}">'
-        f'{sleep}<div class="focus-runner-mouth"></div></div>'
+        f'<div class="{runner_class}" style="{runner_style}">{runner_inner}</div>'
         '<div class="focus-finish">🏁</div></div>'
     )
 
