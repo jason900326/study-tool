@@ -98,6 +98,7 @@ DEFAULT_STATE = {
     "slime_collection_filter": "全部",
     "slime_progress": {"青蘋果史萊姆": {"level": 4, "exp": 72, "fragments": 0}},
     "slime_nicknames": {"青蘋果史萊姆": "Medi"},
+    "slime_name_editing": False,
 }
 
 for key, value in DEFAULT_STATE.items():
@@ -998,13 +999,28 @@ st.markdown(
     .companion-info { flex:1; min-width:0; }
     .companion-topline { display:flex; flex-wrap:wrap; gap:.45rem; align-items:center; margin-bottom:.35rem; }
     .rarity-chip,.family-chip,.owned-chip { display:inline-flex; align-items:center; min-height:27px; padding:.2rem .55rem; border-radius:999px; font-size:.76rem; font-weight:950; }
-    .rarity-chip { background:#173b2b; color:#fff; }
-    .rarity-chip.rarity-R { background:#4d77bd; }
-    .rarity-chip.rarity-SR { background:#8b63bc; }
-    .rarity-chip.rarity-SSR { background:linear-gradient(90deg,#9d6bc3,#d88c61); }
+    .rarity-chip { background:#173b2b; color:#fff !important; }
+    .rarity-chip.rarity-N { background:#173b2b; color:#fff !important; }
+    .rarity-chip.rarity-R { background:#4d77bd; color:#fff !important; }
+    .rarity-chip.rarity-SR { background:#8b63bc; color:#fff !important; }
+    .rarity-chip.rarity-SSR { background:linear-gradient(90deg,#9d6bc3,#d88c61); color:#fff !important; }
     .family-chip { background:#fff; border:1px solid #dceae2; color:#627d6f; }
     .owned-chip { background:#e7f8ed; color:#228a51; }
     .companion-name { color:#173b2b; font-size:1.65rem; font-weight:950; letter-spacing:-.03em; margin:.2rem 0 .25rem; }
+    [class*="st-key-slime_name_button_"] button { background:transparent !important; border:none !important; box-shadow:none !important; min-height:0 !important; height:auto !important; padding:.08rem 0 .18rem !important; justify-content:flex-start !important; color:#173b2b !important; font-size:1.65rem !important; font-weight:950 !important; letter-spacing:-.03em !important; }
+    [class*="st-key-slime_name_button_"] button:hover,[class*="st-key-slime_name_button_"] button:focus,[class*="st-key-slime_name_button_"] button:active { background:transparent !important; border:none !important; box-shadow:none !important; transform:none !important; color:#1f8d56 !important; }
+    [class*="st-key-slime_name_button_"] button p { font-size:1.65rem !important; font-weight:950 !important; margin:0 !important; }
+    [class*="st-key-slime_nickname_editor_"] { max-width:420px; margin:.1rem 0 .5rem; }
+    .achievement-card { background:white; border:1px solid #dfebe4; border-radius:22px; padding:1rem; min-height:165px; margin-bottom:1rem; box-shadow:0 8px 22px rgba(31,83,53,.035); }
+    .achievement-card.locked { background:#f6f9f7; border-color:#e3ebe6; }
+    .achievement-icon { font-size:2rem; margin-bottom:.25rem; }
+    .achievement-card.locked .achievement-icon { filter:grayscale(1); opacity:.52; }
+    .achievement-title { color:#1d4533; font-weight:900; font-size:1.08rem; }
+    .achievement-card.locked .achievement-title { color:#53695d; }
+    .achievement-desc { color:#71887b; margin-top:.2rem; line-height:1.45; }
+    .achievement-card.locked .achievement-desc { color:#7c8f84; }
+    .achievement-status { margin-top:.65rem; font-weight:850; color:#258c55; }
+    .achievement-card.locked .achievement-status { color:#71857a; }
     .companion-species { color:#638071; font-size:.9rem; margin-bottom:.8rem; }
     .companion-level-row { display:flex; align-items:center; justify-content:space-between; gap:1rem; color:#285841; font-weight:900; margin:.2rem 0 .35rem; }
     .companion-xp { width:100%; height:10px; border-radius:999px; overflow:hidden; background:#dce9df; }
@@ -1019,7 +1035,7 @@ st.markdown(
     .catalog-card-head { display:flex; justify-content:space-between; gap:.4rem; align-items:center; margin-top:.35rem; }
     .catalog-card-name { color:#1c4332; font-size:1.03rem; font-weight:950; line-height:1.35; }
     .catalog-card-tagline { color:#70877a; font-size:.82rem; line-height:1.5; min-height:50px; margin:.55rem 0 .65rem; }
-    .catalog-card-meta { color:#789083; font-size:.78rem; display:flex; justify-content:space-between; gap:.5rem; border-top:1px solid #edf2ef; padding-top:.55rem; margin-top:.35rem; }
+    .catalog-card-meta { color:#789083; font-size:.78rem; display:flex; justify-content:flex-end; gap:.5rem; border-top:1px solid #edf2ef; padding-top:.55rem; margin-top:.35rem; }
     .catalog-lock-copy { color:#84968c; font-size:.8rem; font-weight:850; }
     .catalog-mystery-copy { text-align:center; color:#687b71; font-size:.83rem; line-height:1.45; min-height:50px; margin:.55rem 0 .65rem; }
     .limited-empty { border:1px dashed #cbded2; background:linear-gradient(135deg,#fbfdfc,#f2f8f5); border-radius:24px; padding:2rem 1.3rem; text-align:center; color:#627b6d; margin:.75rem 0; }
@@ -2346,8 +2362,7 @@ def slime_page():
         f'<div class="companion-art">{slime_avatar_markup(current, size="hero", selected=True)}</div>'
         '<div class="companion-info">'
         f'<div class="companion-topline"><span class="rarity-chip {rarity_class}">{current["rarity"]}</span>'
-        f'<span class="family-chip">{current["family"]}</span><span class="owned-chip">✓ 陪伴中</span></div>'
-        f'<div class="companion-name">{html.escape(nickname)}</div>'
+        f'<span class="owned-chip">✓ 陪伴中</span></div>'
         f'<div class="companion-species">{current["name"]} · {current["tagline"]}</div>'
         f'<div class="companion-level-row"><span>Lv.{progress["level"]}</span><span>{progress["exp"]} / 100 EXP</span></div>'
         f'<div class="companion-xp"><span style="width:{min(100, int(progress["exp"]))}%"></span></div>'
@@ -2357,9 +2372,23 @@ def slime_page():
         unsafe_allow_html=True,
     )
 
-    new_nickname = st.text_input("史萊姆暱稱", value=nickname, max_chars=16, key=f"nickname_{current['name']}")
-    if new_nickname != nickname:
-        st.session_state.slime_nicknames[current["name"]] = new_nickname.strip() or current["name"].replace("史萊姆", "")
+    # The nickname itself is the edit control; keep the editor hidden until requested.
+    if st.button(f"{nickname} ✏️", key=f"slime_name_button_{current['theme']}"):
+        st.session_state.slime_name_editing = not st.session_state.slime_name_editing
+        st.rerun()
+    if st.session_state.slime_name_editing:
+        with st.container(key=f"slime_nickname_editor_{current['theme']}"):
+            new_nickname = st.text_input("史萊姆暱稱", value=nickname, max_chars=16, key=f"nickname_{current['name']}")
+            save_col, cancel_col = st.columns(2)
+            with save_col:
+                if st.button("儲存名字", type="primary", use_container_width=True, key=f"save_nickname_{current['theme']}"):
+                    st.session_state.slime_nicknames[current["name"]] = new_nickname.strip() or current["name"].replace("史萊姆", "")
+                    st.session_state.slime_name_editing = False
+                    st.rerun()
+            with cancel_col:
+                if st.button("取消", use_container_width=True, key=f"cancel_nickname_{current['theme']}"):
+                    st.session_state.slime_name_editing = False
+                    st.rerun()
 
     st.markdown(
         f'<div class="catalog-summary"><div><div class="section-title" style="margin-bottom:.15rem">史萊姆圖鑑</div>'
@@ -2410,8 +2439,7 @@ def slime_page():
                         f'<div class="catalog-card-head"><div class="catalog-card-name">{shown_name}</div>'
                         f'<span class="rarity-chip rarity-{item["rarity"]}">{item["rarity"]}</span></div>'
                         f'<div class="catalog-card-tagline">{tagline}</div>'
-                        f'<div class="catalog-card-meta"><span>{item["family"] if not mystery else "神秘系列"}</span>'
-                        f'<span>{("Lv." + str(card_progress["level"]) + " · 🧩 " + str(card_progress.get("fragments", 0))) if is_owned else "🔒 尚未獲得"}</span></div>',
+                        f'<div class="catalog-card-meta"><span>{("Lv." + str(card_progress["level"]) + " · 🧩 " + str(card_progress.get("fragments", 0))) if is_owned else "🔒 尚未獲得"}</span></div>',
                         unsafe_allow_html=True,
                     )
                     if is_selected:
@@ -2434,10 +2462,17 @@ def achievements_page():
     st.caption(f"目前解鎖 {len(unlocked)} / {len(ACHIEVEMENTS)}")
     cols = st.columns(3)
     for i, (aid, icon, title, desc, reward) in enumerate(ACHIEVEMENTS):
-        style = "opacity:1" if aid in unlocked else "filter:grayscale(.8);opacity:.55"
-        status = "已解鎖" if aid in unlocked else "尚未解鎖"
+        unlocked_now = aid in unlocked
+        status = "已解鎖" if unlocked_now else "尚未解鎖"
+        card_class = "achievement-card" if unlocked_now else "achievement-card locked"
         with cols[i % 3]:
-            st.markdown(f'<div style="{style};background:white;border:1px solid #dfebe4;border-radius:22px;padding:1rem;min-height:150px"><div style="font-size:2rem">{icon}</div><div class="card-title">{title}</div><div class="muted">{desc}</div><div style="margin-top:.6rem;font-weight:850">{status} · {reward}</div></div><br>', unsafe_allow_html=True)
+            st.markdown(
+                f'<div class="{card_class}"><div class="achievement-icon">{icon}</div>'
+                f'<div class="achievement-title">{title}</div>'
+                f'<div class="achievement-desc">{desc}</div>'
+                f'<div class="achievement-status">{status} · {reward}</div></div>',
+                unsafe_allow_html=True,
+            )
 
 
 def gacha_page():
