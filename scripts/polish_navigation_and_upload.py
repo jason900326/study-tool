@@ -27,8 +27,8 @@ replace_once(
 )
 
 # 3) Shared return button helper.
-helper_anchor = '''def set_page_without_extra_rerun(page):\n    """Widget callback: Streamlit will perform the normal rerun after this returns."""\n    st.session_state.medslime_page = page\n    st.session_state.menu_open = False\n\n\ndef render_drawer():\n'''
-helper_replacement = '''def set_page_without_extra_rerun(page):\n    """Widget callback: Streamlit will perform the normal rerun after this returns."""\n    st.session_state.medslime_page = page\n    st.session_state.menu_open = False\n\n\ndef render_back_button(label, target, key):\n    st.button(\n        f"← {label}",\n        key=key,\n        on_click=set_page_without_extra_rerun,\n        args=(target,),\n    )\n\n\ndef render_drawer():\n'''
+helper_anchor = '''def set_page_without_extra_rerun(page):\n    st.session_state.medslime_page = page\n    st.session_state.menu_open = False\n\n\ndef render_drawer():\n'''
+helper_replacement = '''def set_page_without_extra_rerun(page):\n    st.session_state.medslime_page = page\n    st.session_state.menu_open = False\n\n\ndef render_back_button(label, target, key):\n    st.button(\n        f"← {label}",\n        key=key,\n        on_click=set_page_without_extra_rerun,\n        args=(target,),\n    )\n\n\ndef render_drawer():\n'''
 if 'def render_back_button(' not in text:
     replace_once(helper_anchor, helper_replacement, 'shared back button helper')
 
