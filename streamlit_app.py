@@ -1843,9 +1843,12 @@ def _format_clock(seconds):
     return f"{seconds // 60:02d}:{seconds % 60:02d}"
 
 
-def _focus_runner_markup(progress, resting=False):
+def _focus_runner_markup(progress, resting=False, runner_progress=None):
     progress = min(1.0, max(0.0, float(progress)))
-    left = 6 + progress * 87
+    if runner_progress is None:
+        runner_progress = progress
+    runner_progress = min(1.0, max(0.0, float(runner_progress)))
+    left = 6 + runner_progress * 87
     fill = progress * 87
     background = selected_slime_background()
     resting_class = " resting" if resting else ""
@@ -1866,11 +1869,11 @@ def show_focus_stop_confirmation():
         left, right = st.columns(2)
         with left:
             if st.button("繼續專注", use_container_width=True, key="focus_stop_cancel"):
-                st.rerun()
+                st.rerun(scope="app")
         with right:
             if st.button("停止", type="primary", use_container_width=True, key="focus_stop_confirm"):
                 stop_focus_timer()
-                st.rerun()
+                st.rerun(scope="app")
     _dialog()
 
 
@@ -1911,10 +1914,12 @@ def render_focus_timer_fragment():
             st.markdown(_focus_runner_markup(progress, resting=status == "paused"), unsafe_allow_html=True)
             st.markdown(f'<div class="focus-reward-note">每完整 5 分鐘 +{FOCUS_COINS_PER_BLOCK} 🪙　<span class="focus-earned">這次已獲得 {st.session_state.focus_session_coins} 🪙</span></div>', unsafe_allow_html=True)
         else:
-            progress = 1.0 if status in ("running", "paused", "break_done") else 0.0
+            # During break, the slime stays at the finish line while the green bar
+            # shrinks from right to left, revealing white space as rest time passes.
+            break_fill = min(1.0, max(0.0, remaining / total)) if status in ("running", "paused") else 0.0
             st.markdown(f'<div class="focus-phase">BREAK · 第 {st.session_state.focus_round} 輪完成</div><div class="focus-clock">{_format_clock(remaining)}</div>', unsafe_allow_html=True)
             st.markdown('<div class="focus-sub">休息是番茄鐘的一部分。史萊姆也在終點喘口氣。</div>', unsafe_allow_html=True)
-            st.markdown(_focus_runner_markup(progress, resting=True), unsafe_allow_html=True)
+            st.markdown(_focus_runner_markup(break_fill, resting=True, runner_progress=1.0), unsafe_allow_html=True)
             st.markdown(f'<div class="focus-reward-note">休息時間不累積金幣　<span class="focus-earned">這次已獲得 {st.session_state.focus_session_coins} 🪙</span></div>', unsafe_allow_html=True)
 
         if status == "break_done":
@@ -1942,7 +1947,11 @@ def render_focus_timer_fragment():
                     st.rerun()
         with middle:
             if st.button("■ 停止", use_container_width=True, key=f"focus_stop_{phase}"):
-                show_focus_stop_confirmation()
+                # A dialog opened directly from a fragment becomes nested fragment UI,
+                # which can make its own buttons unresponsive. Request an app-level
+                # rerun and let focus_timer_page open the dialog outside the fragment.
+                st.session_state.focus_stop_requested = True
+                st.rerun(scope="app")
         with right:
             if phase == "break":
                 if st.button("跳過休息 →", type="primary", use_container_width=True, key="focus_skip_break"):
@@ -1970,6 +1979,11 @@ def focus_timer_page():
                 start_focus_round(minutes, new_session=True)
                 st.rerun()
         return
+
+    # Open the confirmation dialog at app level, not from inside st.fragment.
+    # Pop first so dismissing with X will not cause it to reopen later.
+    if st.session_state.pop("focus_stop_requested", False):
+        show_focus_stop_confirmation()
 
     render_focus_timer_fragment()
 
