@@ -1077,6 +1077,9 @@ def apply_font_size():
 }}
 
 .medslime-title-accent {{
+    font-size: inherit !important;
+    line-height: inherit !important;
+    font-weight: inherit !important;
     text-decoration: underline;
     text-decoration-thickness: 0.16em;
     text-underline-offset: 0.12em;
@@ -1618,52 +1621,6 @@ def show_sidebar():
 
         st.divider()
 
-        # =================================================
-        # 字體大小
-        # =================================================
-
-        st.markdown("### 字體大小")
-
-        font_col1, font_col2, font_col3 = st.columns(
-            [1, 1.4, 1]
-        )
-
-        with font_col1:
-            st.button(
-                "A−",
-                on_click=decrease_font_size,
-                disabled=(
-                    st.session_state.font_size
-                    <= FONT_SIZE_MIN
-                ),
-                use_container_width=True,
-            )
-
-        with font_col2:
-            st.markdown(
-                f"<div style='text-align:center; padding-top:8px;'>"
-                f"{st.session_state.font_size}px"
-                f"</div>",
-                unsafe_allow_html=True,
-            )
-
-        with font_col3:
-            st.button(
-                "A+",
-                on_click=increase_font_size,
-                disabled=(
-                    st.session_state.font_size
-                    >= FONT_SIZE_MAX
-                ),
-                use_container_width=True,
-            )
-
-        st.caption(
-            f"可調範圍：{FONT_SIZE_MIN}px ～ {FONT_SIZE_MAX}px"
-        )
-
-        st.divider()
-
         connected, error = test_database_connection()
 
         if connected:
@@ -1675,7 +1632,7 @@ def show_sidebar():
             with st.expander("查看錯誤"):
                 st.code(error)
 
-        st.caption("MedSlime · Prototype v0.25.2")
+        st.caption("MedSlime · Prototype v0.25.3")
 
 
 # =========================================================
