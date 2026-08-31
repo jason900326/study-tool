@@ -618,11 +618,9 @@ st.markdown(
     .muted { color:#71887b; font-size:.92rem; }
     .card-title { color:#1d4533; font-weight:900; font-size:1.08rem; }
 
-    [data-testid="stHorizontalBlock"]:has([class*="st-key-nav_toggle"]) { flex-wrap:nowrap !important; align-items:center !important; gap:.35rem !important; }
-    [data-testid="stHorizontalBlock"]:has([class*="st-key-nav_toggle"]) > div:nth-child(1) { min-width:46px !important; width:46px !important; flex:0 0 46px !important; }
-    [data-testid="stHorizontalBlock"]:has([class*="st-key-nav_toggle"]) > div:nth-child(2) { min-width:145px !important; flex:1 1 auto !important; }
-    [data-testid="stHorizontalBlock"]:has([class*="st-key-nav_toggle"]) > div:nth-child(3) { min-width:0 !important; flex:0 1 auto !important; margin-left:auto !important; }
-    [class*="st-key-nav_toggle"] button { width:42px !important; height:42px !important; min-width:42px !important; min-height:42px !important; padding:0 !important; border:none !important; border-radius:12px !important; background:#17372a !important; color:white !important; box-shadow:0 5px 14px rgba(23,55,42,.15) !important; font-size:1.2rem !important; }
+    [class*="st-key-topbar_shell"] [data-testid="stHorizontalBlock"] { flex-wrap:nowrap !important; align-items:center !important; gap:.35rem !important; }
+    [class*="st-key-topbar_shell"] [data-testid="stHorizontalBlock"] > div:nth-child(1) { min-width:145px !important; flex:1 1 auto !important; }
+    [class*="st-key-topbar_shell"] [data-testid="stHorizontalBlock"] > div:nth-child(2) { min-width:0 !important; flex:0 1 auto !important; margin-left:auto !important; }
     [class*="st-key-brand_home_"] button { background:transparent !important; border:none !important; box-shadow:none !important; padding:0 !important; min-height:48px !important; justify-content:flex-start !important; color:#17372a !important; font-size:1.55rem !important; font-weight:950 !important; letter-spacing:-.035em !important; }
     [class*="st-key-brand_home_"] button:hover,
     [class*="st-key-brand_home_"] button:active,
@@ -1001,10 +999,9 @@ st.markdown(
         [class*="st-key-material_small_"] button { width:23px !important; height:18px !important; min-width:23px !important; min-height:18px !important; }
         [class*="st-key-material_small_"] button::before,[class*="st-key-material_small_"] button::after { width:2px; height:3px; }
         [class*="st-key-material_small_"] button p { font-size:.42rem !important; }
-        [data-testid="stHorizontalBlock"]:has([class*="st-key-nav_toggle"]) { gap:.18rem !important; }
-        [data-testid="stHorizontalBlock"]:has([class*="st-key-nav_toggle"]) > div:nth-child(1) { min-width:42px !important; width:42px !important; flex:0 0 42px !important; }
-        [data-testid="stHorizontalBlock"]:has([class*="st-key-nav_toggle"]) > div:nth-child(2) { min-width:112px !important; }
-        [class*="st-key-nav_toggle"] button { width:38px !important; height:38px !important; min-width:38px !important; min-height:38px !important; font-size:1.05rem !important; }
+        [class*="st-key-topbar_shell"] [data-testid="stHorizontalBlock"] { gap:.18rem !important; }
+        [class*="st-key-topbar_shell"] [data-testid="stHorizontalBlock"] > div:nth-child(1) { min-width:118px !important; }
+        [class*="st-key-topbar_shell"] [data-testid="stHorizontalBlock"] > div:nth-child(2) { min-width:0 !important; }
         [class*="st-key-brand_home_"] button,[class*="st-key-brand_home_"] button p { min-height:42px !important; line-height:42px !important; font-size:1.25rem !important; }
         .currency { min-height:42px; gap:.15rem; }
         .pill { min-height:31px; padding:.23rem .32rem; font-size:.67rem; box-shadow:none; }
@@ -1039,46 +1036,17 @@ def render_back_button(label, target, key):
     )
 
 
-def render_drawer():
-    if not st.session_state.menu_open:
-        return
-    active = st.session_state.medslime_page
-    if active.startswith("study_material") or active.startswith("quiz") or active.startswith("national_exam") or active.startswith("mistake"):
-        active = "study"
-    items = [
-        ("home", "🏠  首頁"),
-        ("study", "📖  學習"),
-        ("slime", "🐾  史萊姆"),
-        ("gacha", "🎰  抽卡"),
-        ("achievements", "🏆  成就"),
-    ]
-    with st.container(key="nav_drawer"):
-        close_col, _ = st.columns([1, 5])
-        with close_col:
-            if st.button("✕", key="drawer_close"):
-                st.session_state.menu_open = False
-                st.rerun()
-        st.markdown('<div class="drawer-title">MedSlime<span style="color:#31b96c">.</span></div>', unsafe_allow_html=True)
-        st.markdown('<div class="drawer-note">選擇你要前往的地方</div>', unsafe_allow_html=True)
-        for page, label in items:
-            if st.button(label, key=f"drawer_{page}", use_container_width=True, type="primary" if page == active else "secondary"):
-                goto(page)
-
-
 def topbar():
-    menu_col, brand_col, currency_col = st.columns([0.12, 1, 2.1], vertical_alignment="center")
-    with menu_col:
-        if st.button("☰", key="nav_toggle", help="開啟選單"):
-            st.session_state.menu_open = True
-            st.rerun()
-    with brand_col:
-        if st.button("MedSlime.", key=f"brand_home_{st.session_state.medslime_page}", help="返回首頁"):
-            goto("home")
-    with currency_col:
-        st.markdown(
-            f'<div class="currency"><span class="pill">🔥 {st.session_state.streak} 天</span><span class="pill">🪙 {st.session_state.coins}</span><span class="pill">🎫 {st.session_state.tickets}</span></div>',
-            unsafe_allow_html=True,
-        )
+    with st.container(key="topbar_shell"):
+        brand_col, currency_col = st.columns([1, 2.1], vertical_alignment="center")
+        with brand_col:
+            if st.button("MedSlime.", key=f"brand_home_{st.session_state.medslime_page}", help="返回首頁"):
+                goto("home")
+        with currency_col:
+            st.markdown(
+                f'<div class="currency"><span class="pill">🔥 {st.session_state.streak} 天</span><span class="pill">🪙 {st.session_state.coins}</span><span class="pill">🎫 {st.session_state.tickets}</span></div>',
+                unsafe_allow_html=True,
+            )
 
 
 def slime_markup():
@@ -1103,6 +1071,8 @@ def home():
         st.markdown('<div class="home-copy-card"><div class="eyebrow">TODAY’S STUDY</div><div class="hero-title">把今天的知識<br>餵給你的史萊姆。</div><div class="hero-copy">做題、訂正與專注學習都會讓史萊姆成長。先完成一小段，再去看看今天能不能拿到新的抽卡券。</div></div>', unsafe_allow_html=True)
         if st.button("🧠 開始學習", type="primary", use_container_width=True, key="home_start_study"):
             goto("study")
+        if st.button("🐾 我的史萊姆", use_container_width=True, key="home_my_slime"):
+            goto("slime")
     with right:
         st.markdown('<div class="home-slime-card">' + slime_markup() + f'<div class="home-slime-label">{st.session_state.slime_name} · Lv.{st.session_state.player_level}</div><div class="home-xp"><div class="home-xp-fill" style="width:{st.session_state.player_exp}%"></div></div><div class="muted">{st.session_state.player_exp} / 100 EXP · {st.session_state.selected_slime}</div></div>', unsafe_allow_html=True)
     st.markdown('<div class="section-title">今日任務</div>', unsafe_allow_html=True)
@@ -1937,6 +1907,13 @@ def slime_page():
     topbar()
     render_back_button("返回首頁", "home", "back_slime")
     st.markdown("## 🐾 我的史萊姆")
+    gacha_col, achievement_col = st.columns(2)
+    with gacha_col:
+        if st.button("🎰 抽卡", use_container_width=True, key="slime_to_gacha"):
+            goto("gacha")
+    with achievement_col:
+        if st.button("🏆 成就", use_container_width=True, key="slime_to_achievements"):
+            goto("achievements")
     left, right = st.columns([1, 1.35], gap="large")
     with left:
         st.markdown('<div style="text-align:center;padding:1.2rem;background:white;border:1px solid #dfebe4;border-radius:24px">' + slime_markup() + '</div>', unsafe_allow_html=True)
@@ -1951,7 +1928,7 @@ def slime_page():
 
 def achievements_page():
     topbar()
-    render_back_button("返回首頁", "home", "back_achievements")
+    render_back_button("返回我的史萊姆", "slime", "back_achievements")
     st.markdown("## 🏆 成就")
     unlocked = set(st.session_state.unlocked_achievements)
     st.caption(f"目前解鎖 {len(unlocked)} / {len(ACHIEVEMENTS)}")
@@ -1965,7 +1942,7 @@ def achievements_page():
 
 def gacha_page():
     topbar()
-    render_back_button("返回首頁", "home", "back_gacha")
+    render_back_button("返回我的史萊姆", "slime", "back_gacha")
     st.markdown("## 🎰 史萊姆召喚")
     st.caption("1 張抽卡券 = 1 次召喚 · N 70% · R 25% · SSR 5%")
     if st.button("🎫 召喚一次", type="primary", use_container_width=True, disabled=st.session_state.tickets <= 0):
@@ -1983,8 +1960,6 @@ def gacha_page():
         msg = "重複獲得，已轉換成金幣" if result["duplicate"] else "NEW！已加入收藏"
         st.markdown(f'<div class="gacha-result"><div class="muted">{msg}</div><div style="font-size:5rem">{result["emoji"]}</div><div class="rarity-{result["rarity"]}">{result["rarity"]}</div><div class="card-title">{result["name"]}</div></div>', unsafe_allow_html=True)
 
-
-render_drawer()
 
 page = st.session_state.medslime_page
 if page == "home":
