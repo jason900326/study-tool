@@ -12,8 +12,8 @@ DEFAULT_STATE = {
     "medslime_page": "home",
     "player_level": 4,
     "player_exp": 72,
-    "coins": 420,
-    "tickets": 2,
+    "coins": 520,
+    "tickets": 0,
     "streak": 3,
     "slime_name": "Medi",
     "selected_slime": "青蘋果史萊姆",
@@ -56,7 +56,7 @@ st.markdown(
             #f8fcf9;
     }
     [data-testid="stHeader"] { background:transparent; }
-    .block-container { max-width:1180px; padding-top:1rem; padding-bottom:4.5rem; }
+    .block-container { max-width:1180px; padding-top:1rem; padding-bottom:5.5rem; }
     h1,h2,h3,p,div,button,label { font-family:"Noto Sans TC","Microsoft JhengHei",sans-serif; }
 
     .currency { display:flex; gap:.55rem; justify-content:flex-end; align-items:center; flex-wrap:wrap; }
@@ -68,41 +68,25 @@ st.markdown(
     .muted { color:#71887b; font-size:.92rem; }
     .card-title { color:#1d4533; font-weight:900; font-size:1.08rem; }
 
-    /* Clickable brand that still looks exactly like a logo */
     [class*="st-key-brand_home_"] button {
-        background:transparent !important;
-        border:none !important;
-        box-shadow:none !important;
-        padding:0 !important;
-        min-height:auto !important;
-        color:#17372a !important;
-        font-size:1.55rem !important;
-        font-weight:950 !important;
-        letter-spacing:-.035em !important;
+        background:transparent !important; border:none !important; box-shadow:none !important;
+        padding:0 !important; min-height:auto !important; color:#17372a !important;
+        font-size:1.55rem !important; font-weight:950 !important; letter-spacing:-.035em !important;
     }
-    [class*="st-key-brand_home_"] button:hover {
-        background:transparent !important;
-        border:none !important;
-        transform:none !important;
-        color:#17372a !important;
-    }
+    [class*="st-key-brand_home_"] button:hover { background:transparent !important; border:none !important; transform:none !important; }
     [class*="st-key-brand_home_"] button p { font-size:1.55rem !important; font-weight:950 !important; }
 
-    /* New home */
-    .home-hero {
-        position:relative; overflow:hidden;
+    .home-copy-card {
         background:linear-gradient(135deg,#e6f9ed 0%,#f5fcf7 57%,#e9f8fd 100%);
-        border:1px solid #d6eadd; border-radius:32px; padding:2rem 2rem 1.8rem;
-        box-shadow:0 18px 44px rgba(40,106,69,.09);
-        min-height:300px;
+        border:1px solid #d6eadd; border-radius:30px; padding:2rem;
+        box-shadow:0 18px 44px rgba(40,106,69,.09); min-height:235px;
     }
-    .home-hero:after {
-        content:""; position:absolute; width:230px; height:230px; right:-80px; bottom:-110px;
-        border-radius:50%; background:rgba(66,201,125,.08);
+    .home-slime-card {
+        background:rgba(255,255,255,.48); border:1px solid rgba(214,234,221,.8);
+        border-radius:30px; padding:1.45rem; min-height:235px;
+        display:flex; flex-direction:column; align-items:center; justify-content:center;
     }
-    .home-copy-wrap { padding:.15rem .2rem 0; }
-    .home-slime-wrap { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:250px; }
-    .home-slime-label { font-weight:950; color:#214934; margin-top:.1rem; }
+    .home-slime-label { font-weight:950; color:#214934; margin-top:.1rem; text-align:center; }
     .home-xp { width:82%; max-width:300px; height:9px; border-radius:999px; overflow:hidden; background:#dce9df; margin:.55rem auto .25rem; }
     .home-xp-fill { height:100%; background:linear-gradient(90deg,#58d28a,#42bda4); }
     .home-task { background:rgba(255,255,255,.95); border:1px solid #dfebe4; border-radius:23px; padding:1.2rem 1.25rem; box-shadow:0 10px 26px rgba(31,83,53,.05); min-height:145px; }
@@ -118,7 +102,7 @@ st.markdown(
 
     .intro-panel { max-width:840px; margin:.3rem auto 1.15rem; background:rgba(255,255,255,.76); border:1px solid #dfebe4; border-radius:30px; padding:2rem 2rem 1.75rem; box-shadow:0 16px 38px rgba(30,82,51,.055); text-align:center; }
     .intro-art { position:relative; width:230px; height:150px; margin:0 auto .65rem; }
-    .mini-slime { position:absolute; left:42px; top:35px; width:105px; height:82px; border-radius:50% 50% 40% 40%/62% 62% 38% 38%; background:linear-gradient(145deg,#9bedad,#48c878); box-shadow:inset -9px -10px 0 rgba(25,130,74,.08),0 14px 24px rgba(39,139,82,.14); }
+    .mini-slime { position:absolute; left:42px; top:35px; width:105px; height:82px; border-radius:50% 50% 40% 40%/62% 62% 38% 38%; background:linear-gradient(145deg,#9bedad,#48c878); }
     .mini-slime:before,.mini-slime:after { content:""; position:absolute; top:34px; width:8px; height:12px; background:#153c2b; border-radius:50%; }
     .mini-slime:before { left:30px; } .mini-slime:after { right:30px; }
     .mini-mouth { position:absolute; width:23px; height:9px; border-bottom:3px solid #153c2b; border-radius:0 0 50% 50%; left:41px; top:50px; }
@@ -136,7 +120,6 @@ st.markdown(
     .slime:before { left:49px; } .slime:after { right:49px; }
     .mouth { position:absolute; width:35px; height:15px; border-bottom:4px solid #153c2b; border-radius:0 0 50% 50%; left:72px; top:88px; }
     .shine { position:absolute; width:32px; height:16px; background:rgba(255,255,255,.48); border-radius:50%; left:35px; top:29px; transform:rotate(-24deg); }
-    .locked { filter:grayscale(.8); opacity:.55; }
     .gacha-result { text-align:center; background:white; border:1px solid #dcebe2; border-radius:28px; padding:2rem; }
     .rarity-N { color:#6b7d72; font-weight:900; }.rarity-R { color:#3d72c8; font-weight:900; }.rarity-SSR { color:#b58213; font-weight:950; }
 
@@ -147,11 +130,26 @@ st.markdown(
     div.stButton > button:disabled { background:#f2f6f3 !important; color:#9aac9f !important; border-color:#e2ebe5 !important; }
 
     @media (max-width:700px) {
-        .block-container { padding-left:1rem; padding-right:1rem; }
+        .block-container { padding-left:1rem; padding-right:1rem; padding-bottom:7.3rem; }
         .hero-title { font-size:1.9rem; }
-        .home-hero { padding:1.35rem; }
+        .home-copy-card, .home-slime-card { min-height:auto; }
         .choice-card { min-height:145px; padding:1.2rem; }
         .intro-panel { padding:1.45rem 1.1rem; }
+
+        [class*="st-key-bottom_nav_"] {
+            position:fixed !important;
+            left:.7rem !important; right:.7rem !important; bottom:.65rem !important;
+            z-index:9999 !important;
+            background:rgba(250,253,251,.94) !important;
+            border:1px solid #dce9e1 !important;
+            border-radius:22px !important;
+            padding:.45rem .45rem .38rem !important;
+            box-shadow:0 12px 35px rgba(25,70,45,.18) !important;
+            backdrop-filter:blur(14px);
+        }
+        [class*="st-key-bottom_nav_"] [data-testid="stHorizontalBlock"] { gap:.3rem !important; }
+        [class*="st-key-bottom_nav_"] button { min-height:48px !important; padding:.3rem .2rem !important; border-radius:14px !important; font-size:.76rem !important; }
+        [class*="st-key-bottom_nav_"] button p { font-size:.76rem !important; }
     }
     </style>
     """,
@@ -184,11 +182,12 @@ def nav(active):
         ("gacha", "🎰 抽卡"),
         ("achievements", "🏆 成就"),
     ]
-    cols = st.columns(5)
-    for col, (page, label) in zip(cols, items):
-        with col:
-            if st.button(label, key=f"nav_{page}", use_container_width=True, type="primary" if page == active else "secondary"):
-                goto(page)
+    with st.container(key=f"bottom_nav_{active}"):
+        cols = st.columns(5)
+        for col, (page, label) in zip(cols, items):
+            with col:
+                if st.button(label, key=f"nav_{active}_{page}", use_container_width=True, type="primary" if page == active else "secondary"):
+                    goto(page)
 
 
 def slime_markup():
@@ -197,11 +196,10 @@ def slime_markup():
 
 def home():
     topbar()
-    st.markdown('<div class="home-hero">', unsafe_allow_html=True)
     left, right = st.columns([1.35, 1], gap="large", vertical_alignment="center")
     with left:
         st.markdown(
-            '<div class="home-copy-wrap">'
+            '<div class="home-copy-card">'
             '<div class="eyebrow">TODAY\'S STUDY</div>'
             '<div class="hero-title">把今天的知識<br>餵給你的史萊姆。</div>'
             '<div class="hero-copy">做題、訂正與專注學習都會讓史萊姆成長。先完成一小段，再去看看今天能不能拿到新的抽卡券。</div>'
@@ -212,7 +210,7 @@ def home():
             goto("study")
     with right:
         st.markdown(
-            '<div class="home-slime-wrap">'
+            '<div class="home-slime-card">'
             + slime_markup()
             + f'<div class="home-slime-label">{st.session_state.slime_name} · Lv.{st.session_state.player_level}</div>'
             + f'<div class="home-xp"><div class="home-xp-fill" style="width:{st.session_state.player_exp}%"></div></div>'
@@ -220,7 +218,6 @@ def home():
             + '</div>',
             unsafe_allow_html=True,
         )
-    st.markdown('</div>', unsafe_allow_html=True)
 
     st.markdown('<div class="section-title">今日任務</div>', unsafe_allow_html=True)
     tasks = [
@@ -235,15 +232,12 @@ def home():
                 f'<div class="home-task"><div class="task-icon">{icon}</div><div class="card-title">{title}</div><div class="muted">{progress}</div><div class="task-reward">{reward}</div></div>',
                 unsafe_allow_html=True,
             )
-
-    st.markdown('<div class="section-title">探索 MedSlime</div>', unsafe_allow_html=True)
     nav("home")
 
 
 def study_home():
     topbar()
     st.markdown('<div class="study-header"><div class="eyebrow">STUDY</div><div class="hero-title" style="font-size:2.05rem">你想怎麼學習呢？</div><div class="hero-copy">選擇適合你現在狀態的方式，MedSlime 陪你一起進步。</div></div>', unsafe_allow_html=True)
-
     rows = [
         [("📄", "我有教材", "上傳 PDF 教材，讓 AI 幫你整理重點並生成測驗。", "study_material_intro"), ("🧪", "我要刷國考", "練習歷屆國考題目，快速檢測實力與弱點。", None)],
         [("📘", "我要複習錯題", "回顧答錯或不確定的題目，加強你的弱點。", None), ("⏱️", "我要專心讀書", "進入專注計時器，累積今天的學習效率。", None)],
@@ -266,7 +260,6 @@ def study_material_intro():
     topbar()
     if st.button("← 返回學習", key="intro_back"):
         goto("study")
-
     st.markdown(
         '<div class="intro-panel">'
         '<div class="intro-art"><div class="mini-slime"><div class="mini-shine"></div><div class="mini-mouth"></div></div><div class="book-stack">📚</div></div>'
@@ -289,12 +282,10 @@ def study_material_upload():
     topbar()
     if st.button("← 返回介紹", key="upload_back"):
         goto("study_material_intro")
-
     st.markdown('<div class="study-header"><div class="eyebrow">YOUR MATERIAL</div><div class="hero-title" style="font-size:2.05rem">上傳你的教材</div><div class="hero-copy">目前先支援 PDF。建議使用含有可選取文字的檔案。</div></div>', unsafe_allow_html=True)
     st.markdown('<div class="upload-shell">', unsafe_allow_html=True)
     uploaded = st.file_uploader("選擇 PDF 教材", type=["pdf"], key="medslime_material_pdf")
     st.markdown('</div>', unsafe_allow_html=True)
-
     if uploaded is not None:
         st.session_state.uploaded_learning_file = uploaded.name
         size_mb = len(uploaded.getvalue()) / (1024 * 1024)
