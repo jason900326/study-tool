@@ -995,6 +995,9 @@ st.markdown(
     .slime-page-header { margin:.35rem 0 1rem; }
     .slime-hub-actions { margin:.4rem 0 1rem; }
     .companion-panel { display:flex; gap:1.7rem; align-items:center; background:linear-gradient(135deg,#eefaf3,#ffffff 62%,#edf8fc); border:1px solid #d7eadf; border-radius:30px; padding:1.55rem 1.7rem; box-shadow:0 16px 38px rgba(30,82,51,.065); margin:.5rem 0 1.25rem; overflow:hidden; }
+    [class*="st-key-companion_panel_live"] { background:linear-gradient(135deg,#eefaf3,#ffffff 62%,#edf8fc); border:1px solid #d7eadf; border-radius:30px; padding:1.55rem 1.7rem; box-shadow:0 16px 38px rgba(30,82,51,.065); margin:.5rem 0 1.25rem; overflow:hidden; }
+    [class*="st-key-companion_panel_live"] .companion-art { width:100%; min-width:0; }
+    [class*="st-key-companion_panel_live"] [data-testid="stHorizontalBlock"] { align-items:center; }
     .companion-art { width:220px; min-width:220px; display:flex; justify-content:center; align-items:center; }
     .companion-info { flex:1; min-width:0; }
     .companion-topline { display:flex; flex-wrap:wrap; gap:.45rem; align-items:center; margin-bottom:.35rem; }
@@ -2357,38 +2360,44 @@ def slime_page():
             goto("achievements")
 
     rarity_class = f"rarity-{current['rarity']}"
-    st.markdown(
-        '<div class="companion-panel">'
-        f'<div class="companion-art">{slime_avatar_markup(current, size="hero", selected=True)}</div>'
-        '<div class="companion-info">'
-        f'<div class="companion-topline"><span class="rarity-chip {rarity_class}">{current["rarity"]}</span>'
-        f'<span class="owned-chip">✓ 陪伴中</span></div>'
-        f'<div class="companion-species">{current["name"]} · {current["tagline"]}</div>'
-        f'<div class="companion-level-row"><span>Lv.{progress["level"]}</span><span>{progress["exp"]} / 100 EXP</span></div>'
-        f'<div class="companion-xp"><span style="width:{min(100, int(progress["exp"]))}%"></span></div>'
-        f'<div class="companion-meta"><span>🧩 專屬碎片 {progress.get("fragments", 0)}</span><span>🎨 三階段成長：規劃中</span><span>🎩 裝扮：下一階段</span></div>'
-        '<div class="art-placeholder-note">目前角色為介面占位造型；正式美術會在角色設計定稿後替換。</div>'
-        '</div></div>',
-        unsafe_allow_html=True,
-    )
-
-    # The nickname itself is the edit control; keep the editor hidden until requested.
-    if st.button(f"{nickname} ✏️", key=f"slime_name_button_{current['theme']}"):
-        st.session_state.slime_name_editing = not st.session_state.slime_name_editing
-        st.rerun()
-    if st.session_state.slime_name_editing:
-        with st.container(key=f"slime_nickname_editor_{current['theme']}"):
-            new_nickname = st.text_input("史萊姆暱稱", value=nickname, max_chars=16, key=f"nickname_{current['name']}")
-            save_col, cancel_col = st.columns(2)
-            with save_col:
-                if st.button("儲存名字", type="primary", use_container_width=True, key=f"save_nickname_{current['theme']}"):
-                    st.session_state.slime_nicknames[current["name"]] = new_nickname.strip() or current["name"].replace("史萊姆", "")
-                    st.session_state.slime_name_editing = False
-                    st.rerun()
-            with cancel_col:
-                if st.button("取消", use_container_width=True, key=f"cancel_nickname_{current['theme']}"):
-                    st.session_state.slime_name_editing = False
-                    st.rerun()
+    with st.container(key="companion_panel_live"):
+        art_col, info_col = st.columns([1, 3], gap="large", vertical_alignment="center")
+        with art_col:
+            st.markdown(
+                f'<div class="companion-art">{slime_avatar_markup(current, size="hero", selected=True)}</div>',
+                unsafe_allow_html=True,
+            )
+        with info_col:
+            st.markdown(
+                f'<div class="companion-topline"><span class="rarity-chip {rarity_class}">{current["rarity"]}</span>'
+                f'<span class="owned-chip">✓ 陪伴中</span></div>',
+                unsafe_allow_html=True,
+            )
+            # The nickname itself is the edit control, exactly where the name is displayed.
+            if st.button(f"{nickname} ✏️", key=f"slime_name_button_{current['theme']}"):
+                st.session_state.slime_name_editing = not st.session_state.slime_name_editing
+                st.rerun()
+            if st.session_state.slime_name_editing:
+                with st.container(key=f"slime_nickname_editor_{current['theme']}"):
+                    new_nickname = st.text_input("史萊姆暱稱", value=nickname, max_chars=16, key=f"nickname_{current['name']}")
+                    save_col, cancel_col = st.columns(2)
+                    with save_col:
+                        if st.button("儲存名字", type="primary", use_container_width=True, key=f"save_nickname_{current['theme']}"):
+                            st.session_state.slime_nicknames[current["name"]] = new_nickname.strip() or current["name"].replace("史萊姆", "")
+                            st.session_state.slime_name_editing = False
+                            st.rerun()
+                    with cancel_col:
+                        if st.button("取消", use_container_width=True, key=f"cancel_nickname_{current['theme']}"):
+                            st.session_state.slime_name_editing = False
+                            st.rerun()
+            st.markdown(
+                f'<div class="companion-species">{current["name"]} · {current["tagline"]}</div>'
+                f'<div class="companion-level-row"><span>Lv.{progress["level"]}</span><span>{progress["exp"]} / 100 EXP</span></div>'
+                f'<div class="companion-xp"><span style="width:{min(100, int(progress["exp"]))}%"></span></div>'
+                f'<div class="companion-meta"><span>🧩 專屬碎片 {progress.get("fragments", 0)}</span><span>🎨 三階段成長：規劃中</span><span>🎩 裝扮：下一階段</span></div>'
+                '<div class="art-placeholder-note">目前角色為介面占位造型；正式美術會在角色設計定稿後替換。</div>',
+                unsafe_allow_html=True,
+            )
 
     st.markdown(
         f'<div class="catalog-summary"><div><div class="section-title" style="margin-bottom:.15rem">史萊姆圖鑑</div>'
