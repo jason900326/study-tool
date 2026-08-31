@@ -16,7 +16,6 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-
 QUIZ_SIZE = 10
 
 DEFAULT_STATE = {
@@ -32,8 +31,6 @@ DEFAULT_STATE = {
     "collection": ["青蘋果史萊姆"],
     "unlocked_achievements": ["first_steps", "three_day_streak"],
     "last_gacha": None,
-
-    # 教材測驗
     "uploaded_learning_file": None,
     "material_file_hash": None,
     "material_subject": None,
@@ -43,12 +40,12 @@ DEFAULT_STATE = {
     "quiz_answers": {},
     "quiz_uncertain": {},
     "quiz_finished": False,
+    "quiz_finish_pending": False,
 }
 
 for key, value in DEFAULT_STATE.items():
     if key not in st.session_state:
         st.session_state[key] = value.copy() if isinstance(value, (list, dict)) else value
-
 
 ACHIEVEMENTS = [
     ("first_steps", "🌱", "第一步", "完成第一次學習", "🪙 50"),
@@ -70,7 +67,7 @@ GACHA_POOL = [
 
 
 # =========================================================
-# AI / PDF
+# PDF / AI
 # =========================================================
 
 @st.cache_resource
@@ -83,20 +80,13 @@ def get_openai_client():
 def extract_pdf_text(file_bytes):
     reader = PdfReader(BytesIO(file_bytes))
     pages = []
-
     for page_number, page in enumerate(reader.pages, start=1):
         try:
-            text = page.extract_text() or ""
+            text = (page.extract_text() or "").strip()
         except Exception:
             text = ""
-
-        text = text.strip()
         if text:
-            pages.append({
-                "page": page_number,
-                "text": text,
-            })
-
+            pages.append({"page": page_number, "text": text})
     return len(reader.pages), pages
 
 
@@ -142,10 +132,7 @@ def generate_material_quiz(document_text):
                             "maxItems": 4,
                             "items": {"type": "string"},
                         },
-                        "source_page": {
-                            "type": "integer",
-                            "minimum": 1,
-                        },
+                        "source_page": {"type": "integer", "minimum": 1},
                         "source_quote": {"type": "string"},
                     },
                     "required": [
@@ -172,7 +159,7 @@ def generate_material_quiz(document_text):
 使用者上傳一份教材後，你要直接根據教材生成剛好 {QUIZ_SIZE} 題單選題。
 使用者不需要先看摘要；題目生成完成後會立刻開始作答。
 
-【最重要的內容限制】
+【內容限制】
 1. 所有題目、選項、答案、解析與複習重點都只能根據提供的教材。
 2. 不得使用教材以外的知識補充答案。
 3. 每題只能有一個明確正確答案。
@@ -184,8 +171,7 @@ def generate_material_quiz(document_text):
 1. 一般敘述使用自然、完整、流暢的繁體中文。
 2. 教材中的真正專有名詞保留教材原文，不翻譯、不漢化。
 3. 例如教材寫 Beta-lactam，就保留 Beta-lactam，不可改成 Beta-內醯胺或 β-內醯胺。
-4. drug names、drug classes、菌名、genes、proteins、enzymes、receptors、
-   biomarkers、laboratory tests、pathways、molecular names、abbreviations 等優先保留原文。
+4. drug names、drug classes、菌名、genes、proteins、enzymes、receptors、biomarkers、laboratory tests、pathways、molecular names、abbreviations 等優先保留原文。
 5. 一般英文敘述不是專有名詞時，應改寫成自然繁體中文。
 6. 不要把英文片段拼成生硬的中英混合句。
 7. 四個選項應使用一致的語法層級。
@@ -236,15 +222,21 @@ def generate_material_quiz(document_text):
     return payload
 
 
-def reset_material_quiz():
-    st.session_state.material_file_hash = None
-    st.session_state.material_subject = None
-    st.session_state.material_questions = None
-    st.session_state.material_generation_error = None
+def clear_quiz_answers():
     st.session_state.quiz_index = 0
     st.session_state.quiz_answers = {}
     st.session_state.quiz_uncertain = {}
     st.session_state.quiz_finished = False
+    st.session_state.quiz_finish_pending = False
+    for i in range(QUIZ_SIZE):
+        st.session_state.pop(f"material_answer_{i}", None)
+        st.session_state.pop(f"material_uncertain_{i}", None)
+
+
+def prepare_material_upload():
+    clear_quiz_answers()
+    st.session_state.material_generation_error = None
+    st.session_state.pop("medslime_material_pdf", None)
 
 
 # =========================================================
@@ -255,46 +247,17 @@ st.markdown(
     """
     <style>
     :root { --ink:#153b2b; --green:#31c978; --line:#dbe9e1; }
-
     .stApp {
         background:
             radial-gradient(circle at 8% 3%, rgba(130,239,173,.18), transparent 24%),
             radial-gradient(circle at 93% 13%, rgba(118,220,255,.15), transparent 23%),
             #f8fcf9;
     }
+    .block-container { max-width:1180px; padding-top:3.75rem; padding-bottom:4.5rem; }
+    h1,h2,h3,p,div,button,label { font-family:"Noto Sans TC","Microsoft JhengHei",sans-serif; }
 
-    .block-container {
-        max-width:1180px;
-        padding-top:3.75rem;
-        padding-bottom:4.5rem;
-    }
-
-    h1,h2,h3,p,div,button,label {
-        font-family:"Noto Sans TC","Microsoft JhengHei",sans-serif;
-    }
-
-    .currency {
-        min-height:48px;
-        display:flex;
-        align-items:center;
-        justify-content:flex-end;
-        gap:.42rem;
-        white-space:nowrap;
-    }
-
-    .pill {
-        display:inline-flex;
-        align-items:center;
-        min-height:38px;
-        background:rgba(255,255,255,.92);
-        border:1px solid #dfece4;
-        border-radius:999px;
-        padding:.38rem .68rem;
-        font-weight:850;
-        color:#244c39;
-        box-shadow:0 6px 18px rgba(31,83,53,.045);
-    }
-
+    .currency { min-height:48px; display:flex; align-items:center; justify-content:flex-end; gap:.42rem; white-space:nowrap; }
+    .pill { display:inline-flex; align-items:center; min-height:38px; background:rgba(255,255,255,.92); border:1px solid #dfece4; border-radius:999px; padding:.38rem .68rem; font-weight:850; color:#244c39; box-shadow:0 6px 18px rgba(31,83,53,.045); }
     .eyebrow { color:#2ba962; font-weight:950; font-size:.86rem; letter-spacing:.04em; text-transform:uppercase; }
     .hero-title { font-size:2.25rem; line-height:1.12; font-weight:950; color:#143629; letter-spacing:-.045em; }
     .hero-copy { color:#637f70; margin-top:.6rem; line-height:1.72; }
@@ -302,180 +265,39 @@ st.markdown(
     .muted { color:#71887b; font-size:.92rem; }
     .card-title { color:#1d4533; font-weight:900; font-size:1.08rem; }
 
-    /* 自製 top bar / drawer：不依賴 Streamlit sidebar DOM */
-    [data-testid="stHorizontalBlock"]:has([class*="st-key-nav_toggle"]) {
-        flex-wrap:nowrap !important;
-        align-items:center !important;
-        gap:.35rem !important;
-    }
-
-    [data-testid="stHorizontalBlock"]:has([class*="st-key-nav_toggle"]) > div:nth-child(1) {
-        min-width:46px !important;
-        width:46px !important;
-        flex:0 0 46px !important;
-    }
-
-    [data-testid="stHorizontalBlock"]:has([class*="st-key-nav_toggle"]) > div:nth-child(2) {
-        min-width:145px !important;
-        flex:1 1 auto !important;
-    }
-
-    [data-testid="stHorizontalBlock"]:has([class*="st-key-nav_toggle"]) > div:nth-child(3) {
-        min-width:0 !important;
-        flex:0 1 auto !important;
-        margin-left:auto !important;
-    }
-
-    [class*="st-key-nav_toggle"] button {
-        width:42px !important;
-        height:42px !important;
-        min-width:42px !important;
-        min-height:42px !important;
-        padding:0 !important;
-        border:none !important;
-        border-radius:12px !important;
-        background:#17372a !important;
-        color:white !important;
-        box-shadow:0 5px 14px rgba(23,55,42,.15) !important;
-        font-size:1.2rem !important;
-    }
-
-    [class*="st-key-brand_home_"] button {
-        background:transparent !important;
-        border:none !important;
-        box-shadow:none !important;
-        padding:0 !important;
-        min-height:48px !important;
-        justify-content:flex-start !important;
-        color:#17372a !important;
-        font-size:1.55rem !important;
-        font-weight:950 !important;
-        letter-spacing:-.035em !important;
-    }
-
+    [data-testid="stHorizontalBlock"]:has([class*="st-key-nav_toggle"]) { flex-wrap:nowrap !important; align-items:center !important; gap:.35rem !important; }
+    [data-testid="stHorizontalBlock"]:has([class*="st-key-nav_toggle"]) > div:nth-child(1) { min-width:46px !important; width:46px !important; flex:0 0 46px !important; }
+    [data-testid="stHorizontalBlock"]:has([class*="st-key-nav_toggle"]) > div:nth-child(2) { min-width:145px !important; flex:1 1 auto !important; }
+    [data-testid="stHorizontalBlock"]:has([class*="st-key-nav_toggle"]) > div:nth-child(3) { min-width:0 !important; flex:0 1 auto !important; margin-left:auto !important; }
+    [class*="st-key-nav_toggle"] button { width:42px !important; height:42px !important; min-width:42px !important; min-height:42px !important; padding:0 !important; border:none !important; border-radius:12px !important; background:#17372a !important; color:white !important; box-shadow:0 5px 14px rgba(23,55,42,.15) !important; font-size:1.2rem !important; }
+    [class*="st-key-brand_home_"] button { background:transparent !important; border:none !important; box-shadow:none !important; padding:0 !important; min-height:48px !important; justify-content:flex-start !important; color:#17372a !important; font-size:1.55rem !important; font-weight:950 !important; letter-spacing:-.035em !important; }
     [class*="st-key-brand_home_"] button:hover,
     [class*="st-key-brand_home_"] button:active,
-    [class*="st-key-brand_home_"] button:focus {
-        background:transparent !important;
-        border:none !important;
-        box-shadow:none !important;
-        transform:none !important;
-        color:#17372a !important;
-    }
+    [class*="st-key-brand_home_"] button:focus { background:transparent !important; border:none !important; box-shadow:none !important; transform:none !important; color:#17372a !important; }
+    [class*="st-key-brand_home_"] button p { margin:0 !important; font-size:1.55rem !important; font-weight:950 !important; white-space:nowrap !important; line-height:48px !important; }
 
-    [class*="st-key-brand_home_"] button p {
-        margin:0 !important;
-        font-size:1.55rem !important;
-        font-weight:950 !important;
-        white-space:nowrap !important;
-        line-height:48px !important;
-    }
-
-    [class*="st-key-nav_drawer"] {
-        position:fixed !important;
-        top:0 !important;
-        left:0 !important;
-        width:300px !important;
-        max-width:84vw !important;
-        height:100vh !important;
-        z-index:100000 !important;
-        overflow-y:auto !important;
-        padding:1.1rem 1rem !important;
-        background:rgba(248,252,249,.99) !important;
-        border-right:1px solid #d7e7dd !important;
-        box-shadow:16px 0 45px rgba(25,73,47,.16) !important;
-        animation:drawerIn .18s ease-out both;
-    }
-
-    [class*="st-key-nav_drawer"] div.stButton > button {
-        min-height:50px !important;
-        border-radius:15px !important;
-        justify-content:flex-start !important;
-        padding-left:1rem !important;
-    }
-
-    [class*="st-key-drawer_close"] button {
-        width:40px !important;
-        height:40px !important;
-        min-width:40px !important;
-        min-height:40px !important;
-        padding:0 !important;
-        border-radius:11px !important;
-    }
-
-    .drawer-title {
-        font-size:1.5rem;
-        font-weight:950;
-        letter-spacing:-.035em;
-        color:#17372a;
-        margin:.25rem 0 .15rem;
-    }
-
+    [class*="st-key-nav_drawer"] { position:fixed !important; top:0 !important; left:0 !important; width:300px !important; max-width:84vw !important; height:100vh !important; z-index:100000 !important; overflow-y:auto !important; padding:1.1rem 1rem !important; background:rgba(248,252,249,.99) !important; border-right:1px solid #d7e7dd !important; box-shadow:16px 0 45px rgba(25,73,47,.16) !important; animation:drawerIn .18s ease-out both; }
+    [class*="st-key-nav_drawer"] div.stButton > button { min-height:50px !important; border-radius:15px !important; justify-content:flex-start !important; padding-left:1rem !important; }
+    [class*="st-key-drawer_close"] button { width:40px !important; height:40px !important; min-width:40px !important; min-height:40px !important; padding:0 !important; border-radius:11px !important; }
+    .drawer-title { font-size:1.5rem; font-weight:950; letter-spacing:-.035em; color:#17372a; margin:.25rem 0 .15rem; }
     .drawer-note { color:#789083; font-size:.82rem; margin-bottom:1rem; }
 
-    .home-copy-card {
-        background:linear-gradient(135deg,#e6f9ed 0%,#f5fcf7 57%,#e9f8fd 100%);
-        border:1px solid #d6eadd;
-        border-radius:30px;
-        padding:2rem;
-        box-shadow:0 18px 44px rgba(40,106,69,.09);
-        min-height:235px;
-    }
-
-    .home-slime-card {
-        background:rgba(255,255,255,.48);
-        border:1px solid rgba(214,234,221,.8);
-        border-radius:30px;
-        padding:1.45rem;
-        min-height:235px;
-        display:flex;
-        flex-direction:column;
-        align-items:center;
-        justify-content:center;
-    }
-
+    .home-copy-card { background:linear-gradient(135deg,#e6f9ed 0%,#f5fcf7 57%,#e9f8fd 100%); border:1px solid #d6eadd; border-radius:30px; padding:2rem; box-shadow:0 18px 44px rgba(40,106,69,.09); min-height:235px; }
+    .home-slime-card { background:rgba(255,255,255,.48); border:1px solid rgba(214,234,221,.8); border-radius:30px; padding:1.45rem; min-height:235px; display:flex; flex-direction:column; align-items:center; justify-content:center; }
     .home-slime-label { font-weight:950; color:#214934; margin-top:.1rem; text-align:center; }
     .home-xp { width:82%; max-width:300px; height:9px; border-radius:999px; overflow:hidden; background:#dce9df; margin:.55rem auto .25rem; }
     .home-xp-fill { height:100%; background:linear-gradient(90deg,#58d28a,#42bda4); }
-
-    .home-task {
-        background:rgba(255,255,255,.95);
-        border:1px solid #dfebe4;
-        border-radius:23px;
-        padding:1.2rem 1.25rem;
-        box-shadow:0 10px 26px rgba(31,83,53,.05);
-        min-height:145px;
-    }
-
+    .home-task { background:rgba(255,255,255,.95); border:1px solid #dfebe4; border-radius:23px; padding:1.2rem 1.25rem; box-shadow:0 10px 26px rgba(31,83,53,.05); min-height:145px; }
     .task-icon { width:44px; height:44px; border-radius:14px; display:flex; align-items:center; justify-content:center; background:#eefaf2; font-size:1.45rem; margin-bottom:.7rem; }
     .task-reward { margin-top:.7rem; font-weight:900; color:#2a9d5e; }
 
-    .choice-card {
-        background:rgba(255,255,255,.96);
-        border:1px solid #dceae2;
-        border-radius:25px;
-        padding:1.45rem 1.5rem;
-        min-height:156px;
-        box-shadow:0 12px 28px rgba(30,78,50,.055);
-    }
-
+    .choice-card { background:rgba(255,255,255,.96); border:1px solid #dceae2; border-radius:25px; padding:1.45rem 1.5rem; min-height:156px; box-shadow:0 12px 28px rgba(30,78,50,.055); }
     .choice-icon-shell { width:50px; height:50px; border-radius:15px; display:flex; align-items:center; justify-content:center; background:linear-gradient(145deg,#e8f9ee,#f1fbf5); border:1px solid #d7eadf; margin-bottom:.9rem; }
     .choice-icon { font-size:1.72rem; }
     .choice-title { font-size:1.17rem; font-weight:950; color:#173b2b; }
     .choice-copy { color:#70877a; line-height:1.55; margin-top:.42rem; }
     .study-header { margin:.35rem 0 1.2rem; }
-
-    .intro-panel {
-        max-width:840px;
-        margin:.3rem auto 1.15rem;
-        background:rgba(255,255,255,.76);
-        border:1px solid #dfebe4;
-        border-radius:30px;
-        padding:2rem 2rem 1.75rem;
-        box-shadow:0 16px 38px rgba(30,82,51,.055);
-        text-align:center;
-    }
-
+    .intro-panel { max-width:840px; margin:.3rem auto 1.15rem; background:rgba(255,255,255,.76); border:1px solid #dfebe4; border-radius:30px; padding:2rem 2rem 1.75rem; box-shadow:0 16px 38px rgba(30,82,51,.055); text-align:center; }
     .intro-art { position:relative; width:230px; height:150px; margin:0 auto .65rem; }
     .mini-slime { position:absolute; left:42px; top:35px; width:105px; height:82px; border-radius:50% 50% 40% 40%/62% 62% 38% 38%; background:linear-gradient(145deg,#9bedad,#48c878); }
     .mini-slime:before,.mini-slime:after { content:""; position:absolute; top:34px; width:8px; height:12px; background:#153c2b; border-radius:50%; }
@@ -484,7 +306,6 @@ st.markdown(
     .mini-mouth { position:absolute; width:23px; height:9px; border-bottom:3px solid #153c2b; border-radius:0 0 50% 50%; left:41px; top:50px; }
     .mini-shine { position:absolute; width:22px; height:10px; background:rgba(255,255,255,.52); border-radius:50%; left:20px; top:16px; transform:rotate(-24deg); }
     .book-stack { position:absolute; right:34px; top:34px; font-size:3.6rem; }
-
     .check-list { max-width:575px; margin:1rem auto .2rem; text-align:left; display:grid; gap:.55rem; }
     .check-item { color:#315b47; font-weight:760; background:#f7fcf9; border:1px solid #e0eee6; border-radius:13px; padding:.62rem .8rem; }
 
@@ -492,142 +313,45 @@ st.markdown(
     [data-testid="stFileUploaderDropzone"] { background:#fbfefc !important; border:1.5px dashed #bcdcc8 !important; border-radius:20px !important; padding:1.6rem !important; }
     [data-testid="stFileUploaderDropzone"] button { background:#2fc675 !important; color:white !important; border-color:#2fc675 !important; }
 
-    .home-copy-card,
-    .home-slime-card,
-    .home-task,
-    .choice-card,
-    .study-header,
-    .intro-panel,
-    .upload-shell {
-        animation:pageIn .20s ease-out both;
-    }
-
-    /* AI 生成等待動畫 */
-    .digest-card {
-        max-width:620px;
-        margin:1rem auto;
-        padding:2rem 1.25rem;
-        border:1px solid #dcebe2;
-        border-radius:28px;
-        background:rgba(255,255,255,.94);
-        text-align:center;
-        box-shadow:0 15px 34px rgba(31,83,53,.06);
-        animation:pageIn .22s ease-out both;
-    }
-
-    .digest-slime {
-        width:84px;
-        height:68px;
-        margin:0 auto 1rem;
-        border-radius:50% 50% 40% 40%/62% 62% 38% 38%;
-        background:linear-gradient(145deg,#9bedad,#48c878);
-        position:relative;
-        animation:slimeBounce 1.05s ease-in-out infinite;
-    }
-
-    .digest-slime:before,.digest-slime:after {
-        content:"";
-        position:absolute;
-        top:28px;
-        width:7px;
-        height:10px;
-        border-radius:50%;
-        background:#153c2b;
-    }
-
+    .digest-card { max-width:620px; margin:1rem auto; padding:2rem 1.25rem; border:1px solid #dcebe2; border-radius:28px; background:rgba(255,255,255,.94); text-align:center; box-shadow:0 15px 34px rgba(31,83,53,.06); animation:pageIn .22s ease-out both; }
+    .digest-slime { width:84px; height:68px; margin:0 auto 1rem; border-radius:50% 50% 40% 40%/62% 62% 38% 38%; background:linear-gradient(145deg,#9bedad,#48c878); position:relative; animation:slimeBounce 1.05s ease-in-out infinite; }
+    .digest-slime:before,.digest-slime:after { content:""; position:absolute; top:28px; width:7px; height:10px; border-radius:50%; background:#153c2b; }
     .digest-slime:before { left:23px; }
     .digest-slime:after { right:23px; }
-
-    .digest-dots span {
-        display:inline-block;
-        animation:dots 1.1s infinite;
-        font-size:1.2rem;
-        color:#39b975;
-    }
-
+    .digest-dots span { display:inline-block; animation:dots 1.1s infinite; font-size:1.2rem; color:#39b975; }
     .digest-dots span:nth-child(2) { animation-delay:.15s; }
     .digest-dots span:nth-child(3) { animation-delay:.3s; }
 
-    /* Quiz */
     .quiz-stage { animation:pageIn .2s ease-out both; }
-
-    .quiz-topline {
-        display:flex;
-        justify-content:space-between;
-        align-items:center;
-        gap:1rem;
-        margin:.8rem 0 .55rem;
-    }
-
+    .quiz-topline { display:flex; justify-content:space-between; align-items:center; gap:1rem; margin:.8rem 0 .55rem; }
     .quiz-count { color:#2b6850; font-weight:900; }
     .quiz-subject { color:#789083; font-size:.9rem; }
+    .quiz-progress { width:100%; height:9px; border-radius:999px; background:#dce9df; overflow:hidden; margin-bottom:1.15rem; }
+    .quiz-progress-fill { height:100%; background:linear-gradient(90deg,#57d188,#42bfa5); transition:width .25s ease; }
+    .quiz-card { background:rgba(255,255,255,.96); border:1px solid #dceae2; border-radius:27px; padding:1.55rem 1.6rem; box-shadow:0 14px 34px rgba(31,83,53,.06); animation:questionIn .22s ease-out both; margin-bottom:.8rem; }
+    .quiz-question { color:#173b2b; font-size:1.22rem; line-height:1.65; font-weight:850; }
 
-    .quiz-progress {
-        width:100%;
-        height:9px;
-        border-radius:999px;
-        background:#dce9df;
-        overflow:hidden;
-        margin-bottom:1.15rem;
-    }
+    /* 明確指定測驗互動文字，避免被 Streamlit theme 吃成白色。 */
+    [data-testid="stRadio"] [role="radiogroup"] { gap:.5rem; }
+    [data-testid="stRadio"] label { background:rgba(255,255,255,.82); border:1px solid #e0ebe5; border-radius:14px; padding:.62rem .8rem; }
+    [data-testid="stRadio"] label p,
+    [data-testid="stRadio"] label span,
+    [data-testid="stCheckbox"] label p,
+    [data-testid="stCheckbox"] label span { color:#244c39 !important; opacity:1 !important; }
+    [data-testid="stRadio"] label:has(input:checked) { border-color:#69cf94; background:#effbf4; }
+    [data-testid="stCheckbox"] { margin-top:.35rem; margin-bottom:.7rem; }
 
-    .quiz-progress-fill {
-        height:100%;
-        background:linear-gradient(90deg,#57d188,#42bfa5);
-        transition:width .25s ease;
-    }
+    .finish-warning { background:#fff9d9; border:1px solid #eddc75; border-radius:16px; padding:.85rem 1rem; margin:.85rem 0 .6rem; color:#5d5327; line-height:1.6; font-weight:700; }
 
-    .quiz-card {
-        background:rgba(255,255,255,.96);
-        border:1px solid #dceae2;
-        border-radius:27px;
-        padding:1.55rem 1.6rem;
-        box-shadow:0 14px 34px rgba(31,83,53,.06);
-        animation:questionIn .22s ease-out both;
-        margin-bottom:.8rem;
-    }
-
-    .quiz-question {
-        color:#173b2b;
-        font-size:1.22rem;
-        line-height:1.65;
-        font-weight:850;
-    }
-
-    .result-card {
-        background:rgba(255,255,255,.96);
-        border:1px solid #dceae2;
-        border-radius:25px;
-        padding:1.3rem 1.4rem;
-        margin:.8rem 0;
-        animation:pageIn .2s ease-out both;
-    }
-
-    @keyframes drawerIn {
-        from { transform:translateX(-18px); opacity:0; }
-        to { transform:translateX(0); opacity:1; }
-    }
-
-    @keyframes pageIn {
-        from { opacity:0; transform:translateY(6px); }
-        to { opacity:1; transform:translateY(0); }
-    }
-
-    @keyframes questionIn {
-        from { opacity:0; transform:translateX(9px); }
-        to { opacity:1; transform:translateX(0); }
-    }
-
-    @keyframes slimeBounce {
-        0%,100% { transform:translateY(0) scaleX(1); }
-        45% { transform:translateY(-8px) scaleX(.97); }
-        60% { transform:translateY(-5px) scaleX(1.03); }
-    }
-
-    @keyframes dots {
-        0%,70%,100% { opacity:.28; transform:translateY(0); }
-        35% { opacity:1; transform:translateY(-3px); }
-    }
+    .result-card { background:rgba(255,255,255,.96); border:1px solid #dceae2; border-radius:25px; padding:1.3rem 1.4rem; margin:.8rem 0; animation:pageIn .2s ease-out both; }
+    [data-testid="stExpander"] { background:rgba(255,255,255,.92) !important; border:1px solid #dceae2 !important; border-radius:14px !important; overflow:hidden; }
+    [data-testid="stExpander"] summary,
+    [data-testid="stExpander"] summary p,
+    [data-testid="stExpander"] summary span,
+    [data-testid="stExpander"] [data-testid="stMarkdownContainer"],
+    [data-testid="stExpander"] [data-testid="stMarkdownContainer"] p,
+    [data-testid="stExpander"] [data-testid="stMarkdownContainer"] li,
+    [data-testid="stExpander"] [data-testid="stCaptionContainer"] { color:#244c39 !important; opacity:1 !important; }
 
     .slime { width:178px; height:142px; margin:0 auto 1rem; border-radius:50% 50% 40% 40%/62% 62% 38% 38%; background:linear-gradient(145deg,#9bedad,#48c878); box-shadow:inset -14px -18px 0 rgba(25,130,74,.09),0 20px 30px rgba(39,139,82,.18); position:relative; }
     .slime:before,.slime:after { content:""; position:absolute; top:60px; width:13px; height:19px; background:#153c2b; border-radius:50%; }
@@ -635,7 +359,6 @@ st.markdown(
     .slime:after { right:49px; }
     .mouth { position:absolute; width:35px; height:15px; border-bottom:4px solid #153c2b; border-radius:0 0 50% 50%; left:72px; top:88px; }
     .shine { position:absolute; width:32px; height:16px; background:rgba(255,255,255,.48); border-radius:50%; left:35px; top:29px; transform:rotate(-24deg); }
-
     .gacha-result { text-align:center; background:white; border:1px solid #dcebe2; border-radius:28px; padding:2rem; }
     .rarity-N { color:#6b7d72; font-weight:900; }
     .rarity-R { color:#3d72c8; font-weight:900; }
@@ -647,40 +370,27 @@ st.markdown(
     div.stButton > button[kind="secondary"] { background:rgba(255,255,255,.9); color:#244c39; border:1px solid #d8e8df; }
     div.stButton > button:disabled { background:#f2f6f3 !important; color:#9aac9f !important; border-color:#e2ebe5 !important; }
 
+    .home-copy-card,.home-slime-card,.home-task,.choice-card,.study-header,.intro-panel,.upload-shell { animation:pageIn .20s ease-out both; }
+    @keyframes drawerIn { from { transform:translateX(-18px); opacity:0; } to { transform:translateX(0); opacity:1; } }
+    @keyframes pageIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+    @keyframes questionIn { from { opacity:0; transform:translateX(9px); } to { opacity:1; transform:translateX(0); } }
+    @keyframes slimeBounce { 0%,100% { transform:translateY(0) scaleX(1); } 45% { transform:translateY(-8px) scaleX(.97); } 60% { transform:translateY(-5px) scaleX(1.03); } }
+    @keyframes dots { 0%,70%,100% { opacity:.28; transform:translateY(0); } 35% { opacity:1; transform:translateY(-3px); } }
+
     @media (max-width:700px) {
         .block-container { padding-left:.85rem; padding-right:.85rem; padding-bottom:3rem; }
         .hero-title { font-size:1.9rem; }
-        .home-copy-card, .home-slime-card { min-height:auto; }
+        .home-copy-card,.home-slime-card { min-height:auto; }
         .choice-card { min-height:145px; padding:1.2rem; }
         .intro-panel { padding:1.45rem 1.1rem; }
         .quiz-card { padding:1.2rem 1.1rem; }
         .quiz-question { font-size:1.08rem; }
-
+        .quiz-topline { align-items:flex-start; }
         [data-testid="stHorizontalBlock"]:has([class*="st-key-nav_toggle"]) { gap:.18rem !important; }
-
-        [data-testid="stHorizontalBlock"]:has([class*="st-key-nav_toggle"]) > div:nth-child(1) {
-            min-width:42px !important;
-            width:42px !important;
-            flex:0 0 42px !important;
-        }
-
+        [data-testid="stHorizontalBlock"]:has([class*="st-key-nav_toggle"]) > div:nth-child(1) { min-width:42px !important; width:42px !important; flex:0 0 42px !important; }
         [data-testid="stHorizontalBlock"]:has([class*="st-key-nav_toggle"]) > div:nth-child(2) { min-width:112px !important; }
-
-        [class*="st-key-nav_toggle"] button {
-            width:38px !important;
-            height:38px !important;
-            min-width:38px !important;
-            min-height:38px !important;
-            font-size:1.05rem !important;
-        }
-
-        [class*="st-key-brand_home_"] button,
-        [class*="st-key-brand_home_"] button p {
-            min-height:42px !important;
-            line-height:42px !important;
-            font-size:1.25rem !important;
-        }
-
+        [class*="st-key-nav_toggle"] button { width:38px !important; height:38px !important; min-width:38px !important; min-height:38px !important; font-size:1.05rem !important; }
+        [class*="st-key-brand_home_"] button,[class*="st-key-brand_home_"] button p { min-height:42px !important; line-height:42px !important; font-size:1.25rem !important; }
         .currency { min-height:42px; gap:.15rem; }
         .pill { min-height:31px; padding:.23rem .32rem; font-size:.67rem; box-shadow:none; }
     }
@@ -691,7 +401,7 @@ st.markdown(
 
 
 # =========================================================
-# Navigation
+# Navigation / shared visuals
 # =========================================================
 
 def goto(page):
@@ -703,11 +413,9 @@ def goto(page):
 def render_drawer():
     if not st.session_state.menu_open:
         return
-
     active = st.session_state.medslime_page
     if active.startswith("study_material") or active.startswith("quiz"):
         active = "study"
-
     items = [
         ("home", "🏠  首頁"),
         ("study", "📖  學習"),
@@ -715,60 +423,34 @@ def render_drawer():
         ("gacha", "🎰  抽卡"),
         ("achievements", "🏆  成就"),
     ]
-
     with st.container(key="nav_drawer"):
         close_col, _ = st.columns([1, 5])
         with close_col:
             if st.button("✕", key="drawer_close"):
                 st.session_state.menu_open = False
                 st.rerun()
-
-        st.markdown(
-            '<div class="drawer-title">MedSlime<span style="color:#31b96c">.</span></div>',
-            unsafe_allow_html=True,
-        )
+        st.markdown('<div class="drawer-title">MedSlime<span style="color:#31b96c">.</span></div>', unsafe_allow_html=True)
         st.markdown('<div class="drawer-note">選擇你要前往的地方</div>', unsafe_allow_html=True)
-
         for page, label in items:
-            if st.button(
-                label,
-                key=f"drawer_{page}",
-                use_container_width=True,
-                type="primary" if page == active else "secondary",
-            ):
+            if st.button(label, key=f"drawer_{page}", use_container_width=True, type="primary" if page == active else "secondary"):
                 goto(page)
 
 
 def topbar():
     menu_col, brand_col, currency_col = st.columns([0.12, 1, 2.1], vertical_alignment="center")
-
     with menu_col:
         if st.button("☰", key="nav_toggle", help="開啟選單"):
             st.session_state.menu_open = True
             st.rerun()
-
     with brand_col:
-        if st.button(
-            "MedSlime.",
-            key=f"brand_home_{st.session_state.medslime_page}",
-            help="返回首頁",
-        ):
+        if st.button("MedSlime.", key=f"brand_home_{st.session_state.medslime_page}", help="返回首頁"):
             goto("home")
-
     with currency_col:
         st.markdown(
-            f'<div class="currency">'
-            f'<span class="pill">🔥 {st.session_state.streak} 天</span>'
-            f'<span class="pill">🪙 {st.session_state.coins}</span>'
-            f'<span class="pill">🎫 {st.session_state.tickets}</span>'
-            f'</div>',
+            f'<div class="currency"><span class="pill">🔥 {st.session_state.streak} 天</span><span class="pill">🪙 {st.session_state.coins}</span><span class="pill">🎫 {st.session_state.tickets}</span></div>',
             unsafe_allow_html=True,
         )
 
-
-# =========================================================
-# Shared visual
-# =========================================================
 
 def slime_markup():
     return '<div class="slime"><div class="shine"></div><div class="mouth"></div></div>'
@@ -776,15 +458,7 @@ def slime_markup():
 
 def render_loading_card(filename):
     st.markdown(
-        f"""
-        <div class="digest-card">
-            <div class="digest-slime"></div>
-            <div class="card-title" style="font-size:1.25rem">史萊姆正在消化教材</div>
-            <div class="muted" style="margin-top:.45rem">{html.escape(str(filename))}</div>
-            <div class="hero-copy" style="margin-top:.75rem">正在讀取內容、整理概念並準備 {QUIZ_SIZE} 題測驗。</div>
-            <div class="digest-dots"><span>●</span><span>●</span><span>●</span></div>
-        </div>
-        """,
+        f'<div class="digest-card"><div class="digest-slime"></div><div class="card-title" style="font-size:1.25rem">史萊姆正在消化教材</div><div class="muted" style="margin-top:.45rem">{html.escape(str(filename))}</div><div class="hero-copy" style="margin-top:.75rem">正在讀取內容、整理概念並準備 {QUIZ_SIZE} 題測驗。</div><div class="digest-dots"><span>●</span><span>●</span><span>●</span></div></div>',
         unsafe_allow_html=True,
     )
 
@@ -796,155 +470,61 @@ def render_loading_card(filename):
 def home():
     topbar()
     left, right = st.columns([1.35, 1], gap="large", vertical_alignment="center")
-
     with left:
-        st.markdown(
-            '<div class="home-copy-card">'
-            '<div class="eyebrow">TODAY’S STUDY</div>'
-            '<div class="hero-title">把今天的知識<br>餵給你的史萊姆。</div>'
-            '<div class="hero-copy">做題、訂正與專注學習都會讓史萊姆成長。先完成一小段，再去看看今天能不能拿到新的抽卡券。</div>'
-            '</div>',
-            unsafe_allow_html=True,
-        )
+        st.markdown('<div class="home-copy-card"><div class="eyebrow">TODAY’S STUDY</div><div class="hero-title">把今天的知識<br>餵給你的史萊姆。</div><div class="hero-copy">做題、訂正與專注學習都會讓史萊姆成長。先完成一小段，再去看看今天能不能拿到新的抽卡券。</div></div>', unsafe_allow_html=True)
         if st.button("🧠 開始學習", type="primary", use_container_width=True, key="home_start_study"):
             goto("study")
-
     with right:
-        st.markdown(
-            '<div class="home-slime-card">'
-            + slime_markup()
-            + f'<div class="home-slime-label">{st.session_state.slime_name} · Lv.{st.session_state.player_level}</div>'
-            + f'<div class="home-xp"><div class="home-xp-fill" style="width:{st.session_state.player_exp}%"></div></div>'
-            + f'<div class="muted">{st.session_state.player_exp} / 100 EXP · {st.session_state.selected_slime}</div>'
-            + '</div>',
-            unsafe_allow_html=True,
-        )
-
+        st.markdown('<div class="home-slime-card">' + slime_markup() + f'<div class="home-slime-label">{st.session_state.slime_name} · Lv.{st.session_state.player_level}</div><div class="home-xp"><div class="home-xp-fill" style="width:{st.session_state.player_exp}%"></div></div><div class="muted">{st.session_state.player_exp} / 100 EXP · {st.session_state.selected_slime}</div></div>', unsafe_allow_html=True)
     st.markdown('<div class="section-title">今日任務</div>', unsafe_allow_html=True)
-
     tasks = [
         ("🧠", "完成 5 題", "0 / 5", "+20 EXP"),
         ("🔍", "訂正 1 題", "0 / 1", "+50 🪙"),
         ("⏱️", "學習 20 分鐘", "0 / 20", "+1 🎫"),
     ]
-
     cols = st.columns(3, gap="medium")
     for col, (icon, title, progress, reward) in zip(cols, tasks):
         with col:
-            st.markdown(
-                f'<div class="home-task">'
-                f'<div class="task-icon">{icon}</div>'
-                f'<div class="card-title">{title}</div>'
-                f'<div class="muted">{progress}</div>'
-                f'<div class="task-reward">{reward}</div>'
-                f'</div>',
-                unsafe_allow_html=True,
-            )
+            st.markdown(f'<div class="home-task"><div class="task-icon">{icon}</div><div class="card-title">{title}</div><div class="muted">{progress}</div><div class="task-reward">{reward}</div></div>', unsafe_allow_html=True)
 
 
 def study_home():
     topbar()
-    st.markdown(
-        '<div class="study-header">'
-        '<div class="eyebrow">STUDY</div>'
-        '<div class="hero-title" style="font-size:2.05rem">你想怎麼學習呢？</div>'
-        '<div class="hero-copy">選擇適合你現在狀態的方式，MedSlime 陪你一起進步。</div>'
-        '</div>',
-        unsafe_allow_html=True,
-    )
-
+    st.markdown('<div class="study-header"><div class="eyebrow">STUDY</div><div class="hero-title" style="font-size:2.05rem">你想怎麼學習呢？</div><div class="hero-copy">選擇適合你現在狀態的方式，MedSlime 陪你一起進步。</div></div>', unsafe_allow_html=True)
     rows = [
-        [
-            ("📄", "我有教材", "上傳 PDF 教材，AI 會直接生成 10 題並開始測驗。", "study_material_intro"),
-            ("🧪", "我要刷國考", "練習歷屆國考題目，快速檢測實力與弱點。", None),
-        ],
-        [
-            ("📘", "我要複習錯題", "回顧答錯或不確定的題目，加強你的弱點。", None),
-            ("⏱️", "我要專心讀書", "進入專注計時器，累積今天的學習效率。", None),
-        ],
+        [("📄", "我有教材", "上傳 PDF 教材，AI 會直接生成 10 題並開始測驗。", "study_material_intro"), ("🧪", "我要刷國考", "練習歷屆國考題目，快速檢測實力與弱點。", None)],
+        [("📘", "我要複習錯題", "回顧答錯或不確定的題目，加強你的弱點。", None), ("⏱️", "我要專心讀書", "進入專注計時器，累積今天的學習效率。", None)],
     ]
-
     for row in rows:
         cols = st.columns(2, gap="large")
         for col, (icon, title, copy, target) in zip(cols, row):
             with col:
-                st.markdown(
-                    f'<div class="choice-card">'
-                    f'<div class="choice-icon-shell"><div class="choice-icon">{icon}</div></div>'
-                    f'<div class="choice-title">{title}</div>'
-                    f'<div class="choice-copy">{copy}</div>'
-                    f'</div>',
-                    unsafe_allow_html=True,
-                )
+                st.markdown(f'<div class="choice-card"><div class="choice-icon-shell"><div class="choice-icon">{icon}</div></div><div class="choice-title">{title}</div><div class="choice-copy">{copy}</div></div>', unsafe_allow_html=True)
                 if target:
-                    if st.button(
-                        f"進入 {title} →",
-                        key=f"go_{target}",
-                        use_container_width=True,
-                        type="primary",
-                    ):
+                    if st.button(f"進入 {title} →", key=f"go_{target}", use_container_width=True, type="primary"):
                         goto(target)
                 else:
-                    st.button(
-                        "即將開放",
-                        key=f"soon_{title}",
-                        use_container_width=True,
-                        disabled=True,
-                    )
+                    st.button("即將開放", key=f"soon_{title}", use_container_width=True, disabled=True)
         st.write("")
 
 
 def study_material_intro():
     topbar()
-
     if st.button("← 返回學習", key="intro_back"):
         goto("study")
-
-    st.markdown(
-        '<div class="intro-panel">'
-        '<div class="intro-art">'
-        '<div class="mini-slime"><div class="mini-shine"></div><div class="mini-mouth"></div></div>'
-        '<div class="book-stack">📚</div>'
-        '</div>'
-        '<div class="hero-title" style="font-size:2rem">上傳教材，AI 直接生成 10 題<br>開始你的專屬測驗。</div>'
-        '<div class="hero-copy" style="max-width:680px;margin:.8rem auto 0">'
-        '選好 PDF 後，MedSlime 會讀取教材並直接準備題目；完成後自動帶你進入第 1 題。'
-        '</div>'
-        '<div class="check-list">'
-        '<div class="check-item">✓ 題目只根據你的教材生成</div>'
-        '<div class="check-item">✓ 一次準備 10 題，不需要二次等待</div>'
-        '<div class="check-item">✓ 專有名詞保留教材原文</div>'
-        '<div class="check-item">✓ 每題保留教材頁碼與解析依據</div>'
-        '</div></div>',
-        unsafe_allow_html=True,
-    )
-
+    st.markdown('<div class="intro-panel"><div class="intro-art"><div class="mini-slime"><div class="mini-shine"></div><div class="mini-mouth"></div></div><div class="book-stack">📚</div></div><div class="hero-title" style="font-size:2rem">上傳教材，AI 直接生成 10 題<br>開始你的專屬測驗。</div><div class="hero-copy" style="max-width:680px;margin:.8rem auto 0">選好 PDF 後，MedSlime 會讀取教材並直接準備題目；完成後自動帶你進入第 1 題。</div><div class="check-list"><div class="check-item">✓ 題目只根據你的教材生成</div><div class="check-item">✓ 一次準備 10 題，不需要二次等待</div><div class="check-item">✓ 專有名詞保留教材原文</div><div class="check-item">✓ 每題保留教材頁碼與解析依據</div></div></div>', unsafe_allow_html=True)
     if st.button("☁️ 上傳教材開始學習", type="primary", use_container_width=True):
-        reset_material_quiz()
+        prepare_material_upload()
         goto("study_material_upload")
 
 
 def study_material_upload():
     topbar()
-
     if st.button("← 返回介紹", key="upload_back"):
         goto("study_material_intro")
-
-    st.markdown(
-        '<div class="study-header">'
-        '<div class="eyebrow">YOUR MATERIAL</div>'
-        '<div class="hero-title" style="font-size:2.05rem">上傳你的教材</div>'
-        '<div class="hero-copy">選擇 PDF 後會自動生成 10 題並進入測驗，不需要再按一次分析。</div>'
-        '</div>',
-        unsafe_allow_html=True,
-    )
-
+    st.markdown('<div class="study-header"><div class="eyebrow">YOUR MATERIAL</div><div class="hero-title" style="font-size:2.05rem">上傳你的教材</div><div class="hero-copy">選擇 PDF 後會自動生成 10 題並進入測驗，不需要再按一次分析。</div></div>', unsafe_allow_html=True)
     st.markdown('<div class="upload-shell">', unsafe_allow_html=True)
-    uploaded = st.file_uploader(
-        "選擇 PDF 教材",
-        type=["pdf"],
-        key="medslime_material_pdf",
-    )
+    uploaded = st.file_uploader("選擇 PDF 教材", type=["pdf"], key="medslime_material_pdf")
     st.markdown("</div>", unsafe_allow_html=True)
 
     if uploaded is None:
@@ -956,18 +536,12 @@ def study_material_upload():
     file_bytes = uploaded.getvalue()
     file_hash = hashlib.sha256(file_bytes).hexdigest()
 
-    # 同一份檔案已完成生成時，直接回到測驗，不重複花 AI 成本。
-    if (
-        st.session_state.material_file_hash == file_hash
-        and st.session_state.material_questions
-        and len(st.session_state.material_questions) == QUIZ_SIZE
-    ):
-        st.session_state.quiz_index = 0
+    if st.session_state.material_file_hash == file_hash and st.session_state.material_questions and len(st.session_state.material_questions) == QUIZ_SIZE:
+        clear_quiz_answers()
         goto("quiz")
 
     st.session_state.uploaded_learning_file = uploaded.name
     st.session_state.material_generation_error = None
-
     loading = st.empty()
     with loading.container():
         render_loading_card(uploaded.name)
@@ -975,24 +549,16 @@ def study_material_upload():
     try:
         _, pages = extract_pdf_text(file_bytes)
         document_text = build_document_text(pages)
-
         if len(document_text.strip()) < 250:
             raise ValueError("這份 PDF 可讀取的文字太少，可能是掃描檔或圖片型 PDF。")
-
         payload = generate_material_quiz(document_text)
-
         st.session_state.material_file_hash = file_hash
         st.session_state.material_subject = payload.get("subject") or "教材測驗"
         st.session_state.material_questions = payload["questions"]
-        st.session_state.quiz_index = 0
-        st.session_state.quiz_answers = {}
-        st.session_state.quiz_uncertain = {}
-        st.session_state.quiz_finished = False
+        clear_quiz_answers()
         st.session_state.material_generation_error = None
-
         loading.empty()
         goto("quiz")
-
     except Exception as error:
         loading.empty()
         st.session_state.material_generation_error = f"{type(error).__name__}: {error}"
@@ -1008,16 +574,16 @@ def study_material_upload():
 def save_current_quiz_state(index, options):
     answer_key = f"material_answer_{index}"
     uncertain_key = f"material_uncertain_{index}"
-
     selected = st.session_state.get(answer_key)
     if selected in options:
         st.session_state.quiz_answers[index] = options.index(selected)
     else:
         st.session_state.quiz_answers.pop(index, None)
+    st.session_state.quiz_uncertain[index] = bool(st.session_state.get(uncertain_key, False))
 
-    st.session_state.quiz_uncertain[index] = bool(
-        st.session_state.get(uncertain_key, False)
-    )
+
+def unanswered_numbers(question_count):
+    return [number + 1 for number in range(question_count) if number not in st.session_state.quiz_answers]
 
 
 def material_quiz_page():
@@ -1026,7 +592,6 @@ def material_quiz_page():
         goto("study_material_upload")
 
     topbar()
-
     index = max(0, min(st.session_state.quiz_index, len(questions) - 1))
     question = questions[index]
     options = question["options"]
@@ -1035,98 +600,70 @@ def material_quiz_page():
     safe_filename = html.escape(str(st.session_state.uploaded_learning_file or ""))
 
     st.markdown('<div class="quiz-stage">', unsafe_allow_html=True)
-    st.markdown(
-        f'<div class="quiz-topline">'
-        f'<div><span class="quiz-count">第 {index + 1} / {len(questions)} 題</span>'
-        f'<div class="quiz-subject">{safe_subject}</div></div>'
-        f'<div class="muted">{safe_filename}</div>'
-        f'</div>',
-        unsafe_allow_html=True,
-    )
-
+    st.markdown(f'<div class="quiz-topline"><div><span class="quiz-count">第 {index + 1} / {len(questions)} 題</span><div class="quiz-subject">{safe_subject}</div></div><div class="muted">{safe_filename}</div></div>', unsafe_allow_html=True)
     progress = int(((index + 1) / len(questions)) * 100)
-    st.markdown(
-        f'<div class="quiz-progress"><div class="quiz-progress-fill" style="width:{progress}%"></div></div>',
-        unsafe_allow_html=True,
-    )
-
-    st.markdown(
-        f'<div class="quiz-card"><div class="quiz-question">{safe_question}</div></div>',
-        unsafe_allow_html=True,
-    )
+    st.markdown(f'<div class="quiz-progress"><div class="quiz-progress-fill" style="width:{progress}%"></div></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="quiz-card"><div class="quiz-question">{safe_question}</div></div>', unsafe_allow_html=True)
 
     answer_key = f"material_answer_{index}"
     uncertain_key = f"material_uncertain_{index}"
-
     previous_answer = st.session_state.quiz_answers.get(index)
     if answer_key not in st.session_state and previous_answer in (0, 1, 2, 3):
         st.session_state[answer_key] = options[previous_answer]
-
     if uncertain_key not in st.session_state:
-        st.session_state[uncertain_key] = bool(
-            st.session_state.quiz_uncertain.get(index, False)
-        )
+        st.session_state[uncertain_key] = bool(st.session_state.quiz_uncertain.get(index, False))
 
-    selected = st.radio(
-        "選擇答案",
-        options,
-        index=None,
-        key=answer_key,
-        label_visibility="collapsed",
-    )
-
-    uncertain = st.checkbox(
-        "❓ 我不確定這個觀念",
-        key=uncertain_key,
-    )
+    selected = st.radio("選擇答案", options, index=None, key=answer_key, label_visibility="collapsed")
+    uncertain = st.checkbox("❓ 我不確定這個觀念", key=uncertain_key)
 
     if selected in options:
         st.session_state.quiz_answers[index] = options.index(selected)
     else:
         st.session_state.quiz_answers.pop(index, None)
-
     st.session_state.quiz_uncertain[index] = bool(uncertain)
 
     left, middle, right = st.columns([1, 1, 1])
-
     with left:
-        if index > 0:
-            if st.button("← 上一題", use_container_width=True, key=f"prev_{index}"):
-                save_current_quiz_state(index, options)
-                st.session_state.quiz_index = index - 1
-                st.rerun()
-
-    with middle:
-        if index < len(questions) - 1:
-            if st.button(
-                "下一題 →",
-                type="primary",
-                use_container_width=True,
-                key=f"next_{index}",
-            ):
-                save_current_quiz_state(index, options)
-                st.session_state.quiz_index = index + 1
-                st.rerun()
-
-    with right:
-        if st.button(
-            "結束測驗",
-            use_container_width=True,
-            key=f"finish_{index}",
-        ):
+        if index > 0 and st.button("← 上一題", use_container_width=True, key=f"prev_{index}"):
             save_current_quiz_state(index, options)
-            unanswered = [
-                number + 1
-                for number in range(len(questions))
-                if number not in st.session_state.quiz_answers
-            ]
-            if unanswered:
-                st.warning(
-                    "還有未作答題目：" + "、".join(map(str, unanswered))
-                )
+            st.session_state.quiz_finish_pending = False
+            st.session_state.quiz_index = index - 1
+            st.rerun()
+    with middle:
+        if index < len(questions) - 1 and st.button("下一題 →", type="primary", use_container_width=True, key=f"next_{index}"):
+            save_current_quiz_state(index, options)
+            st.session_state.quiz_finish_pending = False
+            st.session_state.quiz_index = index + 1
+            st.rerun()
+    with right:
+        if st.button("結束測驗", use_container_width=True, key=f"finish_{index}"):
+            save_current_quiz_state(index, options)
+            missing = unanswered_numbers(len(questions))
+            if missing:
+                st.session_state.quiz_finish_pending = True
+                st.rerun()
             else:
                 st.session_state.quiz_finished = True
                 goto("quiz_result")
+
+    if st.session_state.quiz_finish_pending:
+        missing = unanswered_numbers(len(questions))
+        if missing:
+            st.markdown(f'<div class="finish-warning">還有未作答題目：{html.escape("、".join(map(str, missing)))}。你可以回去補答，也可以直接結束這次測驗。</div>', unsafe_allow_html=True)
+            c1, c2 = st.columns(2)
+            with c1:
+                if st.button("繼續作答", use_container_width=True, key="continue_quiz"):
+                    st.session_state.quiz_finish_pending = False
+                    st.rerun()
+            with c2:
+                if st.button("仍要結束測驗", type="primary", use_container_width=True, key="force_finish_quiz"):
+                    st.session_state.quiz_finish_pending = False
+                    st.session_state.quiz_finished = True
+                    goto("quiz_result")
+        else:
+            st.session_state.quiz_finish_pending = False
+            st.session_state.quiz_finished = True
+            goto("quiz_result")
 
     st.markdown("</div>", unsafe_allow_html=True)
 
@@ -1137,75 +674,41 @@ def material_quiz_result():
         goto("study_material_upload")
 
     topbar()
-
     correct = 0
     needs_review = []
-
     for index, question in enumerate(questions):
         answer = st.session_state.quiz_answers.get(index)
         uncertain = bool(st.session_state.quiz_uncertain.get(index, False))
         is_correct = answer == question["correct_index"]
-
         if is_correct and not uncertain:
             correct += 1
-
         if (not is_correct) or uncertain:
             needs_review.append((index, question, answer, uncertain, is_correct))
 
-    st.markdown(
-        '<div class="study-header">'
-        '<div class="eyebrow">RESULT</div>'
-        f'<div class="hero-title" style="font-size:2.05rem">完成 {QUIZ_SIZE} 題測驗</div>'
-        f'<div class="hero-copy">真正掌握 {correct} / {QUIZ_SIZE} 題。答對但標記 ❓ 的題目仍會列入複習。</div>'
-        '</div>',
-        unsafe_allow_html=True,
-    )
+    st.markdown(f'<div class="study-header"><div class="eyebrow">RESULT</div><div class="hero-title" style="font-size:2.05rem">完成 {QUIZ_SIZE} 題測驗</div><div class="hero-copy">真正掌握 {correct} / {QUIZ_SIZE} 題。答對但標記 ❓ 的題目仍會列入複習。</div></div>', unsafe_allow_html=True)
 
     if not needs_review:
         st.success("全部掌握！這一輪沒有需要複習的題目。")
     else:
         st.markdown('<div class="section-title">這次需要回頭看的題目</div>', unsafe_allow_html=True)
-
         for index, question, answer, uncertain, is_correct in needs_review:
             correct_text = question["options"][question["correct_index"]]
-            your_text = (
-                question["options"][answer]
-                if answer in (0, 1, 2, 3)
-                else "未作答"
-            )
+            your_text = question["options"][answer] if answer in (0, 1, 2, 3) else "未作答"
             tag = "答對，但不確定" if is_correct and uncertain else "需要訂正"
-
-            st.markdown(
-                f'<div class="result-card">'
-                f'<div class="eyebrow">Q{index + 1} · {tag}</div>'
-                f'<div class="card-title" style="margin-top:.35rem">{html.escape(str(question["question"]))}</div>'
-                f'<div class="muted" style="margin-top:.65rem">你的答案：{html.escape(str(your_text))}</div>'
-                f'<div style="margin-top:.25rem;color:#248c56;font-weight:850">正確答案：{html.escape(str(correct_text))}</div>'
-                f'</div>',
-                unsafe_allow_html=True,
-            )
-
+            st.markdown(f'<div class="result-card"><div class="eyebrow">Q{index + 1} · {tag}</div><div class="card-title" style="margin-top:.35rem">{html.escape(str(question["question"]))}</div><div class="muted" style="margin-top:.65rem">你的答案：{html.escape(str(your_text))}</div><div style="margin-top:.25rem;color:#248c56;font-weight:850">正確答案：{html.escape(str(correct_text))}</div></div>', unsafe_allow_html=True)
             with st.expander("查看解析與教材依據"):
-                st.write(question["explanation"])
+                st.markdown(f"**解析**  \n{question['explanation']}")
                 if question.get("review_points"):
                     st.markdown("**複習重點**")
                     for point in question["review_points"]:
                         st.markdown(f"- {point}")
-                st.caption(
-                    f'教材 Page {question["source_page"]} · 「{question["source_quote"]}」'
-                )
+                st.markdown(f"**教材來源**  \nPage {question['source_page']}  \n> {question['source_quote']}")
 
     col1, col2 = st.columns(2)
     with col1:
         if st.button("再測一次", use_container_width=True):
-            st.session_state.quiz_index = 0
-            st.session_state.quiz_answers = {}
-            st.session_state.quiz_uncertain = {}
-            for i in range(len(questions)):
-                st.session_state.pop(f"material_answer_{i}", None)
-                st.session_state.pop(f"material_uncertain_{i}", None)
+            clear_quiz_answers()
             goto("quiz")
-
     with col2:
         if st.button("回到學習", type="primary", use_container_width=True):
             goto("study")
@@ -1218,29 +721,14 @@ def material_quiz_result():
 def slime_page():
     topbar()
     st.markdown("## 🐾 我的史萊姆")
-
     left, right = st.columns([1, 1.35], gap="large")
     with left:
-        st.markdown(
-            '<div style="text-align:center;padding:1.2rem;background:white;border:1px solid #dfebe4;border-radius:24px">'
-            + slime_markup()
-            + "</div>",
-            unsafe_allow_html=True,
-        )
-        st.session_state.slime_name = st.text_input(
-            "史萊姆名字",
-            value=st.session_state.slime_name,
-            max_chars=16,
-        )
-
+        st.markdown('<div style="text-align:center;padding:1.2rem;background:white;border:1px solid #dfebe4;border-radius:24px">' + slime_markup() + '</div>', unsafe_allow_html=True)
+        st.session_state.slime_name = st.text_input("史萊姆名字", value=st.session_state.slime_name, max_chars=16)
     with right:
         st.markdown("### 收藏")
         for slime in st.session_state.collection:
-            if st.button(
-                ("✅ " if slime == st.session_state.selected_slime else "🟢 ") + slime,
-                key=f"slime_{slime}",
-                use_container_width=True,
-            ):
+            if st.button(("✅ " if slime == st.session_state.selected_slime else "🟢 ") + slime, key=f"slime_{slime}", use_container_width=True):
                 st.session_state.selected_slime = slime
                 st.rerun()
 
@@ -1248,81 +736,39 @@ def slime_page():
 def achievements_page():
     topbar()
     st.markdown("## 🏆 成就")
-
     unlocked = set(st.session_state.unlocked_achievements)
     st.caption(f"目前解鎖 {len(unlocked)} / {len(ACHIEVEMENTS)}")
-
     cols = st.columns(3)
     for i, (aid, icon, title, desc, reward) in enumerate(ACHIEVEMENTS):
         style = "opacity:1" if aid in unlocked else "filter:grayscale(.8);opacity:.55"
         status = "已解鎖" if aid in unlocked else "尚未解鎖"
-
         with cols[i % 3]:
-            st.markdown(
-                f'<div style="{style};background:white;border:1px solid #dfebe4;border-radius:22px;padding:1rem;min-height:150px">'
-                f'<div style="font-size:2rem">{icon}</div>'
-                f'<div class="card-title">{title}</div>'
-                f'<div class="muted">{desc}</div>'
-                f'<div style="margin-top:.6rem;font-weight:850">{status} · {reward}</div>'
-                f'</div><br>',
-                unsafe_allow_html=True,
-            )
+            st.markdown(f'<div style="{style};background:white;border:1px solid #dfebe4;border-radius:22px;padding:1rem;min-height:150px"><div style="font-size:2rem">{icon}</div><div class="card-title">{title}</div><div class="muted">{desc}</div><div style="margin-top:.6rem;font-weight:850">{status} · {reward}</div></div><br>', unsafe_allow_html=True)
 
 
 def gacha_page():
     topbar()
     st.markdown("## 🎰 史萊姆召喚")
     st.caption("1 張抽卡券 = 1 次召喚 · N 70% · R 25% · SSR 5%")
-
-    if st.button(
-        "🎫 召喚一次",
-        type="primary",
-        use_container_width=True,
-        disabled=st.session_state.tickets <= 0,
-    ):
+    if st.button("🎫 召喚一次", type="primary", use_container_width=True, disabled=st.session_state.tickets <= 0):
         st.session_state.tickets -= 1
-        result = random.choices(
-            GACHA_POOL,
-            weights=[item["weight"] for item in GACHA_POOL],
-            k=1,
-        )[0]
-
+        result = random.choices(GACHA_POOL, weights=[x["weight"] for x in GACHA_POOL], k=1)[0]
         duplicate = result["name"] in st.session_state.collection
-
         if duplicate:
-            st.session_state.coins += (
-                50 if result["rarity"] == "N"
-                else 120 if result["rarity"] == "R"
-                else 300
-            )
+            st.session_state.coins += 50 if result["rarity"] == "N" else 120 if result["rarity"] == "R" else 300
         else:
             st.session_state.collection.append(result["name"])
-
         st.session_state.last_gacha = {**result, "duplicate": duplicate}
         st.rerun()
-
     result = st.session_state.last_gacha
     if result:
         msg = "重複獲得，已轉換成金幣" if result["duplicate"] else "NEW！已加入收藏"
-        st.markdown(
-            f'<div class="gacha-result">'
-            f'<div class="muted">{msg}</div>'
-            f'<div style="font-size:5rem">{result["emoji"]}</div>'
-            f'<div class="rarity-{result["rarity"]}">{result["rarity"]}</div>'
-            f'<div class="card-title">{result["name"]}</div>'
-            f'</div>',
-            unsafe_allow_html=True,
-        )
+        st.markdown(f'<div class="gacha-result"><div class="muted">{msg}</div><div style="font-size:5rem">{result["emoji"]}</div><div class="rarity-{result["rarity"]}">{result["rarity"]}</div><div class="card-title">{result["name"]}</div></div>', unsafe_allow_html=True)
 
-
-# =========================================================
-# Router
-# =========================================================
 
 render_drawer()
 
 page = st.session_state.medslime_page
-
 if page == "home":
     home()
 elif page == "study":
