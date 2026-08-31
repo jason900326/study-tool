@@ -99,6 +99,7 @@ DEFAULT_STATE = {
     "slime_progress": {"青蘋果史萊姆": {"level": 4, "exp": 72, "fragments": 0}},
     "slime_nicknames": {"青蘋果史萊姆": "Medi"},
     "slime_name_editing": False,
+    "slime_dev_preview": False,
 }
 
 for key, value in DEFAULT_STATE.items():
@@ -2401,10 +2402,19 @@ def slime_page():
 
     st.markdown(
         f'<div class="catalog-summary"><div><div class="section-title" style="margin-bottom:.15rem">史萊姆圖鑑</div>'
-        f'<div class="catalog-count">已收集 {len(owned)} / {len(SLIME_CATALOG)} 隻</div></div>'
-        '<div class="catalog-count">N / R 未獲得仍可預覽 · SR / SSR 保持神秘</div></div>',
+        f'<div class="catalog-count">已收集 {len(owned)} / {len(SLIME_CATALOG)} 隻</div></div></div>',
         unsafe_allow_html=True,
     )
+
+    dev_preview = st.toggle(
+        "🛠️ 開發者預覽",
+        value=bool(st.session_state.slime_dev_preview),
+        key="slime_dev_preview_toggle",
+        help="只解除圖鑑顯示限制，不會把未獲得史萊姆加入收藏。",
+    )
+    st.session_state.slime_dev_preview = bool(dev_preview)
+    if dev_preview:
+        st.caption("開發者預覽中：所有普通卡池史萊姆會顯示完整造型與名稱，但持有狀態不變。")
 
     filters = ["全部", "N", "R", "SR", "SSR", "限定"]
     chosen_filter = st.radio(
@@ -2435,7 +2445,8 @@ def slime_page():
             index = row_start + offset
             is_owned = item["name"] in owned
             is_selected = item["name"] == st.session_state.selected_slime
-            mystery = (item["rarity"] in ("SR", "SSR")) and not is_owned
+            preview_reveal = bool(st.session_state.slime_dev_preview) and not is_owned
+            mystery = (item["rarity"] in ("SR", "SSR")) and not is_owned and not preview_reveal
             shown_name = "???" if mystery else item["name"]
             tagline = "抽到後才會揭曉它的真面目。" if mystery else item["tagline"]
             card_progress = get_slime_progress(item["name"]) if is_owned else None
@@ -2444,11 +2455,11 @@ def slime_page():
                     if is_selected:
                         st.markdown('<div class="catalog-card-selected"></div>', unsafe_allow_html=True)
                     st.markdown(
-                        f'<div class="catalog-art-shell">{slime_avatar_markup(item, size="card", locked=not is_owned, mystery=mystery, selected=is_selected)}</div>'
+                        f'<div class="catalog-art-shell">{slime_avatar_markup(item, size="card", locked=(not is_owned and not preview_reveal), mystery=mystery, selected=is_selected)}</div>'
                         f'<div class="catalog-card-head"><div class="catalog-card-name">{shown_name}</div>'
                         f'<span class="rarity-chip rarity-{item["rarity"]}">{item["rarity"]}</span></div>'
                         f'<div class="catalog-card-tagline">{tagline}</div>'
-                        f'<div class="catalog-card-meta"><span>{("Lv." + str(card_progress["level"]) + " · 🧩 " + str(card_progress.get("fragments", 0))) if is_owned else "🔒 尚未獲得"}</span></div>',
+                        f'<div class="catalog-card-meta"><span>{("Lv." + str(card_progress["level"]) + " · 🧩 " + str(card_progress.get("fragments", 0))) if is_owned else ("🛠️ 開發預覽" if preview_reveal else "🔒 尚未獲得")}</span></div>',
                         unsafe_allow_html=True,
                     )
                     if is_selected:
@@ -2460,7 +2471,8 @@ def slime_page():
                             get_slime_nickname(item["name"])
                             st.rerun()
                     else:
-                        st.button("🔒 尚未獲得", disabled=True, use_container_width=True, key=f"slime_locked_{item['theme']}_{chosen_filter}")
+                        locked_label = "🛠️ 預覽中" if preview_reveal else "🔒 尚未獲得"
+                        st.button(locked_label, disabled=True, use_container_width=True, key=f"slime_locked_{item['theme']}_{chosen_filter}")
 
 
 def achievements_page():
