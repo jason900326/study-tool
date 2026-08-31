@@ -306,8 +306,6 @@ st.markdown(
     .mini-mouth { position:absolute; width:23px; height:9px; border-bottom:3px solid #153c2b; border-radius:0 0 50% 50%; left:41px; top:50px; }
     .mini-shine { position:absolute; width:22px; height:10px; background:rgba(255,255,255,.52); border-radius:50%; left:20px; top:16px; transform:rotate(-24deg); }
     .book-stack { position:absolute; right:34px; top:34px; font-size:3.6rem; }
-    .check-list { max-width:575px; margin:1rem auto .2rem; text-align:left; display:grid; gap:.55rem; }
-    .check-item { color:#315b47; font-weight:760; background:#f7fcf9; border:1px solid #e0eee6; border-radius:13px; padding:.62rem .8rem; }
 
     [data-testid="stFileUploaderDropzone"] { background:#fbfefc !important; border:1.5px dashed #bcdcc8 !important; border-radius:20px !important; padding:1.6rem !important; }
     [data-testid="stFileUploaderDropzone"] button { background:#2fc675 !important; color:white !important; border-color:#2fc675 !important; }
@@ -564,7 +562,7 @@ def study_material_intro():
     topbar()
     if st.button("← 返回學習", key="intro_back"):
         goto("study")
-    st.markdown('<div class="intro-panel"><div class="intro-art"><div class="mini-slime"><div class="mini-shine"></div><div class="mini-mouth"></div></div><div class="book-stack">📚</div></div><div class="hero-title" style="font-size:2rem">上傳教材，AI 直接生成 10 題<br>開始你的專屬測驗。</div><div class="hero-copy" style="max-width:680px;margin:.8rem auto 0">選好 PDF 後，MedSlime 會讀取教材並直接準備題目；完成後自動帶你進入第 1 題。</div><div class="check-list"><div class="check-item">✓ 題目只根據你的教材生成</div><div class="check-item">✓ 一次準備 10 題，不需要二次等待</div><div class="check-item">✓ 專有名詞保留教材原文</div><div class="check-item">✓ 每題保留教材頁碼與解析依據</div></div></div>', unsafe_allow_html=True)
+    st.markdown('<div class="intro-panel"><div class="intro-art"><div class="mini-slime"><div class="mini-shine"></div><div class="mini-mouth"></div></div><div class="book-stack">📚</div></div><div class="hero-title" style="font-size:2rem">上傳教材，AI 直接生成 10 題<br>開始你的專屬測驗。</div><div class="hero-copy" style="max-width:680px;margin:.8rem auto 0">選好 PDF 後，MedSlime 會讀取教材並直接準備題目；完成後自動帶你進入第 1 題。</div></div>', unsafe_allow_html=True)
     if st.button("☁️ 上傳教材開始學習", type="primary", use_container_width=True):
         prepare_material_upload()
         goto("study_material_upload")
