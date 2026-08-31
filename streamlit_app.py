@@ -309,7 +309,6 @@ st.markdown(
     .check-list { max-width:575px; margin:1rem auto .2rem; text-align:left; display:grid; gap:.55rem; }
     .check-item { color:#315b47; font-weight:760; background:#f7fcf9; border:1px solid #e0eee6; border-radius:13px; padding:.62rem .8rem; }
 
-    .upload-shell { background:rgba(255,255,255,.92); border:1px solid #dceae2; border-radius:27px; padding:1.1rem 1.15rem 1.2rem; box-shadow:0 12px 30px rgba(30,78,50,.05); }
     [data-testid="stFileUploaderDropzone"] { background:#fbfefc !important; border:1.5px dashed #bcdcc8 !important; border-radius:20px !important; padding:1.6rem !important; }
     [data-testid="stFileUploaderDropzone"] button { background:#2fc675 !important; color:white !important; border-color:#2fc675 !important; }
 
@@ -323,11 +322,65 @@ st.markdown(
     .digest-dots span:nth-child(3) { animation-delay:.3s; }
 
     .quiz-stage { animation:pageIn .2s ease-out both; }
-    .quiz-topline { display:flex; justify-content:space-between; align-items:center; gap:1rem; margin:.8rem 0 .55rem; }
+    .quiz-topline { display:flex; align-items:center; margin:.8rem 0 .5rem; }
     .quiz-count { color:#2b6850; font-weight:900; }
-    .quiz-subject { color:#789083; font-size:.9rem; }
-    .quiz-progress { width:100%; height:9px; border-radius:999px; background:#dce9df; overflow:hidden; margin-bottom:1.15rem; }
-    .quiz-progress-fill { height:100%; background:linear-gradient(90deg,#57d188,#42bfa5); transition:width .25s ease; }
+    .slime-track {
+        display:grid;
+        grid-template-columns:repeat(10, minmax(22px, 38px));
+        justify-content:space-between;
+        align-items:center;
+        gap:.35rem;
+        width:100%;
+        padding:.45rem .2rem 1.15rem;
+    }
+    .mini-progress-slime {
+        width:100%;
+        max-width:38px;
+        aspect-ratio:1.28 / 1;
+        position:relative;
+        border-radius:50% 50% 42% 42% / 62% 62% 38% 38%;
+        background:#e4eee8;
+        border:1px solid #d3e2d9;
+        transition:transform .18s ease, opacity .18s ease, box-shadow .18s ease;
+    }
+    .mini-progress-slime.done {
+        background:linear-gradient(145deg,#8be8a8,#43c879);
+        border-color:#75d998;
+    }
+    .mini-progress-slime.current {
+        background:linear-gradient(145deg,#9af0b3,#35c878);
+        border-color:#31bd70;
+        transform:scale(1.14);
+        box-shadow:0 0 0 4px rgba(49,201,120,.14), 0 5px 12px rgba(35,139,78,.14);
+        animation:progressSlime .75s ease-out both;
+    }
+    .mini-progress-slime.future { opacity:.62; }
+    .mini-progress-slime::before,
+    .mini-progress-slime::after {
+        content:"";
+        position:absolute;
+        top:39%;
+        width:10%;
+        min-width:2px;
+        aspect-ratio:1 / 1.35;
+        border-radius:50%;
+        background:#173b2b;
+    }
+    .mini-progress-slime::before { left:30%; }
+    .mini-progress-slime::after { right:30%; }
+    .mini-progress-slime.future::before,
+    .mini-progress-slime.future::after { opacity:.28; }
+    .mini-progress-mouth {
+        position:absolute;
+        left:40%;
+        top:60%;
+        width:20%;
+        height:8%;
+        border-bottom:1.5px solid #173b2b;
+        border-radius:0 0 50% 50%;
+        opacity:.85;
+    }
+    .mini-progress-slime.future .mini-progress-mouth { opacity:.22; }
     .quiz-card { background:rgba(255,255,255,.96); border:1px solid #dceae2; border-radius:27px; padding:1.55rem 1.6rem; box-shadow:0 14px 34px rgba(31,83,53,.06); animation:questionIn .22s ease-out both; margin-bottom:.8rem; }
     .quiz-question { color:#173b2b; font-size:1.22rem; line-height:1.65; font-weight:850; }
 
@@ -340,8 +393,6 @@ st.markdown(
     [data-testid="stCheckbox"] label span { color:#244c39 !important; opacity:1 !important; }
     [data-testid="stRadio"] label:has(input:checked) { border-color:#69cf94; background:#effbf4; }
     [data-testid="stCheckbox"] { margin-top:.35rem; margin-bottom:.7rem; }
-
-    .finish-warning { background:#fff9d9; border:1px solid #eddc75; border-radius:16px; padding:.85rem 1rem; margin:.85rem 0 .6rem; color:#5d5327; line-height:1.6; font-weight:700; }
 
     .result-card { background:rgba(255,255,255,.96); border:1px solid #dceae2; border-radius:25px; padding:1.3rem 1.4rem; margin:.8rem 0; animation:pageIn .2s ease-out both; }
     [data-testid="stExpander"] { background:rgba(255,255,255,.92) !important; border:1px solid #dceae2 !important; border-radius:14px !important; overflow:hidden; }
@@ -370,12 +421,13 @@ st.markdown(
     div.stButton > button[kind="secondary"] { background:rgba(255,255,255,.9); color:#244c39; border:1px solid #d8e8df; }
     div.stButton > button:disabled { background:#f2f6f3 !important; color:#9aac9f !important; border-color:#e2ebe5 !important; }
 
-    .home-copy-card,.home-slime-card,.home-task,.choice-card,.study-header,.intro-panel,.upload-shell { animation:pageIn .20s ease-out both; }
+    .home-copy-card,.home-slime-card,.home-task,.choice-card,.study-header,.intro-panel { animation:pageIn .20s ease-out both; }
     @keyframes drawerIn { from { transform:translateX(-18px); opacity:0; } to { transform:translateX(0); opacity:1; } }
     @keyframes pageIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
     @keyframes questionIn { from { opacity:0; transform:translateX(9px); } to { opacity:1; transform:translateX(0); } }
     @keyframes slimeBounce { 0%,100% { transform:translateY(0) scaleX(1); } 45% { transform:translateY(-8px) scaleX(.97); } 60% { transform:translateY(-5px) scaleX(1.03); } }
     @keyframes dots { 0%,70%,100% { opacity:.28; transform:translateY(0); } 35% { opacity:1; transform:translateY(-3px); } }
+    @keyframes progressSlime { 0% { transform:scale(.94); } 65% { transform:scale(1.19); } 100% { transform:scale(1.14); } }
 
     @media (max-width:700px) {
         .block-container { padding-left:.85rem; padding-right:.85rem; padding-bottom:3rem; }
@@ -385,7 +437,7 @@ st.markdown(
         .intro-panel { padding:1.45rem 1.1rem; }
         .quiz-card { padding:1.2rem 1.1rem; }
         .quiz-question { font-size:1.08rem; }
-        .quiz-topline { align-items:flex-start; }
+        .slime-track { grid-template-columns:repeat(10, minmax(19px, 30px)); gap:.22rem; padding:.4rem 0 1rem; }
         [data-testid="stHorizontalBlock"]:has([class*="st-key-nav_toggle"]) { gap:.18rem !important; }
         [data-testid="stHorizontalBlock"]:has([class*="st-key-nav_toggle"]) > div:nth-child(1) { min-width:42px !important; width:42px !important; flex:0 0 42px !important; }
         [data-testid="stHorizontalBlock"]:has([class*="st-key-nav_toggle"]) > div:nth-child(2) { min-width:112px !important; }
@@ -523,9 +575,7 @@ def study_material_upload():
     if st.button("← 返回介紹", key="upload_back"):
         goto("study_material_intro")
     st.markdown('<div class="study-header"><div class="eyebrow">YOUR MATERIAL</div><div class="hero-title" style="font-size:2.05rem">上傳你的教材</div><div class="hero-copy">選擇 PDF 後會自動生成 10 題並進入測驗，不需要再按一次分析。</div></div>', unsafe_allow_html=True)
-    st.markdown('<div class="upload-shell">', unsafe_allow_html=True)
     uploaded = st.file_uploader("選擇 PDF 教材", type=["pdf"], key="medslime_material_pdf")
-    st.markdown("</div>", unsafe_allow_html=True)
 
     if uploaded is None:
         if st.session_state.material_generation_error:
@@ -586,6 +636,42 @@ def unanswered_numbers(question_count):
     return [number + 1 for number in range(question_count) if number not in st.session_state.quiz_answers]
 
 
+def slime_progress_markup(current_index, question_count):
+    slimes = []
+    for number in range(question_count):
+        if number == current_index:
+            state = "current"
+        elif number in st.session_state.quiz_answers:
+            state = "done"
+        else:
+            state = "future"
+        slimes.append(
+            f'<div class="mini-progress-slime {state}" title="第 {number + 1} 題">'
+            '<span class="mini-progress-mouth"></span></div>'
+        )
+    return '<div class="slime-track">' + "".join(slimes) + '</div>'
+
+
+def show_finish_confirmation(missing):
+    @st.dialog("要提前結束測驗嗎？")
+    def _finish_dialog():
+        missing_text = "、".join(map(str, missing))
+        st.write(f"還有未作答題目：{missing_text}")
+        st.caption("你可以回去補答，也可以直接結束這次測驗。")
+        left, right = st.columns(2)
+        with left:
+            if st.button("繼續作答", use_container_width=True, key="dialog_continue_quiz"):
+                st.rerun()
+        with right:
+            if st.button("仍要結束測驗", type="primary", use_container_width=True, key="dialog_force_finish"):
+                st.session_state.quiz_finished = True
+                st.session_state.quiz_finish_pending = False
+                st.session_state.medslime_page = "quiz_result"
+                st.session_state.menu_open = False
+                st.rerun()
+    _finish_dialog()
+
+
 def material_quiz_page():
     questions = st.session_state.material_questions or []
     if len(questions) != QUIZ_SIZE:
@@ -596,13 +682,10 @@ def material_quiz_page():
     question = questions[index]
     options = question["options"]
     safe_question = html.escape(str(question["question"]))
-    safe_subject = html.escape(str(st.session_state.material_subject or "教材測驗"))
-    safe_filename = html.escape(str(st.session_state.uploaded_learning_file or ""))
 
     st.markdown('<div class="quiz-stage">', unsafe_allow_html=True)
-    st.markdown(f'<div class="quiz-topline"><div><span class="quiz-count">第 {index + 1} / {len(questions)} 題</span><div class="quiz-subject">{safe_subject}</div></div><div class="muted">{safe_filename}</div></div>', unsafe_allow_html=True)
-    progress = int(((index + 1) / len(questions)) * 100)
-    st.markdown(f'<div class="quiz-progress"><div class="quiz-progress-fill" style="width:{progress}%"></div></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="quiz-topline"><span class="quiz-count">第 {index + 1} / {len(questions)} 題</span></div>', unsafe_allow_html=True)
+    st.markdown(slime_progress_markup(index, len(questions)), unsafe_allow_html=True)
     st.markdown(f'<div class="quiz-card"><div class="quiz-question">{safe_question}</div></div>', unsafe_allow_html=True)
 
     answer_key = f"material_answer_{index}"
@@ -640,30 +723,10 @@ def material_quiz_page():
             save_current_quiz_state(index, options)
             missing = unanswered_numbers(len(questions))
             if missing:
-                st.session_state.quiz_finish_pending = True
-                st.rerun()
+                show_finish_confirmation(missing)
             else:
                 st.session_state.quiz_finished = True
                 goto("quiz_result")
-
-    if st.session_state.quiz_finish_pending:
-        missing = unanswered_numbers(len(questions))
-        if missing:
-            st.markdown(f'<div class="finish-warning">還有未作答題目：{html.escape("、".join(map(str, missing)))}。你可以回去補答，也可以直接結束這次測驗。</div>', unsafe_allow_html=True)
-            c1, c2 = st.columns(2)
-            with c1:
-                if st.button("繼續作答", use_container_width=True, key="continue_quiz"):
-                    st.session_state.quiz_finish_pending = False
-                    st.rerun()
-            with c2:
-                if st.button("仍要結束測驗", type="primary", use_container_width=True, key="force_finish_quiz"):
-                    st.session_state.quiz_finish_pending = False
-                    st.session_state.quiz_finished = True
-                    goto("quiz_result")
-        else:
-            st.session_state.quiz_finish_pending = False
-            st.session_state.quiz_finished = True
-            goto("quiz_result")
 
     st.markdown("</div>", unsafe_allow_html=True)
 
