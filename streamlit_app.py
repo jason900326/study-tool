@@ -2080,7 +2080,8 @@ def render_focus_timer_fragment():
             progress = min(1.0, elapsed / total)
             st.markdown(f'<div class="focus-phase">FOCUS · 第 {st.session_state.focus_round} 輪</div><div class="focus-clock">{_format_clock(remaining)}</div>', unsafe_allow_html=True)
             paused_text = " · 已暫停" if status == "paused" else ""
-            st.markdown(f'<div class="focus-sub">{st.session_state.selected_slime} 正陪你往終點前進{paused_text}</div>', unsafe_allow_html=True)
+            companion_nickname = st.session_state.slime_nicknames.get(st.session_state.selected_slime, st.session_state.selected_slime)
+            st.markdown(f'<div class="focus-sub">{html.escape(companion_nickname)} 正陪你往終點前進{paused_text}</div>', unsafe_allow_html=True)
             st.markdown(_focus_runner_markup(progress, resting=status == "paused"), unsafe_allow_html=True)
             st.markdown(f'<div class="focus-reward-note">每完整 5 分鐘 +{FOCUS_COINS_PER_BLOCK} 🪙　<span class="focus-earned">這次已獲得 {st.session_state.focus_session_coins} 🪙</span></div>', unsafe_allow_html=True)
         else:
