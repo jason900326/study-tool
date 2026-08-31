@@ -34,13 +34,25 @@ if '    "material_mistakes_saved": False,\n' not in text:
 # Reset the per-attempt save guards whenever a new attempt starts.
 material_reset_anchor = "    st.session_state.quiz_finish_pending = False\n"
 material_reset_new = material_reset_anchor + "    st.session_state.material_mistakes_saved = False\n"
-if "    st.session_state.material_mistakes_saved = False\n" not in text[text.find("def clear_quiz_answers"):text.find("def prepare_material_upload")]:
-    replace_once(material_reset_anchor, material_reset_new, "material mistake reset")
+material_start = text.find("def clear_quiz_answers():")
+material_end = text.find("def prepare_material_upload():")
+material_block = text[material_start:material_end]
+if "    st.session_state.material_mistakes_saved = False\n" not in material_block:
+    if material_reset_anchor not in material_block:
+        raise RuntimeError("material mistake reset anchor not found in clear_quiz_answers")
+    material_block = material_block.replace(material_reset_anchor, material_reset_new, 1)
+    text = text[:material_start] + material_block + text[material_end:]
 
 national_reset_anchor = "    st.session_state.national_exam_uncertain = {}\n"
 national_reset_new = national_reset_anchor + "    st.session_state.national_exam_mistakes_saved = False\n"
-if national_reset_new not in text:
-    replace_once(national_reset_anchor, national_reset_new, "national mistake reset")
+national_start = text.find("def clear_national_exam_answers():")
+national_end = text.find("def start_national_exam_quiz")
+national_block = text[national_start:national_end]
+if "    st.session_state.national_exam_mistakes_saved = False\n" not in national_block:
+    if national_reset_anchor not in national_block:
+        raise RuntimeError("national mistake reset anchor not found in clear_national_exam_answers")
+    national_block = national_block.replace(national_reset_anchor, national_reset_new, 1)
+    text = text[:national_start] + national_block + text[national_end:]
 
 # Add the database adapter for the new mistake-bank experience. The old `label`
 # column is intentionally reused for review status in this MVP, because error
