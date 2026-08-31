@@ -909,11 +909,33 @@ st.markdown(
 
     .mistake-summary { background:linear-gradient(135deg,#edf9f1,#f7fcf9); border:1px solid #dcebe2; border-radius:20px; padding:1rem 1.15rem; margin:.7rem 0 1rem; color:#315b47; }
     .mistake-summary strong { color:#22985a; font-size:1.08rem; }
-    [class*="st-key-mistake_folder_"] { background:rgba(255,255,255,.96); border:1px solid #dceae2; border-radius:22px; padding:1.05rem 1.05rem .9rem; box-shadow:0 10px 26px rgba(31,83,53,.045); min-height:145px; }
-    .mistake-folder-icon { font-size:1.75rem; margin-bottom:.5rem; }
-    .mistake-folder-title { color:#173b2b; font-size:1.08rem; font-weight:950; line-height:1.4; }
-    .mistake-folder-meta { color:#70877a; font-size:.88rem; margin:.35rem 0 .7rem; }
-    .mistake-folder-pending { color:#2aa665; font-weight:900; }
+
+    /* Mistake folders are compact list rows instead of cards. */
+    [class*="st-key-mistake_folder_row_"] { border-bottom:1px solid #dfeae4; padding:.12rem 0; }
+    [class*="st-key-mistake_folder_row_"] button { min-height:58px !important; justify-content:flex-start !important; text-align:left !important; padding:.72rem .9rem !important; background:transparent !important; color:#244c39 !important; border:0 !important; border-radius:12px !important; box-shadow:none !important; }
+    [class*="st-key-mistake_folder_row_"] button:hover { background:#f1faf5 !important; transform:none !important; }
+    [class*="st-key-mistake_folder_row_"] button p { width:100% !important; text-align:left !important; color:#244c39 !important; font-weight:800 !important; line-height:1.45 !important; white-space:normal !important; }
+
+    /* Keep mistake expanders light in hover/focus/open states. */
+    [class*="st-key-mistake_pending_"] [data-testid="stExpander"],
+    [class*="st-key-mistake_reviewed_"] [data-testid="stExpander"] { background:#fff !important; border:1px solid #dceae2 !important; }
+    [class*="st-key-mistake_pending_"] [data-testid="stExpander"] summary,
+    [class*="st-key-mistake_reviewed_"] [data-testid="stExpander"] summary,
+    [class*="st-key-mistake_pending_"] [data-testid="stExpander"] summary:hover,
+    [class*="st-key-mistake_reviewed_"] [data-testid="stExpander"] summary:hover,
+    [class*="st-key-mistake_pending_"] [data-testid="stExpander"] summary:focus,
+    [class*="st-key-mistake_reviewed_"] [data-testid="stExpander"] summary:focus,
+    [class*="st-key-mistake_pending_"] [data-testid="stExpander"] summary:focus-visible,
+    [class*="st-key-mistake_reviewed_"] [data-testid="stExpander"] summary:focus-visible { background:#f8fcfa !important; color:#244c39 !important; }
+    [class*="st-key-mistake_pending_"] [data-testid="stExpander"] summary *,
+    [class*="st-key-mistake_reviewed_"] [data-testid="stExpander"] summary * { color:#244c39 !important; }
+
+    /* Official source link inside mistake review should match MedSlime, not dark theme. */
+    [class*="st-key-mistake_pending_"] [data-testid="stLinkButton"] a,
+    [class*="st-key-mistake_reviewed_"] [data-testid="stLinkButton"] a { background:#fff !important; color:#244c39 !important; border:1px solid #d7e7de !important; box-shadow:none !important; }
+    [class*="st-key-mistake_pending_"] [data-testid="stLinkButton"] a:hover,
+    [class*="st-key-mistake_reviewed_"] [data-testid="stLinkButton"] a:hover { background:#eef9f3 !important; color:#1f6f47 !important; border-color:#bfe3ce !important; }
+
     .mistake-row-question { color:#173b2b; font-size:1.05rem; font-weight:850; line-height:1.6; margin:.4rem 0 .8rem; }
     .mistake-status { display:inline-flex; align-items:center; border-radius:999px; padding:.2rem .55rem; font-size:.75rem; font-weight:900; margin-right:.35rem; }
     .mistake-status.wrong { background:#fdecec; color:#c84e4e; }
@@ -1853,21 +1875,14 @@ def mistake_bank_page():
         reverse=True,
     )
 
-    cols = st.columns(3, gap="medium")
     for index, subject in enumerate(subjects):
         subject_rows = by_subject[subject]
         pending = sum(1 for row in subject_rows if not _mistake_is_reviewed(row))
-        with cols[index % 3]:
-            with st.container(key=f"mistake_folder_{index}"):
-                st.markdown(
-                    f'<div class="mistake-folder-icon">📁</div>'
-                    f'<div class="mistake-folder-title">{html.escape(subject)}</div>'
-                    f'<div class="mistake-folder-meta"><span class="mistake-folder-pending">{pending} 題尚未複習</span> · 共 {len(subject_rows)} 題</div>',
-                    unsafe_allow_html=True,
-                )
-                if st.button("開啟資料夾 →", use_container_width=True, key=f"open_mistake_folder_{index}"):
-                    st.session_state.mistake_subject = subject
-                    goto("mistake_subject")
+        label = f"📁  {subject}　·　{pending} 題尚未複習　·　共 {len(subject_rows)} 題　›"
+        with st.container(key=f"mistake_folder_row_{index}"):
+            if st.button(label, use_container_width=True, key=f"open_mistake_folder_{index}"):
+                st.session_state.mistake_subject = subject
+                goto("mistake_subject")
 
 
 def mistake_subject_page():
