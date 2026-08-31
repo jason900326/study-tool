@@ -60,7 +60,7 @@ st.markdown(
 
     .block-container {
         max-width:1180px;
-        padding-top:1rem;
+        padding-top:3.75rem;
         padding-bottom:4.5rem;
     }
 
@@ -97,7 +97,6 @@ st.markdown(
     .muted { color:#71887b; font-size:.92rem; }
     .card-title { color:#1d4533; font-weight:900; font-size:1.08rem; }
 
-    /* MedSlime top bar: these are all OUR widgets, not Streamlit's sidebar controls. */
     [data-testid="stHorizontalBlock"]:has([class*="st-key-nav_toggle"]) {
         flex-wrap:nowrap !important;
         align-items:center !important;
@@ -166,7 +165,6 @@ st.markdown(
         line-height:48px !important;
     }
 
-    /* Custom drawer: stable because the key/class belongs to our container. */
     [class*="st-key-nav_drawer"] {
         position:fixed !important;
         top:0 !important;
