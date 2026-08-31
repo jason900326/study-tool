@@ -707,7 +707,7 @@ st.markdown(
     [class*="st-key-material_intro_uploader"] [data-testid="stFileUploaderDropzone"] button p,
     [class*="st-key-material_intro_uploader"] [data-testid="stFileUploaderDropzone"] button span,
     [class*="st-key-material_intro_uploader"] [data-testid="stFileUploaderDropzone"] button svg { display:none !important; font-size:0 !important; }
-    [class*="st-key-material_intro_uploader"] [data-testid="stFileUploaderDropzone"] button::after { content:"☁️  上傳教材開始學習"; position:absolute !important; inset:0 !important; display:flex !important; align-items:center !important; justify-content:center !important; text-align:center !important; font-size:.95rem; font-weight:850; line-height:1 !important; }
+    [class*="st-key-material_intro_uploader"] [data-testid="stFileUploaderDropzone"] button::after { content:"上傳教材開始學習"; position:absolute !important; inset:0 !important; display:flex !important; align-items:center !important; justify-content:center !important; text-align:center !important; font-size:.95rem; font-weight:850; line-height:1 !important; }
     [data-testid="stExpander"] { background:rgba(255,255,255,.92) !important; border:1px solid #dceae2 !important; border-radius:14px !important; overflow:hidden; }
     [data-testid="stExpander"] summary,
     [data-testid="stExpander"] summary p,
@@ -1195,8 +1195,7 @@ def national_exam_result_page():
 
 def study_material_intro():
     topbar()
-    if st.button("← 返回學習", key="intro_back"):
-        goto("study")
+    render_back_button("返回學習", "study", "intro_back")
     with st.container(key="material_intro_card"):
         st.markdown('<div class="intro-art"><div class="mini-slime"><div class="mini-shine"></div><div class="mini-mouth"></div></div><div class="book-stack">📚</div></div><div class="hero-title material-intro-title">上傳教材，AI 生成 10 題<br>開始你的專屬測驗。</div><div class="hero-copy" style="max-width:680px;margin:.8rem auto 0">選好 PDF 後，MedSlime 會直接讀取教材；完成後自動帶你進入第 1 題。</div>', unsafe_allow_html=True)
         with st.container(key="material_intro_uploader"):
