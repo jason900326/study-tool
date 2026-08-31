@@ -1089,6 +1089,7 @@ def national_exam_quiz_page():
         goto("national_exam")
 
     topbar()
+    render_back_button("返回國考", "national_exam", "back_national_exam_quiz")
     index = max(0, min(st.session_state.national_exam_index, len(questions) - 1))
     question = questions[index]
     options = question["options"]
@@ -1149,6 +1150,7 @@ def national_exam_result_page():
     if not questions:
         goto("national_exam")
     topbar()
+    render_back_button("返回國考", "national_exam", "back_national_exam_result")
     meta = st.session_state.national_exam_meta or {}
     correct = 0
     needs_review = []
@@ -1375,6 +1377,7 @@ def material_quiz_page():
         goto("study_material_upload")
 
     topbar()
+    render_back_button("返回教材", "study_material_intro", "back_material_quiz")
     index = max(0, min(st.session_state.quiz_index, len(questions) - 1))
     question = questions[index]
     options = question["options"]
@@ -1434,6 +1437,7 @@ def material_quiz_result():
         goto("study_material_intro")
 
     topbar()
+    render_back_button("返回教材", "study_material_intro", "back_material_result")
     correct = 0
     needs_review = []
     for index, question in enumerate(questions):
