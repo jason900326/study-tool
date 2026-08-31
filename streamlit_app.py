@@ -1,3 +1,4 @@
+import textwrap
 import streamlit as st
 import html
 import json
@@ -1675,7 +1676,7 @@ def show_sidebar():
             with st.expander("查看錯誤"):
                 st.code(error)
 
-        st.caption("MedSlime · Prototype v0.25")
+        st.caption("MedSlime · Prototype v0.25.1")
 
 
 # =========================================================
@@ -2460,31 +2461,33 @@ def show_home():
     # =====================================================
 
     st.markdown(
-        """
-        <div class="medslime-hero">
-            <div class="medslime-eyebrow">
-                MEDSLIME · LEARN BY TESTING
-            </div>
+        textwrap.dedent(
+            """
+            <div class="medslime-hero">
+                <div class="medslime-eyebrow">
+                    MEDSLIME · LEARN BY TESTING
+                </div>
 
-            <div class="medslime-title">
-                別先硬啃整份教材。<br>
-                先用 <span class="medslime-title-accent">5 題</span>
-                找出你不會的地方。
-            </div>
+                <div class="medslime-title">
+                    別先硬啃整份教材。<br>
+                    先用 <span class="medslime-title-accent">5 題</span>
+                    找出你不會的地方。
+                </div>
 
-            <p class="medslime-subtitle">
-                MedSlime 會根據你的教材整理重點、準備測驗，
-                再把真正需要複習的地方留下來。
-            </p>
+                <p class="medslime-subtitle">
+                    MedSlime 會根據你的教材整理重點、準備測驗，
+                    再把真正需要複習的地方留下來。
+                </p>
 
-            <div class="medslime-chip-row">
-                <span class="medslime-chip">PDF → 5 題診斷</span>
-                <span class="medslime-chip">教材來源可驗證</span>
-                <span class="medslime-chip">歷屆國考真題</span>
-                <span class="medslime-chip">錯題持續累積</span>
+                <div class="medslime-chip-row">
+                    <span class="medslime-chip">PDF → 5 題診斷</span>
+                    <span class="medslime-chip">教材來源可驗證</span>
+                    <span class="medslime-chip">歷屆國考真題</span>
+                    <span class="medslime-chip">錯題持續累積</span>
+                </div>
             </div>
-        </div>
-        """,
+            """
+        ).strip(),
         unsafe_allow_html=True,
     )
 
@@ -2567,46 +2570,54 @@ def show_home():
 
     with step1:
         st.markdown(
-            """
-            <div class="medslime-step">
-                <div class="medslime-step-number">1</div>
-                <strong>丟教材</strong><br>
-                <span>上傳你現在真的要讀的 PDF。</span>
-            </div>
-            """,
+            textwrap.dedent(
+                """
+                <div class="medslime-step">
+                    <div class="medslime-step-number">1</div>
+                    <strong>丟教材</strong><br>
+                    <span>上傳你現在真的要讀的 PDF。</span>
+                </div>
+                """
+            ).strip(),
             unsafe_allow_html=True,
         )
 
     with step2:
         st.markdown(
-            """
-            <div class="medslime-step">
-                <div class="medslime-step-number">2</div>
-                <strong>先做 5 題</strong><br>
-                <span>不用先讀完，先確認自己到底會多少。</span>
-            </div>
-            """,
+            textwrap.dedent(
+                """
+                <div class="medslime-step">
+                    <div class="medslime-step-number">2</div>
+                    <strong>先做 5 題</strong><br>
+                    <span>不用先讀完，先確認自己到底會多少。</span>
+                </div>
+                """
+            ).strip(),
             unsafe_allow_html=True,
         )
 
     with step3:
         st.markdown(
-            """
-            <div class="medslime-step">
-                <div class="medslime-step-number">3</div>
-                <strong>只複習需要的地方</strong><br>
-                <span>錯題與不確定的觀念留下來，再回頭補強。</span>
-            </div>
-            """,
+            textwrap.dedent(
+                """
+                <div class="medslime-step">
+                    <div class="medslime-step-number">3</div>
+                    <strong>只複習需要的地方</strong><br>
+                    <span>錯題與不確定的觀念留下來，再回頭補強。</span>
+                </div>
+                """
+            ).strip(),
             unsafe_allow_html=True,
         )
 
     st.markdown(
-        """
-        <div class="medslime-footer-note">
-            不是先讀完整份教材，而是先知道哪裡值得你花時間。
-        </div>
-        """,
+        textwrap.dedent(
+            """
+            <div class="medslime-footer-note">
+                不是先讀完整份教材，而是先知道哪裡值得你花時間。
+            </div>
+            """
+        ).strip(),
         unsafe_allow_html=True,
     )
 
