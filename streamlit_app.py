@@ -152,10 +152,12 @@ def page_home():
         c1, c2 = st.columns([1.4, 1])
         with c1:
             if st.button("🧠 開始學習", type="primary", use_container_width=True):
-                st.switch_page("pages/學習.py")
+                st.session_state.page = "home"
+                st.switch_page("pages/study.py")
         with c2:
             if st.button("🔍 看我的弱點", use_container_width=True):
-                st.switch_page("pages/學習.py")
+                st.session_state.page = "mistakes"
+                st.switch_page("pages/study.py")
     with right:
         st.markdown('<div class="card">', unsafe_allow_html=True)
         show_slime()
