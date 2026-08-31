@@ -1228,14 +1228,17 @@ def _local_asset_data_uri(asset_path):
 
 
 def slime_avatar_markup(item, size="card", locked=False, mystery=False, selected=False):
-    if item.get("theme") == "apple" and not mystery:
-        locked_class = " locked" if locked else ""
-        selected_class = " selected" if selected else ""
-        art_uri = _local_asset_data_uri("assets/slimes/apple.webp")
-        return (
-            f'<div class="official-slime-art official-slime-art-{size}{locked_class}{selected_class}">'
-            f'<img src="{art_uri}" alt="青蘋果史萊姆"></div>'
-        )
+    if not mystery:
+        asset_path = Path(f"assets/slimes/{item.get('theme')}.PNG")
+        if asset_path.exists():
+            locked_class = " locked" if locked else ""
+            selected_class = " selected" if selected else ""
+            art_uri = _local_asset_data_uri(asset_path)
+            safe_alt = html.escape(item.get("name", "史萊姆"))
+            return (
+                f'<div class="official-slime-art official-slime-art-{size}{locked_class}{selected_class}">'
+                f'<img src="{art_uri}" alt="{safe_alt}"></div>'
+            )
     classes = ["catalog-slime", f"catalog-slime-{size}", f"theme-{item['theme']}"]
     if locked:
         classes.append("locked")
