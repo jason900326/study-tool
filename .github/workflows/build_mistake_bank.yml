@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - 'scripts/build_mistake_bank.py'
+      - 'scripts/trigger_mistake_bank.txt'
 
 permissions:
   contents: write
