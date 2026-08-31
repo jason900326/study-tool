@@ -1,3 +1,4 @@
+import base64
 import hashlib
 import html
 import json
@@ -1049,6 +1050,12 @@ st.markdown(
     .catalog-slime { position:relative; border-radius:50% 50% 40% 40%/62% 62% 38% 38%; box-shadow:inset -10px -13px 0 rgba(25,70,45,.075),0 12px 22px rgba(39,110,73,.12); }
     .catalog-slime-card { width:112px; height:88px; }
     .catalog-slime-home { width:150px; height:118px; margin:0 auto .8rem; animation:slimeBounce 2.4s ease-in-out infinite; }
+    .official-slime-art { display:flex; align-items:center; justify-content:center; overflow:hidden; border-radius:24px; }
+    .official-slime-art img { display:block; width:100%; height:100%; object-fit:contain; border-radius:inherit; }
+    .official-slime-art-card { width:154px; height:124px; margin:0 auto; }
+    .official-slime-art-home { width:190px; height:153px; margin:0 auto .45rem; animation:slimeBounce 2.4s ease-in-out infinite; }
+    .official-slime-art-hero { width:220px; height:177px; margin:0 auto; animation:slimeBounce 2.2s ease-in-out infinite; }
+    .official-slime-art.locked { filter:saturate(.42); opacity:.64; }
     .catalog-slime-hero { width:176px; height:138px; animation:slimeBounce 2.2s ease-in-out infinite; }
     .catalog-slime::after { content:""; position:absolute; left:20%; top:14%; width:23%; height:12%; border-radius:50%; background:rgba(255,255,255,.42); transform:rotate(-22deg); }
     .catalog-eye { position:absolute; top:43%; width:8%; height:12%; border-radius:50%; background:#173b2b; z-index:3; }
@@ -1212,7 +1219,23 @@ def selected_slime_background():
     return slime_data(st.session_state.selected_slime)["gradient"]
 
 
+def _local_asset_data_uri(asset_path):
+    with open(asset_path, "rb") as asset_file:
+        encoded = base64.b64encode(asset_file.read()).decode("ascii")
+    suffix = str(asset_path).lower().rsplit(".", 1)[-1]
+    mime = "image/webp" if suffix == "webp" else "image/png"
+    return f"data:{mime};base64,{encoded}"
+
+
 def slime_avatar_markup(item, size="card", locked=False, mystery=False, selected=False):
+    if item.get("theme") == "apple" and not mystery:
+        locked_class = " locked" if locked else ""
+        selected_class = " selected" if selected else ""
+        art_uri = _local_asset_data_uri("assets/slimes/apple.webp")
+        return (
+            f'<div class="official-slime-art official-slime-art-{size}{locked_class}{selected_class}">'
+            f'<img src="{art_uri}" alt="青蘋果史萊姆"></div>'
+        )
     classes = ["catalog-slime", f"catalog-slime-{size}", f"theme-{item['theme']}"]
     if locked:
         classes.append("locked")
