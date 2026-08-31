@@ -703,10 +703,11 @@ st.markdown(
     [class*="st-key-material_intro_uploader"] [data-testid="stFileUploaderDropzone"] { border:none !important; background:transparent !important; padding:0 !important; width:100% !important; display:flex !important; justify-content:center !important; }
     [class*="st-key-material_intro_uploader"] [data-testid="stFileUploaderDropzoneInstructions"],
     [class*="st-key-material_intro_uploader"] small { display:none !important; }
-    [class*="st-key-material_intro_uploader"] [data-testid="stFileUploaderDropzone"] button { width:min(100%,360px) !important; min-height:48px !important; margin:0 auto !important; display:flex !important; align-items:center !important; justify-content:center !important; text-align:center !important; background:#31c978 !important; color:white !important; border:1px solid #31c978 !important; border-radius:15px !important; font-size:0 !important; }
+    [class*="st-key-material_intro_uploader"] [data-testid="stFileUploaderDropzone"] button { width:min(100%,360px) !important; min-height:48px !important; margin:0 auto !important; position:relative !important; display:flex !important; align-items:center !important; justify-content:center !important; text-align:center !important; background:#31c978 !important; color:white !important; border:1px solid #31c978 !important; border-radius:15px !important; font-size:0 !important; overflow:hidden !important; }
     [class*="st-key-material_intro_uploader"] [data-testid="stFileUploaderDropzone"] button p,
-    [class*="st-key-material_intro_uploader"] [data-testid="stFileUploaderDropzone"] button span { font-size:0 !important; }
-    [class*="st-key-material_intro_uploader"] [data-testid="stFileUploaderDropzone"] button::after { content:"☁️ 上傳教材開始學習"; font-size:.95rem; font-weight:850; }
+    [class*="st-key-material_intro_uploader"] [data-testid="stFileUploaderDropzone"] button span,
+    [class*="st-key-material_intro_uploader"] [data-testid="stFileUploaderDropzone"] button svg { display:none !important; font-size:0 !important; }
+    [class*="st-key-material_intro_uploader"] [data-testid="stFileUploaderDropzone"] button::after { content:"☁️  上傳教材開始學習"; position:absolute !important; inset:0 !important; display:flex !important; align-items:center !important; justify-content:center !important; text-align:center !important; font-size:.95rem; font-weight:850; line-height:1 !important; }
     [data-testid="stExpander"] { background:rgba(255,255,255,.92) !important; border:1px solid #dceae2 !important; border-radius:14px !important; overflow:hidden; }
     [data-testid="stExpander"] summary,
     [data-testid="stExpander"] summary p,
@@ -798,6 +799,15 @@ def set_page_without_extra_rerun(page):
     st.session_state.menu_open = False
 
 
+def render_back_button(label, target, key):
+    st.button(
+        f"← {label}",
+        key=key,
+        on_click=set_page_without_extra_rerun,
+        args=(target,),
+    )
+
+
 def render_drawer():
     if not st.session_state.menu_open:
         return
@@ -878,6 +888,7 @@ def home():
 
 def study_home():
     topbar()
+    render_back_button("返回首頁", "home", "back_study_home")
     st.markdown('<div class="study-header"><div class="eyebrow">STUDY</div><div class="hero-title" style="font-size:2.05rem">你想怎麼學習呢？</div><div class="hero-copy">選擇適合你現在狀態的方式，MedSlime 陪你一起進步。</div></div>', unsafe_allow_html=True)
     rows = [
         [("📄", "我有教材", "上傳 PDF 教材，AI 會直接生成 10 題並開始測驗。", "study_material_intro"), ("🧪", "我要刷國考", "練習歷屆國考題目，快速檢測實力與弱點。", "national_exam")],
@@ -890,7 +901,7 @@ def study_home():
                 st.markdown(f'<div class="choice-card"><div class="choice-icon-shell"><div class="choice-icon">{icon}</div></div><div class="choice-title">{title}</div><div class="choice-copy">{copy}</div></div>', unsafe_allow_html=True)
                 if target:
                     st.button(
-                        f"進入 {title} →",
+                        "進入 →",
                         key=f"go_{target}",
                         use_container_width=True,
                         type="primary",
@@ -917,6 +928,7 @@ def _queue_national_exam_choice(widget_key, exam_round):
 
 def national_exam_home():
     topbar()
+    render_back_button("返回學習", "study", "back_national_exam_home")
     st.markdown('<div class="study-header"><div class="eyebrow">NATIONAL EXAM</div><div class="hero-title" style="font-size:2.05rem">我要刷國考</div><div class="hero-copy">選好年份、考次與科目，再開始這份國考練習。</div></div>', unsafe_allow_html=True)
 
     current_year = int(st.session_state.national_exam_year)
@@ -1469,6 +1481,7 @@ def material_quiz_result():
 
 def slime_page():
     topbar()
+    render_back_button("返回首頁", "home", "back_slime")
     st.markdown("## 🐾 我的史萊姆")
     left, right = st.columns([1, 1.35], gap="large")
     with left:
@@ -1484,6 +1497,7 @@ def slime_page():
 
 def achievements_page():
     topbar()
+    render_back_button("返回首頁", "home", "back_achievements")
     st.markdown("## 🏆 成就")
     unlocked = set(st.session_state.unlocked_achievements)
     st.caption(f"目前解鎖 {len(unlocked)} / {len(ACHIEVEMENTS)}")
@@ -1497,6 +1511,7 @@ def achievements_page():
 
 def gacha_page():
     topbar()
+    render_back_button("返回首頁", "home", "back_gacha")
     st.markdown("## 🎰 史萊姆召喚")
     st.caption("1 張抽卡券 = 1 次召喚 · N 70% · R 25% · SSR 5%")
     if st.button("🎫 召喚一次", type="primary", use_container_width=True, disabled=st.session_state.tickets <= 0):
