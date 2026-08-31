@@ -1,0 +1,30 @@
+name: Build MedSlime focus timer
+
+on:
+  push:
+    paths:
+      - 'scripts/build_focus_timer.py'
+      - '.github/workflows/build_focus_timer.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply focus timer patch
+        run: python scripts/build_focus_timer.py
+      - name: Syntax check
+        run: python -m py_compile streamlit_app.py
+      - name: Commit app
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add streamlit_app.py
+          git diff --cached --quiet && exit 0
+          git commit -m "Build Pomodoro focus timer"
+          git push
