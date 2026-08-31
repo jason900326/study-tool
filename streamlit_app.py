@@ -624,6 +624,29 @@ st.markdown(
         border-color:#d8ac2d !important;
         box-shadow:0 0 0 3px rgba(240,190,55,.18) !important;
     }
+    /* Unified question-state colors: gray untouched, red uncertain only, yellow uncertain+answer, green answered. */
+    [class*="st-key-exam_group_gray_"] button,[class*="st-key-exam_small_gray_"] button,
+    [class*="st-key-exam_group_current_gray_"] button,[class*="st-key-exam_small_current_gray_"] button { background:#e3eee7 !important; border-color:#d1e1d7 !important; opacity:.62 !important; }
+    [class*="st-key-exam_group_red_"] button,[class*="st-key-exam_small_red_"] button,
+    [class*="st-key-exam_group_current_red_"] button,[class*="st-key-exam_small_current_red_"] button { background:linear-gradient(145deg,#ffaaa8,#ef6b69) !important; border-color:#e36361 !important; opacity:1 !important; }
+    [class*="st-key-exam_group_yellow_"] button,[class*="st-key-exam_small_yellow_"] button,
+    [class*="st-key-exam_group_current_yellow_"] button,[class*="st-key-exam_small_current_yellow_"] button { background:linear-gradient(145deg,#ffe98f,#f4c94f) !important; border-color:#e2b83d !important; opacity:1 !important; }
+    [class*="st-key-exam_group_green_"] button,[class*="st-key-exam_small_green_"] button,
+    [class*="st-key-exam_group_current_green_"] button,[class*="st-key-exam_small_current_green_"] button { background:linear-gradient(145deg,#84e5a3,#43c879) !important; border-color:#6fd391 !important; opacity:1 !important; }
+    [class*="st-key-exam_group_current_"] button,[class*="st-key-exam_small_current_"] button { box-shadow:0 0 0 3px rgba(49,201,120,.15) !important; transform:scale(1.08) !important; }
+
+    [class*="st-key-material_small_nav"] [data-testid="stHorizontalBlock"] { flex-wrap:nowrap !important; justify-content:center !important; align-items:center !important; gap:.35rem !important; }
+    [class*="st-key-material_small_nav"] [data-testid="stColumn"] { flex:0 1 38px !important; width:38px !important; min-width:0 !important; }
+    [class*="st-key-material_small_"] button { width:34px !important; height:27px !important; min-width:34px !important; min-height:27px !important; margin:0 auto !important; padding:0 !important; position:relative !important; border-radius:50% 50% 42% 42% / 62% 62% 38% 38% !important; border:1px solid #d1e1d7 !important; color:#173b2b !important; box-shadow:none !important; transform:none !important; }
+    [class*="st-key-material_small_"] button::before,[class*="st-key-material_small_"] button::after { content:""; position:absolute; top:38%; width:4px; height:6px; border-radius:50%; background:#173b2b; }
+    [class*="st-key-material_small_"] button::before { left:28%; }
+    [class*="st-key-material_small_"] button::after { right:28%; }
+    [class*="st-key-material_small_"] button p { position:absolute !important; left:50% !important; top:48% !important; transform:translateX(-50%) !important; margin:0 !important; line-height:1 !important; font-size:.6rem !important; }
+    [class*="st-key-material_small_gray_"] button,[class*="st-key-material_small_current_gray_"] button { background:#e4eee8 !important; border-color:#d3e2d9 !important; opacity:.62 !important; }
+    [class*="st-key-material_small_red_"] button,[class*="st-key-material_small_current_red_"] button { background:linear-gradient(145deg,#ffaaa8,#ef6b69) !important; border-color:#e36361 !important; opacity:1 !important; }
+    [class*="st-key-material_small_yellow_"] button,[class*="st-key-material_small_current_yellow_"] button { background:linear-gradient(145deg,#ffe98f,#f4c94f) !important; border-color:#e2b83d !important; opacity:1 !important; }
+    [class*="st-key-material_small_green_"] button,[class*="st-key-material_small_current_green_"] button { background:linear-gradient(145deg,#8be8a8,#43c879) !important; border-color:#75d998 !important; opacity:1 !important; }
+    [class*="st-key-material_small_current_"] button { box-shadow:0 0 0 4px rgba(49,201,120,.14),0 5px 12px rgba(35,139,78,.12) !important; transform:scale(1.12) !important; }
     .quiz-card { background:rgba(255,255,255,.96); border:1px solid #dceae2; border-radius:27px; padding:1.55rem 1.6rem; box-shadow:0 14px 34px rgba(31,83,53,.06); animation:questionIn .22s ease-out both; margin-bottom:.8rem; }
     .quiz-question { color:#173b2b; font-size:1.22rem; line-height:1.65; font-weight:850; }
 
@@ -643,10 +666,14 @@ st.markdown(
     .review-option.correct { background:#e9f9ef; border-color:#b8e5c9; }
     .review-option.wrong { background:#fdecec; border-color:#f3c2c2; }
     .review-option-letter { display:inline-flex; width:1.55rem; height:1.55rem; align-items:center; justify-content:center; border-radius:50%; background:rgba(255,255,255,.78); margin-right:.55rem; font-weight:900; }
+    [class*="st-key-material_intro_card"] { max-width:840px; margin:.3rem auto 1.15rem; background:rgba(255,255,255,.76); border:1px solid #dfebe4; border-radius:30px; padding:2rem 2rem 1.75rem; box-shadow:0 16px 38px rgba(30,82,51,.055); text-align:center; }
+    [class*="st-key-material_intro_uploader"] { margin-top:1.15rem; }
     [class*="st-key-material_intro_uploader"] [data-testid="stFileUploaderDropzone"] { border:none !important; background:transparent !important; padding:0 !important; }
     [class*="st-key-material_intro_uploader"] [data-testid="stFileUploaderDropzoneInstructions"],
     [class*="st-key-material_intro_uploader"] small { display:none !important; }
     [class*="st-key-material_intro_uploader"] [data-testid="stFileUploaderDropzone"] button { width:100% !important; min-height:48px !important; background:#31c978 !important; color:white !important; border:1px solid #31c978 !important; border-radius:15px !important; font-size:0 !important; }
+    [class*="st-key-material_intro_uploader"] [data-testid="stFileUploaderDropzone"] button p,
+    [class*="st-key-material_intro_uploader"] [data-testid="stFileUploaderDropzone"] button span { font-size:0 !important; }
     [class*="st-key-material_intro_uploader"] [data-testid="stFileUploaderDropzone"] button::after { content:"☁️ 上傳教材開始學習"; font-size:.95rem; font-weight:850; }
     [data-testid="stExpander"] { background:rgba(255,255,255,.92) !important; border:1px solid #dceae2 !important; border-radius:14px !important; overflow:hidden; }
     [data-testid="stExpander"] summary,
@@ -701,6 +728,11 @@ st.markdown(
         [class*="st-key-exam_small_"] button::before,[class*="st-key-exam_small_"] button::after { width:2px; height:3px; }
         [class*="st-key-exam_group_"] button p { font-size:.52rem !important; }
         [class*="st-key-exam_small_"] button p { font-size:.42rem !important; }
+        [class*="st-key-material_small_nav"] [data-testid="stHorizontalBlock"] { gap:.16rem !important; }
+        [class*="st-key-material_small_nav"] [data-testid="stColumn"] { flex-basis:25px !important; width:25px !important; }
+        [class*="st-key-material_small_"] button { width:23px !important; height:18px !important; min-width:23px !important; min-height:18px !important; }
+        [class*="st-key-material_small_"] button::before,[class*="st-key-material_small_"] button::after { width:2px; height:3px; }
+        [class*="st-key-material_small_"] button p { font-size:.42rem !important; }
         [data-testid="stHorizontalBlock"]:has([class*="st-key-nav_toggle"]) { gap:.18rem !important; }
         [data-testid="stHorizontalBlock"]:has([class*="st-key-nav_toggle"]) > div:nth-child(1) { min-width:42px !important; width:42px !important; flex:0 0 42px !important; }
         [data-testid="stHorizontalBlock"]:has([class*="st-key-nav_toggle"]) > div:nth-child(2) { min-width:112px !important; }
@@ -850,6 +882,7 @@ def national_exam_home():
             NATIONAL_EXAM_ROUNDS,
             horizontal=True,
             key="national_exam_round_select",
+            label_visibility="collapsed",
         )
 
         try:
@@ -894,9 +927,22 @@ def national_exam_home():
         st.error(st.session_state.national_exam_load_error)
 
 
+def _national_question_progress_state(question_index):
+    answer_key = f"exam_answer_{question_index}"
+    uncertain_key = f"exam_uncertain_{question_index}"
+    widget_answer = st.session_state.get(answer_key)
+    answered = question_index in st.session_state.national_exam_answers or widget_answer is not None
+    uncertain = bool(st.session_state.get(uncertain_key, st.session_state.national_exam_uncertain.get(question_index, False)))
+    if uncertain and not answered:
+        return "red"
+    if uncertain and answered:
+        return "yellow"
+    if answered:
+        return "green"
+    return "gray"
+
+
 def render_national_exam_progress(current_index, question_count):
-    answers = st.session_state.national_exam_answers
-    uncertain = st.session_state.national_exam_uncertain
     group_size = 10
     current_group = current_index // group_size
     group_count = (question_count + group_size - 1) // group_size
@@ -906,19 +952,16 @@ def render_national_exam_progress(current_index, question_count):
         for group, col in enumerate(group_cols):
             start = group * group_size
             end = min(start + group_size, question_count)
-            completed = all(i in answers for i in range(start, end))
-            has_uncertain = any(i in answers and uncertain.get(i, False) for i in range(start, end))
-            current_uncertain = group == current_group and current_index in answers and uncertain.get(current_index, False)
-            if current_uncertain:
-                state = "current_uncertain"
-            elif group == current_group:
-                state = "current"
-            elif completed and has_uncertain:
-                state = "uncertain"
-            elif completed:
-                state = "done"
+            states = [_national_question_progress_state(i) for i in range(start, end)]
+            if "red" in states:
+                base_state = "red"
+            elif "yellow" in states:
+                base_state = "yellow"
+            elif states and all(state == "green" for state in states):
+                base_state = "green"
             else:
-                state = "future"
+                base_state = "gray"
+            state = f"current_{base_state}" if group == current_group else base_state
             with col:
                 if st.button("⌣", key=f"exam_group_{state}_{group}_{current_index}", help=f"跳到第 {start + 1}–{end} 題"):
                     st.session_state.national_exam_index = start
@@ -932,18 +975,8 @@ def render_national_exam_progress(current_index, question_count):
         small_cols = st.columns(end - start)
         for offset, col in enumerate(small_cols):
             question_index = start + offset
-            answered = question_index in answers
-            is_uncertain = answered and uncertain.get(question_index, False)
-            if question_index == current_index and is_uncertain:
-                state = "current_uncertain"
-            elif question_index == current_index:
-                state = "current"
-            elif is_uncertain:
-                state = "uncertain"
-            elif answered:
-                state = "done"
-            else:
-                state = "future"
+            base_state = _national_question_progress_state(question_index)
+            state = f"current_{base_state}" if question_index == current_index else base_state
             with col:
                 if st.button("⌣", key=f"exam_small_{state}_{question_index}_{current_index}", help=f"跳到第 {question_index + 1} 題"):
                     st.session_state.national_exam_index = question_index
@@ -999,6 +1032,8 @@ def national_exam_quiz_page():
     render_national_exam_progress(index, len(questions))
     official = f'<div class="eyebrow">官方第 {official_number} 題</div>' if official_number is not None else ''
     st.markdown(f'<div class="quiz-card">{official}<div class="quiz-question" style="margin-top:.25rem">{html.escape(str(question["question"]))}</div></div>', unsafe_allow_html=True)
+    if question.get("source_url"):
+        st.link_button("查看官方原題 ↗", question["source_url"])
 
     answer_key = f"exam_answer_{index}"
     uncertain_key = f"exam_uncertain_{index}"
@@ -1088,10 +1123,11 @@ def study_material_intro():
     topbar()
     if st.button("← 返回學習", key="intro_back"):
         goto("study")
-    st.markdown('<div class="intro-panel"><div class="intro-art"><div class="mini-slime"><div class="mini-shine"></div><div class="mini-mouth"></div></div><div class="book-stack">📚</div></div><div class="hero-title" style="font-size:2rem">上傳教材，AI 直接生成 10 題<br>開始你的專屬測驗。</div><div class="hero-copy" style="max-width:680px;margin:.8rem auto 0">選好 PDF 後，MedSlime 會直接讀取教材；完成後自動帶你進入第 1 題。</div></div>', unsafe_allow_html=True)
+    with st.container(key="material_intro_card"):
+        st.markdown('<div class="intro-art"><div class="mini-slime"><div class="mini-shine"></div><div class="mini-mouth"></div></div><div class="book-stack">📚</div></div><div class="hero-title" style="font-size:2rem">上傳教材，AI 直接生成 10 題<br>開始你的專屬測驗。</div><div class="hero-copy" style="max-width:680px;margin:.8rem auto 0">選好 PDF 後，MedSlime 會直接讀取教材；完成後自動帶你進入第 1 題。</div>', unsafe_allow_html=True)
+        with st.container(key="material_intro_uploader"):
+            uploaded = st.file_uploader("上傳教材開始學習", type=["pdf"], key="medslime_material_pdf_intro", label_visibility="collapsed")
 
-    with st.container(key="material_intro_uploader"):
-        uploaded = st.file_uploader("上傳教材開始學習", type=["pdf"], key="medslime_material_pdf_intro", label_visibility="collapsed")
 
     if uploaded is None:
         if st.session_state.material_generation_error:
@@ -1197,27 +1233,32 @@ def unanswered_numbers(question_count):
     return [number + 1 for number in range(question_count) if number not in st.session_state.quiz_answers]
 
 
-def slime_progress_markup(current_index, question_count):
-    slimes = []
-    for number in range(question_count):
-        answered = number in st.session_state.quiz_answers
-        uncertain = answered and bool(st.session_state.quiz_uncertain.get(number, False))
-        if number == current_index and uncertain:
-            state = "uncertain current"
-        elif number == current_index:
-            state = "current"
-        elif uncertain:
-            state = "uncertain"
-        elif answered:
-            state = "done"
-        else:
-            state = "future"
-        slimes.append(
-            f'<div class="mini-progress-slime {state}" title="第 {number + 1} 題">'
-            '<span class="mini-progress-mouth"></span></div>'
-        )
-    return '<div class="slime-track">' + "".join(slimes) + '</div>'
+def _material_question_progress_state(question_index):
+    answer_key = f"material_answer_{question_index}"
+    uncertain_key = f"material_uncertain_{question_index}"
+    widget_answer = st.session_state.get(answer_key)
+    answered = question_index in st.session_state.quiz_answers or widget_answer is not None
+    uncertain = bool(st.session_state.get(uncertain_key, st.session_state.quiz_uncertain.get(question_index, False)))
+    if uncertain and not answered:
+        return "red"
+    if uncertain and answered:
+        return "yellow"
+    if answered:
+        return "green"
+    return "gray"
 
+
+def render_material_progress(current_index, question_count):
+    with st.container(key="material_small_nav"):
+        cols = st.columns(question_count)
+        for question_index, col in enumerate(cols):
+            base_state = _material_question_progress_state(question_index)
+            state = f"current_{base_state}" if question_index == current_index else base_state
+            with col:
+                if st.button("⌣", key=f"material_small_{state}_{question_index}_{current_index}", help=f"跳到第 {question_index + 1} 題"):
+                    st.session_state.quiz_index = question_index
+                    st.session_state.quiz_finish_pending = False
+                    st.rerun()
 
 
 def review_options_markup(question, answer):
@@ -1269,7 +1310,7 @@ def material_quiz_page():
 
     st.markdown('<div class="quiz-stage">', unsafe_allow_html=True)
     st.markdown(f'<div class="quiz-topline"><span class="quiz-count">第 {index + 1} / {len(questions)} 題</span></div>', unsafe_allow_html=True)
-    st.markdown(slime_progress_markup(index, len(questions)), unsafe_allow_html=True)
+    render_material_progress(index, len(questions))
     st.markdown(f'<div class="quiz-card"><div class="quiz-question">{safe_question}</div></div>', unsafe_allow_html=True)
 
     answer_key = f"material_answer_{index}"
