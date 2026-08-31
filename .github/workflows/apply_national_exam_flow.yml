@@ -1,0 +1,34 @@
+name: Apply MedSlime national exam flow
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/apply_national_exam_flow.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply national exam patch
+        run: python scripts/add_national_exam_flow.py
+      - name: Syntax check
+        run: python -m py_compile streamlit_app.py
+      - name: Commit updated app
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add streamlit_app.py
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git commit -m "Add MedSlime national exam flow"
+          git push
