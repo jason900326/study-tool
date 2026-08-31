@@ -114,17 +114,17 @@ ACHIEVEMENTS = [
 ]
 
 SLIME_CATALOG = [
-    {"name": "青蘋果史萊姆", "rarity": "N", "family": "水果系列", "mark": "🍃", "theme": "apple", "gradient": "linear-gradient(145deg,#a9efad,#47c977)", "tagline": "MedSlime 的品牌夥伴，清爽又充滿活力。", "weight": 15},
-    {"name": "葡萄史萊姆", "rarity": "N", "family": "水果系列", "mark": "●", "theme": "grape", "gradient": "linear-gradient(145deg,#d9b0f1,#8f59bd)", "tagline": "圓滾滾又有彈性，身上帶著葡萄般的光澤。", "weight": 15},
-    {"name": "草莓史萊姆", "rarity": "N", "family": "水果系列", "mark": "✦", "theme": "strawberry", "gradient": "linear-gradient(145deg,#ffb0b8,#ed6672)", "tagline": "活潑愛笑，身體散著像草莓籽的小亮點。", "weight": 15},
-    {"name": "檸檬史萊姆", "rarity": "N", "family": "水果系列", "mark": "🍃", "theme": "lemon", "gradient": "linear-gradient(145deg,#fff397,#ebcf42)", "tagline": "酸酸亮亮，總是一副精神很好的樣子。", "weight": 15},
-    {"name": "牛奶史萊姆", "rarity": "R", "family": "特殊食物系列", "mark": "◌", "theme": "milk", "gradient": "linear-gradient(145deg,#fffdf5,#e9e7df)", "tagline": "像奶凍一樣柔軟，帶著溫柔的霧面光澤。", "weight": 8.34},
-    {"name": "蜂蜜史萊姆", "rarity": "R", "family": "特殊食物系列", "mark": "⌁", "theme": "honey", "gradient": "linear-gradient(145deg,#ffe58b,#d99425)", "tagline": "琥珀色的身體慢慢流動，甜甜又黏呼呼。", "weight": 8.33},
-    {"name": "咖啡史萊姆", "rarity": "R", "family": "特殊食物系列", "mark": "☕", "theme": "coffee", "gradient": "linear-gradient(145deg,#d6a06f,#795039)", "tagline": "帶著咖啡香氣的沉穩夥伴，頭頂有奶泡般的紋路。", "weight": 8.33},
-    {"name": "雲朵史萊姆", "rarity": "SR", "family": "自然系列", "mark": "☁", "theme": "cloud", "gradient": "linear-gradient(145deg,#ffffff,#bcdcf1)", "tagline": "輕飄飄又蓬鬆，像把一小朵雲抱在懷裡。", "weight": 5},
-    {"name": "海洋史萊姆", "rarity": "SR", "family": "自然系列", "mark": "〰", "theme": "ocean", "gradient": "linear-gradient(145deg,#7de4e5,#367fd0)", "tagline": "透明身體裡像藏著海浪，安靜地一波一波流動。", "weight": 5},
-    {"name": "晚霞史萊姆", "rarity": "SSR", "family": "夢幻系列", "mark": "✦", "theme": "sunset", "gradient": "linear-gradient(145deg,#ffd36a 0%,#ff8c8d 45%,#b66fe5 100%)", "tagline": "橘粉紫的天空在身體裡流動，邊緣帶著淡金光。", "weight": 2.5},
-    {"name": "星空史萊姆", "rarity": "SSR", "family": "夢幻系列", "mark": "✧", "theme": "starry", "gradient": "linear-gradient(145deg,#5050a5 0%,#242655 55%,#10172e 100%)", "tagline": "深色身體裡閃著星點，像裝著一小片夜空。", "weight": 2.5},
+    {"name": "青蘋果史萊姆", "emoji": "🟢", "rarity": "N", "family": "水果系列", "mark": "🍃", "theme": "apple", "gradient": "linear-gradient(145deg,#a9efad,#47c977)", "tagline": "MedSlime 的品牌夥伴，清爽又充滿活力。", "weight": 15},
+    {"name": "葡萄史萊姆", "emoji": "🟣", "rarity": "N", "family": "水果系列", "mark": "●", "theme": "grape", "gradient": "linear-gradient(145deg,#d9b0f1,#8f59bd)", "tagline": "圓滾滾又有彈性，身上帶著葡萄般的光澤。", "weight": 15},
+    {"name": "草莓史萊姆", "emoji": "🍓", "rarity": "N", "family": "水果系列", "mark": "✦", "theme": "strawberry", "gradient": "linear-gradient(145deg,#ffb0b8,#ed6672)", "tagline": "活潑愛笑，身體散著像草莓籽的小亮點。", "weight": 15},
+    {"name": "檸檬史萊姆", "emoji": "🟡", "rarity": "N", "family": "水果系列", "mark": "🍃", "theme": "lemon", "gradient": "linear-gradient(145deg,#fff397,#ebcf42)", "tagline": "酸酸亮亮，總是一副精神很好的樣子。", "weight": 15},
+    {"name": "牛奶史萊姆", "emoji": "🥛", "rarity": "R", "family": "特殊食物系列", "mark": "◌", "theme": "milk", "gradient": "linear-gradient(145deg,#fffdf5,#e9e7df)", "tagline": "像奶凍一樣柔軟，帶著溫柔的霧面光澤。", "weight": 8.34},
+    {"name": "蜂蜜史萊姆", "emoji": "🍯", "rarity": "R", "family": "特殊食物系列", "mark": "⌁", "theme": "honey", "gradient": "linear-gradient(145deg,#ffe58b,#d99425)", "tagline": "琥珀色的身體慢慢流動，甜甜又黏呼呼。", "weight": 8.33},
+    {"name": "咖啡史萊姆", "emoji": "☕", "rarity": "R", "family": "特殊食物系列", "mark": "☕", "theme": "coffee", "gradient": "linear-gradient(145deg,#d6a06f,#795039)", "tagline": "帶著咖啡香氣的沉穩夥伴，頭頂有奶泡般的紋路。", "weight": 8.33},
+    {"name": "雲朵史萊姆", "emoji": "☁️", "rarity": "SR", "family": "自然系列", "mark": "☁", "theme": "cloud", "gradient": "linear-gradient(145deg,#ffffff,#bcdcf1)", "tagline": "輕飄飄又蓬鬆，像把一小朵雲抱在懷裡。", "weight": 5},
+    {"name": "海洋史萊姆", "emoji": "🌊", "rarity": "SR", "family": "自然系列", "mark": "〰", "theme": "ocean", "gradient": "linear-gradient(145deg,#7de4e5,#367fd0)", "tagline": "透明身體裡像藏著海浪，安靜地一波一波流動。", "weight": 5},
+    {"name": "晚霞史萊姆", "emoji": "🌅", "rarity": "SSR", "family": "夢幻系列", "mark": "✦", "theme": "sunset", "gradient": "linear-gradient(145deg,#ffd36a 0%,#ff8c8d 45%,#b66fe5 100%)", "tagline": "橘粉紫的天空在身體裡流動，邊緣帶著淡金光。", "weight": 2.5},
+    {"name": "星空史萊姆", "emoji": "🌌", "rarity": "SSR", "family": "夢幻系列", "mark": "✧", "theme": "starry", "gradient": "linear-gradient(145deg,#5050a5 0%,#242655 55%,#10172e 100%)", "tagline": "深色身體裡閃著星點，像裝著一小片夜空。", "weight": 2.5},
 ]
 
 SLIME_BY_NAME = {item["name"]: item for item in SLIME_CATALOG}
@@ -1041,7 +1041,7 @@ st.markdown(
     .catalog-slime.mystery { filter:saturate(.15); opacity:.78; box-shadow:0 10px 22px rgba(22,35,29,.12); }
     .catalog-slime.mystery::after { opacity:.08; }
     .catalog-slime.mystery .catalog-mark { top:34%; color:#fff; font-size:2rem; opacity:.62; }
-    .theme-strawberry { background-image:radial-gradient(circle at 28% 28%,rgba(255,235,165,.7) 0 2px,transparent 3px),radial-gradient(circle at 68% 52%,rgba(255,235,165,.65) 0 2px,transparent 3px) !important; }
+    .theme-strawberry::before { content:"✦  ·  ✦"; position:absolute; left:19%; top:18%; color:rgba(255,235,165,.72); font-size:.55rem; letter-spacing:.38rem; transform:rotate(-8deg); }
     .theme-honey::before { content:""; position:absolute; right:9%; bottom:-8%; width:22%; height:26%; border-radius:0 0 50% 50%; background:rgba(199,126,26,.46); }
     .theme-coffee::before { content:""; position:absolute; left:29%; top:5%; width:45%; height:16%; border-radius:50%; border-top:4px solid rgba(255,239,208,.78); transform:rotate(-8deg); }
     .theme-cloud { border-radius:48% 52% 37% 43%/58% 61% 39% 42%; box-shadow:-20px 7px 0 -8px rgba(228,241,248,.95),20px 7px 0 -8px rgba(213,235,247,.95),0 12px 22px rgba(70,110,130,.1); }
