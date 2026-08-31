@@ -297,6 +297,7 @@ def roc_year_label(year):
     return f"{int(year) - 1911} 年"
 
 
+@st.cache_data(ttl=1800, show_spinner=False)
 def load_national_exam_subject_entries(exam_year):
     """Return subject+round entries while hiding round as a separate navigation step."""
     supabase = get_supabase()
@@ -697,6 +698,7 @@ st.markdown(
     .review-option.wrong { background:#fdecec; border-color:#f3c2c2; }
     .review-option-letter { display:inline-flex; width:1.55rem; height:1.55rem; align-items:center; justify-content:center; border-radius:50%; background:rgba(255,255,255,.78); margin-right:.55rem; font-weight:900; }
     [class*="st-key-material_intro_card"] { max-width:840px; margin:.3rem auto 1.15rem; background:rgba(255,255,255,.76); border:1px solid #dfebe4; border-radius:30px; padding:2rem 2rem 1.75rem; box-shadow:0 16px 38px rgba(30,82,51,.055); text-align:center; }
+    [class*="st-key-material_intro_card"] .material-intro-title { font-size:2rem; line-height:1.18; }
     [class*="st-key-material_intro_uploader"] { margin-top:1.15rem; display:flex; justify-content:center; }
     [class*="st-key-material_intro_uploader"] [data-testid="stFileUploaderDropzone"] { border:none !important; background:transparent !important; padding:0 !important; width:100% !important; display:flex !important; justify-content:center !important; }
     [class*="st-key-material_intro_uploader"] [data-testid="stFileUploaderDropzoneInstructions"],
@@ -741,6 +743,10 @@ st.markdown(
 
     @media (max-width:700px) {
         .block-container { padding-left:.85rem; padding-right:.85rem; padding-bottom:3rem; }
+        [class*="st-key-material_intro_card"] { padding:1.45rem 1.05rem 1.3rem !important; border-radius:24px !important; }
+        [class*="st-key-material_intro_card"] .material-intro-title { font-size:1.42rem !important; line-height:1.28 !important; letter-spacing:-.025em !important; max-width:100% !important; overflow-wrap:normal !important; word-break:keep-all !important; }
+        [class*="st-key-material_intro_card"] .hero-copy { font-size:.92rem !important; line-height:1.65 !important; }
+        [class*="st-key-material_intro_card"] .intro-art { transform:scale(.88); transform-origin:center bottom; margin-bottom:-.1rem; }
         .hero-title { font-size:1.9rem; }
         .home-copy-card,.home-slime-card { min-height:auto; }
         .choice-card { min-height:145px; padding:1.2rem; }
@@ -894,6 +900,13 @@ def study_home():
                 else:
                     st.button("即將開放", key=f"soon_{title}", use_container_width=True, disabled=True)
         st.write("")
+
+    # Warm the current-year exam subject list while the Study page is already open.
+    # This avoids leaving the old cards on screen while Supabase is queried after navigation.
+    try:
+        load_national_exam_subject_entries(int(st.session_state.national_exam_year))
+    except Exception:
+        pass
 
 
 def _queue_national_exam_choice(widget_key, exam_round):
@@ -1171,7 +1184,7 @@ def study_material_intro():
     if st.button("← 返回學習", key="intro_back"):
         goto("study")
     with st.container(key="material_intro_card"):
-        st.markdown('<div class="intro-art"><div class="mini-slime"><div class="mini-shine"></div><div class="mini-mouth"></div></div><div class="book-stack">📚</div></div><div class="hero-title" style="font-size:2rem">上傳教材，AI 直接生成 10 題<br>開始你的專屬測驗。</div><div class="hero-copy" style="max-width:680px;margin:.8rem auto 0">選好 PDF 後，MedSlime 會直接讀取教材；完成後自動帶你進入第 1 題。</div>', unsafe_allow_html=True)
+        st.markdown('<div class="intro-art"><div class="mini-slime"><div class="mini-shine"></div><div class="mini-mouth"></div></div><div class="book-stack">📚</div></div><div class="hero-title material-intro-title">上傳教材，AI 生成 10 題<br>開始你的專屬測驗。</div><div class="hero-copy" style="max-width:680px;margin:.8rem auto 0">選好 PDF 後，MedSlime 會直接讀取教材；完成後自動帶你進入第 1 題。</div>', unsafe_allow_html=True)
         with st.container(key="material_intro_uploader"):
             uploaded = st.file_uploader("上傳教材開始學習", type=["pdf"], key="medslime_material_pdf_intro", label_visibility="collapsed")
 
