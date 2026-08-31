@@ -703,7 +703,7 @@ st.markdown(
     [class*="st-key-material_intro_uploader"] [data-testid="stFileUploaderDropzone"] { border:none !important; background:transparent !important; padding:0 !important; width:100% !important; display:flex !important; justify-content:center !important; }
     [class*="st-key-material_intro_uploader"] [data-testid="stFileUploaderDropzoneInstructions"],
     [class*="st-key-material_intro_uploader"] small { display:none !important; }
-    [class*="st-key-material_intro_uploader"] [data-testid="stFileUploaderDropzone"] button { width:min(100%,360px) !important; min-height:48px !important; margin:0 auto !important; position:relative !important; display:flex !important; align-items:center !important; justify-content:center !important; text-align:center !important; background:#31c978 !important; color:white !important; border:1px solid #31c978 !important; border-radius:15px !important; font-size:0 !important; overflow:hidden !important; }
+    [class*="st-key-material_intro_uploader"] [data-testid="stFileUploaderDropzone"] button { width:360px !important; max-width:100% !important; min-width:280px !important; min-height:48px !important; margin:0 auto !important; position:relative !important; display:flex !important; align-items:center !important; justify-content:center !important; text-align:center !important; background:#31c978 !important; color:white !important; border:1px solid #31c978 !important; border-radius:15px !important; font-size:0 !important; overflow:hidden !important; }
     [class*="st-key-material_intro_uploader"] [data-testid="stFileUploaderDropzone"] button p,
     [class*="st-key-material_intro_uploader"] [data-testid="stFileUploaderDropzone"] button span,
     [class*="st-key-material_intro_uploader"] [data-testid="stFileUploaderDropzone"] button svg { display:none !important; font-size:0 !important; }
@@ -744,6 +744,7 @@ st.markdown(
 
     @media (max-width:700px) {
         .block-container { padding-left:.85rem; padding-right:.85rem; padding-bottom:3rem; }
+        [class*="st-key-material_intro_uploader"] [data-testid="stFileUploaderDropzone"] button { width:100% !important; max-width:100% !important; min-width:0 !important; }
         [class*="st-key-material_intro_card"] { padding:1.45rem 1.05rem 1.3rem !important; border-radius:24px !important; }
         [class*="st-key-material_intro_card"] .material-intro-title { font-size:1.42rem !important; line-height:1.28 !important; letter-spacing:-.025em !important; max-width:100% !important; overflow-wrap:normal !important; word-break:keep-all !important; }
         [class*="st-key-material_intro_card"] .hero-copy { font-size:.92rem !important; line-height:1.65 !important; }
