@@ -1,0 +1,29 @@
+name: Use official apple slime art
+
+on:
+  push:
+    paths:
+      - '.github/workflows/use_official_apple_art.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply apple art patch
+        run: python scripts/use_official_apple_art.py
+      - name: Syntax check
+        run: python -m py_compile streamlit_app.py
+      - name: Commit app
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add streamlit_app.py
+          git diff --cached --quiet && exit 0
+          git commit -m "Use official apple slime artwork"
+          git push
