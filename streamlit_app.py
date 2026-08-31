@@ -59,17 +59,6 @@ st.markdown(
     .block-container { max-width:1180px; padding-top:1rem; padding-bottom:4.5rem; }
     h1,h2,h3,p,div,button,label { font-family:"Noto Sans TC","Microsoft JhengHei",sans-serif; }
 
-    /* Keep the Streamlit header/sidebar controls alive. Only hide product chrome. */
-    [data-testid="stAppDeployButton"],
-    [data-testid="stStatusWidget"],
-    footer,
-    div[class*="viewerBadge"],
-    div[class*="ViewerBadge"],
-    div[class*="profilePreview"] {
-        display:none !important;
-        visibility:hidden !important;
-    }
-
     .currency { display:flex; gap:.45rem; justify-content:flex-end; align-items:center; flex-wrap:nowrap; white-space:nowrap; }
     .pill { background:rgba(255,255,255,.9); border:1px solid #dfece4; border-radius:999px; padding:.42rem .68rem; font-weight:850; color:#244c39; box-shadow:0 6px 18px rgba(31,83,53,.045); }
     .eyebrow { color:#2ba962; font-weight:950; font-size:.86rem; letter-spacing:.04em; text-transform:uppercase; }
@@ -79,7 +68,6 @@ st.markdown(
     .muted { color:#71887b; font-size:.92rem; }
     .card-title { color:#1d4533; font-weight:900; font-size:1.08rem; }
 
-    /* MedSlime logo remains a plain clickable wordmark. */
     [class*="st-key-brand_home_"] button {
         background:transparent !important;
         border:none !important;
@@ -107,7 +95,6 @@ st.markdown(
         white-space:nowrap !important;
     }
 
-    /* Sidebar: intentionally close to the original study-tool behavior. */
     [data-testid="stSidebar"] {
         background:rgba(248,252,249,.99);
         border-right:1px solid #d7e7dd;
@@ -127,6 +114,48 @@ st.markdown(
         margin:.25rem 0 .15rem;
     }
     .sidebar-note { color:#789083; font-size:.82rem; margin-bottom:1rem; }
+
+    /* Keep Streamlit's real sidebar opener visible and prevent it from covering the logo. */
+    [data-testid="stSidebarCollapsedControl"] {
+        display:flex !important;
+        visibility:visible !important;
+        opacity:1 !important;
+        position:fixed !important;
+        top:.75rem !important;
+        left:.75rem !important;
+        width:44px !important;
+        height:44px !important;
+        z-index:99999 !important;
+        pointer-events:auto !important;
+    }
+    [data-testid="stSidebarCollapsedControl"] button,
+    [data-testid="stSidebarCollapsedControl"] [data-testid="stBaseButton-headerNoPadding"] {
+        display:flex !important;
+        visibility:visible !important;
+        opacity:1 !important;
+        width:44px !important;
+        height:44px !important;
+        min-width:44px !important;
+        min-height:44px !important;
+        padding:0 !important;
+        align-items:center !important;
+        justify-content:center !important;
+        background:rgba(255,255,255,.96) !important;
+        border:1px solid #cfe3d6 !important;
+        border-radius:12px !important;
+        color:#1d6240 !important;
+        box-shadow:0 5px 16px rgba(30,90,55,.12) !important;
+    }
+    [data-testid="stSidebarCollapsedControl"] svg {
+        display:block !important;
+        visibility:visible !important;
+        opacity:1 !important;
+        color:#1d6240 !important;
+        stroke:#1d6240 !important;
+        fill:none !important;
+        width:22px !important;
+        height:22px !important;
+    }
 
     .home-copy-card { background:linear-gradient(135deg,#e6f9ed 0%,#f5fcf7 57%,#e9f8fd 100%); border:1px solid #d6eadd; border-radius:30px; padding:2rem; box-shadow:0 18px 44px rgba(40,106,69,.09); min-height:235px; }
     .home-slime-card { background:rgba(255,255,255,.48); border:1px solid rgba(214,234,221,.8); border-radius:30px; padding:1.45rem; min-height:235px; display:flex; flex-direction:column; align-items:center; justify-content:center; }
@@ -199,13 +228,25 @@ st.markdown(
             min-height:46px !important;
             min-width:0 !important;
             width:100% !important;
-            padding:0 !important;
+            padding-left:2.55rem !important;
         }
-        [class*="st-key-brand_home_"] button p {
-            font-size:1.28rem !important;
-        }
+        [class*="st-key-brand_home_"] button p { font-size:1.28rem !important; }
         .currency { gap:.18rem !important; }
         .pill { padding:.27rem .34rem !important; font-size:.68rem !important; box-shadow:none !important; }
+
+        [data-testid="stSidebarCollapsedControl"] {
+            top:.7rem !important;
+            left:.65rem !important;
+            width:40px !important;
+            height:40px !important;
+        }
+        [data-testid="stSidebarCollapsedControl"] button,
+        [data-testid="stSidebarCollapsedControl"] [data-testid="stBaseButton-headerNoPadding"] {
+            width:40px !important;
+            height:40px !important;
+            min-width:40px !important;
+            min-height:40px !important;
+        }
     }
     </style>
     """,
