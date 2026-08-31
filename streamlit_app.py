@@ -56,7 +56,7 @@ st.markdown(
             #f8fcf9;
     }
     [data-testid="stHeader"] { background:transparent; }
-    .block-container { max-width:1180px; padding-top:1rem; padding-bottom:5.5rem; }
+    .block-container { max-width:1180px; padding-top:1rem; padding-bottom:4.5rem; }
     h1,h2,h3,p,div,button,label { font-family:"Noto Sans TC","Microsoft JhengHei",sans-serif; }
 
     .currency { display:flex; gap:.55rem; justify-content:flex-end; align-items:center; flex-wrap:wrap; }
@@ -68,13 +68,60 @@ st.markdown(
     .muted { color:#71887b; font-size:.92rem; }
     .card-title { color:#1d4533; font-weight:900; font-size:1.08rem; }
 
+    /* Logo looks like plain text, but keeps a large touch target on mobile. */
     [class*="st-key-brand_home_"] button {
-        background:transparent !important; border:none !important; box-shadow:none !important;
-        padding:0 !important; min-height:auto !important; color:#17372a !important;
-        font-size:1.55rem !important; font-weight:950 !important; letter-spacing:-.035em !important;
+        background:transparent !important;
+        border:none !important;
+        box-shadow:none !important;
+        padding:0 .15rem !important;
+        min-height:48px !important;
+        min-width:142px !important;
+        justify-content:flex-start !important;
+        color:#17372a !important;
+        font-size:1.55rem !important;
+        font-weight:950 !important;
+        letter-spacing:-.035em !important;
     }
-    [class*="st-key-brand_home_"] button:hover { background:transparent !important; border:none !important; transform:none !important; }
-    [class*="st-key-brand_home_"] button p { font-size:1.55rem !important; font-weight:950 !important; }
+    [class*="st-key-brand_home_"] button:hover,
+    [class*="st-key-brand_home_"] button:active,
+    [class*="st-key-brand_home_"] button:focus {
+        background:transparent !important;
+        border:none !important;
+        box-shadow:none !important;
+        transform:none !important;
+        color:#17372a !important;
+    }
+    [class*="st-key-brand_home_"] button p {
+        font-size:1.55rem !important;
+        font-weight:950 !important;
+    }
+
+    /* Hidden sidebar navigation */
+    [data-testid="stSidebar"] {
+        background:rgba(248,252,249,.98);
+        border-right:1px solid #dce9e1;
+    }
+    [data-testid="stSidebar"] [data-testid="stSidebarContent"] {
+        padding-top:1rem;
+    }
+    [data-testid="stSidebar"] div.stButton > button {
+        min-height:52px;
+        border-radius:16px;
+        justify-content:flex-start;
+        padding-left:1rem;
+    }
+    .sidebar-brand {
+        font-size:1.45rem;
+        font-weight:950;
+        letter-spacing:-.035em;
+        color:#17372a;
+        margin:.2rem 0 .2rem;
+    }
+    .sidebar-note {
+        color:#789083;
+        font-size:.82rem;
+        margin-bottom:1rem;
+    }
 
     .home-copy-card {
         background:linear-gradient(135deg,#e6f9ed 0%,#f5fcf7 57%,#e9f8fd 100%);
@@ -130,26 +177,15 @@ st.markdown(
     div.stButton > button:disabled { background:#f2f6f3 !important; color:#9aac9f !important; border-color:#e2ebe5 !important; }
 
     @media (max-width:700px) {
-        .block-container { padding-left:1rem; padding-right:1rem; padding-bottom:7.3rem; }
+        .block-container { padding-left:1rem; padding-right:1rem; padding-bottom:3rem; }
         .hero-title { font-size:1.9rem; }
         .home-copy-card, .home-slime-card { min-height:auto; }
         .choice-card { min-height:145px; padding:1.2rem; }
         .intro-panel { padding:1.45rem 1.1rem; }
-
-        [class*="st-key-bottom_nav_"] {
-            position:fixed !important;
-            left:.7rem !important; right:.7rem !important; bottom:.65rem !important;
-            z-index:9999 !important;
-            background:rgba(250,253,251,.94) !important;
-            border:1px solid #dce9e1 !important;
-            border-radius:22px !important;
-            padding:.45rem .45rem .38rem !important;
-            box-shadow:0 12px 35px rgba(25,70,45,.18) !important;
-            backdrop-filter:blur(14px);
+        [class*="st-key-brand_home_"] button {
+            min-height:52px !important;
+            min-width:165px !important;
         }
-        [class*="st-key-bottom_nav_"] [data-testid="stHorizontalBlock"] { gap:.3rem !important; }
-        [class*="st-key-bottom_nav_"] button { min-height:48px !important; padding:.3rem .2rem !important; border-radius:14px !important; font-size:.76rem !important; }
-        [class*="st-key-bottom_nav_"] button p { font-size:.76rem !important; }
     }
     </style>
     """,
@@ -162,10 +198,41 @@ def goto(page):
     st.rerun()
 
 
+def sidebar_nav():
+    active = st.session_state.medslime_page
+    if active.startswith("study_material"):
+        active = "study"
+
+    items = [
+        ("home", "🏠  首頁"),
+        ("study", "📖  學習"),
+        ("slime", "🐾  史萊姆"),
+        ("gacha", "🎰  抽卡"),
+        ("achievements", "🏆  成就"),
+    ]
+
+    with st.sidebar:
+        st.markdown('<div class="sidebar-brand">MedSlime<span style="color:#31b96c">.</span></div>', unsafe_allow_html=True)
+        st.markdown('<div class="sidebar-note">選擇你要前往的地方</div>', unsafe_allow_html=True)
+
+        for page, label in items:
+            if st.button(
+                label,
+                key=f"sidebar_{page}",
+                use_container_width=True,
+                type="primary" if page == active else "secondary",
+            ):
+                goto(page)
+
+
 def topbar():
     brand_col, currency_col = st.columns([1, 2.15], vertical_alignment="center")
     with brand_col:
-        if st.button("MedSlime.", key=f"brand_home_{st.session_state.medslime_page}"):
+        if st.button(
+            "MedSlime.",
+            key=f"brand_home_{st.session_state.medslime_page}",
+            help="返回首頁",
+        ):
             goto("home")
     with currency_col:
         st.markdown(
@@ -175,19 +242,8 @@ def topbar():
 
 
 def nav(active):
-    items = [
-        ("home", "🏠 首頁"),
-        ("study", "📖 學習"),
-        ("slime", "🐾 史萊姆"),
-        ("gacha", "🎰 抽卡"),
-        ("achievements", "🏆 成就"),
-    ]
-    with st.container(key=f"bottom_nav_{active}"):
-        cols = st.columns(5)
-        for col, (page, label) in zip(cols, items):
-            with col:
-                if st.button(label, key=f"nav_{active}_{page}", use_container_width=True, type="primary" if page == active else "secondary"):
-                    goto(page)
+    # 主導覽已移到左側隱藏式選單。
+    return
 
 
 def slime_markup():
@@ -232,7 +288,6 @@ def home():
                 f'<div class="home-task"><div class="task-icon">{icon}</div><div class="card-title">{title}</div><div class="muted">{progress}</div><div class="task-reward">{reward}</div></div>',
                 unsafe_allow_html=True,
             )
-    nav("home")
 
 
 def study_home():
@@ -253,7 +308,6 @@ def study_home():
                 else:
                     st.button("即將開放", key=f"soon_{title}", use_container_width=True, disabled=True)
         st.write("")
-    nav("study")
 
 
 def study_material_intro():
@@ -275,7 +329,6 @@ def study_material_intro():
     )
     if st.button("☁️ 上傳教材開始學習", type="primary", use_container_width=True):
         goto("study_material_upload")
-    nav("study")
 
 
 def study_material_upload():
@@ -294,7 +347,6 @@ def study_material_upload():
         st.button("✨ 開始 AI 分析", type="primary", use_container_width=True, disabled=True)
     else:
         st.caption("小提醒：掃描型 PDF 或大量圖片頁面，之後需要另外處理圖片辨識。")
-    nav("study")
 
 
 def slime_page():
@@ -310,7 +362,6 @@ def slime_page():
             if st.button(("✅ " if slime == st.session_state.selected_slime else "🟢 ") + slime, key=f"slime_{slime}", use_container_width=True):
                 st.session_state.selected_slime = slime
                 st.rerun()
-    nav("slime")
 
 
 def achievements_page():
@@ -324,7 +375,6 @@ def achievements_page():
         status = "已解鎖" if aid in unlocked else "尚未解鎖"
         with cols[i % 3]:
             st.markdown(f'<div style="{style};background:white;border:1px solid #dfebe4;border-radius:22px;padding:1rem;min-height:150px"><div style="font-size:2rem">{icon}</div><div class="card-title">{title}</div><div class="muted">{desc}</div><div style="margin-top:.6rem;font-weight:850">{status} · {reward}</div></div><br>', unsafe_allow_html=True)
-    nav("achievements")
 
 
 def gacha_page():
@@ -345,8 +395,9 @@ def gacha_page():
     if result:
         msg = "重複獲得，已轉換成金幣" if result["duplicate"] else "NEW！已加入收藏"
         st.markdown(f'<div class="gacha-result"><div class="muted">{msg}</div><div style="font-size:5rem">{result["emoji"]}</div><div class="rarity-{result["rarity"]}">{result["rarity"]}</div><div class="card-title">{result["name"]}</div></div>', unsafe_allow_html=True)
-    nav("gacha")
 
+
+sidebar_nav()
 
 page = st.session_state.medslime_page
 if page == "home":
