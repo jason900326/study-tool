@@ -59,7 +59,20 @@ st.markdown(
     .block-container { max-width:1180px; padding-top:1rem; padding-bottom:4.5rem; }
     h1,h2,h3,p,div,button,label { font-family:"Noto Sans TC","Microsoft JhengHei",sans-serif; }
 
-    .currency { display:flex; gap:.55rem; justify-content:flex-end; align-items:center; flex-wrap:wrap; }
+    /* Hide Streamlit Community Cloud chrome / floating viewer controls where possible. */
+    [data-testid="stToolbar"],
+    [data-testid="stAppDeployButton"],
+    [data-testid="stStatusWidget"],
+    footer,
+    div[class*="viewerBadge"],
+    div[class*="ViewerBadge"],
+    div[class*="profilePreview"],
+    a[href*="streamlit.io/cloud"] {
+        display:none !important;
+        visibility:hidden !important;
+    }
+
+    .currency { display:flex; gap:.55rem; justify-content:flex-end; align-items:center; flex-wrap:nowrap; white-space:nowrap; }
     .pill { background:rgba(255,255,255,.9); border:1px solid #dfece4; border-radius:999px; padding:.5rem .8rem; font-weight:850; color:#244c39; box-shadow:0 6px 18px rgba(31,83,53,.045); }
     .eyebrow { color:#2ba962; font-weight:950; font-size:.86rem; letter-spacing:.04em; text-transform:uppercase; }
     .hero-title { font-size:2.25rem; line-height:1.12; font-weight:950; color:#143629; letter-spacing:-.045em; }
@@ -68,7 +81,6 @@ st.markdown(
     .muted { color:#71887b; font-size:.92rem; }
     .card-title { color:#1d4533; font-weight:900; font-size:1.08rem; }
 
-    /* Logo looks like plain text, but keeps a large touch target on mobile. */
     [class*="st-key-brand_home_"] button {
         background:transparent !important;
         border:none !important;
@@ -91,48 +103,81 @@ st.markdown(
         transform:none !important;
         color:#17372a !important;
     }
-    [class*="st-key-brand_home_"] button p {
-        font-size:1.55rem !important;
-        font-weight:950 !important;
-    }
+    [class*="st-key-brand_home_"] button p { font-size:1.55rem !important; font-weight:950 !important; }
 
-    /* Hidden sidebar navigation */
+    /* Sidebar */
     [data-testid="stSidebar"] {
-        background:rgba(248,252,249,.98);
-        border-right:1px solid #dce9e1;
+        background:rgba(248,252,249,.99);
+        border-right:1px solid #cfe4d7;
     }
-    [data-testid="stSidebar"] [data-testid="stSidebarContent"] {
-        padding-top:1rem;
-    }
+    [data-testid="stSidebar"] [data-testid="stSidebarContent"] { padding-top:1rem; }
     [data-testid="stSidebar"] div.stButton > button {
         min-height:52px;
         border-radius:16px;
         justify-content:flex-start;
         padding-left:1rem;
     }
-    .sidebar-brand {
-        font-size:1.45rem;
-        font-weight:950;
-        letter-spacing:-.035em;
-        color:#17372a;
-        margin:.2rem 0 .2rem;
+    .sidebar-brand { font-size:1.45rem; font-weight:950; letter-spacing:-.035em; color:#17372a; margin:.2rem 0 .2rem; }
+    .sidebar-note { color:#789083; font-size:.82rem; margin-bottom:1rem; }
+
+    /* Collapsed sidebar opener — high contrast and always visible. */
+    [data-testid="stSidebarCollapsedControl"] {
+        display:flex !important;
+        visibility:visible !important;
+        position:fixed !important;
+        left:0 !important;
+        top:50% !important;
+        transform:translateY(-50%) !important;
+        z-index:10050 !important;
     }
-    .sidebar-note {
-        color:#789083;
-        font-size:.82rem;
-        margin-bottom:1rem;
+    [data-testid="stSidebarCollapsedControl"] button {
+        width:42px !important;
+        height:64px !important;
+        min-width:42px !important;
+        min-height:64px !important;
+        border:none !important;
+        border-radius:0 16px 16px 0 !important;
+        background:#2f9e62 !important;
+        color:white !important;
+        box-shadow:0 8px 20px rgba(28,103,63,.24) !important;
+    }
+    [data-testid="stSidebarCollapsedControl"] svg { display:none !important; }
+    [data-testid="stSidebarCollapsedControl"] button::after {
+        content:">>";
+        color:white;
+        font-size:1rem;
+        font-weight:950;
+        letter-spacing:-.08em;
     }
 
-    .home-copy-card {
-        background:linear-gradient(135deg,#e6f9ed 0%,#f5fcf7 57%,#e9f8fd 100%);
-        border:1px solid #d6eadd; border-radius:30px; padding:2rem;
-        box-shadow:0 18px 44px rgba(40,106,69,.09); min-height:235px;
+    /* Expanded sidebar closer — sit on the sidebar's right edge at mid-height. */
+    [data-testid="stSidebarHeader"] button {
+        position:fixed !important;
+        left:calc(21rem - 21px) !important;
+        top:50% !important;
+        transform:translateY(-50%) !important;
+        width:42px !important;
+        height:64px !important;
+        min-width:42px !important;
+        min-height:64px !important;
+        border:none !important;
+        border-radius:16px !important;
+        background:#2f9e62 !important;
+        color:white !important;
+        box-shadow:0 8px 20px rgba(28,103,63,.24) !important;
+        z-index:10060 !important;
     }
-    .home-slime-card {
-        background:rgba(255,255,255,.48); border:1px solid rgba(214,234,221,.8);
-        border-radius:30px; padding:1.45rem; min-height:235px;
-        display:flex; flex-direction:column; align-items:center; justify-content:center;
+    [data-testid="stSidebarHeader"] button svg { display:none !important; }
+    [data-testid="stSidebarHeader"] button::after {
+        content:"<<";
+        color:white;
+        font-size:1rem;
+        font-weight:950;
+        letter-spacing:-.08em;
     }
+
+    .home-copy-card { background:linear-gradient(135deg,#e6f9ed 0%,#f5fcf7 57%,#e9f8fd 100%); border:1px solid #d6eadd; border-radius:30px; padding:2rem; box-shadow:0 18px 44px rgba(40,106,69,.09); min-height:235px; }
+    .home-slime-card { background:rgba(255,255,255,.48); border:1px solid rgba(214,234,221,.8); border-radius:30px; padding:1.45rem; min-height:235px; display:flex; flex-direction:column; align-items:center; justify-content:center; }
     .home-slime-label { font-weight:950; color:#214934; margin-top:.1rem; text-align:center; }
     .home-xp { width:82%; max-width:300px; height:9px; border-radius:999px; overflow:hidden; background:#dce9df; margin:.55rem auto .25rem; }
     .home-xp-fill { height:100%; background:linear-gradient(90deg,#58d28a,#42bda4); }
@@ -177,14 +222,64 @@ st.markdown(
     div.stButton > button:disabled { background:#f2f6f3 !important; color:#9aac9f !important; border-color:#e2ebe5 !important; }
 
     @media (max-width:700px) {
-        .block-container { padding-left:1rem; padding-right:1rem; padding-bottom:3rem; }
+        .block-container { padding-left:.85rem; padding-right:.85rem; padding-bottom:3rem; }
         .hero-title { font-size:1.9rem; }
         .home-copy-card, .home-slime-card { min-height:auto; }
         .choice-card { min-height:145px; padding:1.2rem; }
         .intro-panel { padding:1.45rem 1.1rem; }
+
+        /* Keep logo and currencies on one compact row. */
+        [data-testid="stHorizontalBlock"]:has([class*="st-key-brand_home_"]) {
+            flex-wrap:nowrap !important;
+            gap:.2rem !important;
+            align-items:center !important;
+        }
+        [data-testid="stHorizontalBlock"]:has([class*="st-key-brand_home_"]) > div:first-child {
+            min-width:0 !important;
+            width:38% !important;
+            flex:0 0 38% !important;
+        }
+        [data-testid="stHorizontalBlock"]:has([class*="st-key-brand_home_"]) > div:last-child {
+            min-width:0 !important;
+            width:62% !important;
+            flex:0 0 62% !important;
+        }
         [class*="st-key-brand_home_"] button {
-            min-height:52px !important;
-            min-width:165px !important;
+            min-height:48px !important;
+            min-width:0 !important;
+            width:100% !important;
+            padding:0 !important;
+        }
+        [class*="st-key-brand_home_"] button p {
+            font-size:1.35rem !important;
+            white-space:nowrap !important;
+        }
+        .currency { gap:.22rem !important; justify-content:flex-end !important; flex-wrap:nowrap !important; }
+        .pill {
+            padding:.32rem .42rem !important;
+            font-size:.76rem !important;
+            border-radius:999px !important;
+            box-shadow:none !important;
+        }
+
+        /* Mobile sidebar opener */
+        [data-testid="stSidebarCollapsedControl"] {
+            left:0 !important;
+            top:52% !important;
+            display:flex !important;
+            visibility:visible !important;
+            opacity:1 !important;
+        }
+        [data-testid="stSidebarCollapsedControl"] button {
+            width:38px !important;
+            min-width:38px !important;
+            height:58px !important;
+            min-height:58px !important;
+            border-radius:0 15px 15px 0 !important;
+        }
+        [data-testid="stSidebarHeader"] button {
+            left:calc(100vw - 48px) !important;
+            top:50% !important;
         }
     }
     </style>
@@ -214,36 +309,21 @@ def sidebar_nav():
     with st.sidebar:
         st.markdown('<div class="sidebar-brand">MedSlime<span style="color:#31b96c">.</span></div>', unsafe_allow_html=True)
         st.markdown('<div class="sidebar-note">選擇你要前往的地方</div>', unsafe_allow_html=True)
-
         for page, label in items:
-            if st.button(
-                label,
-                key=f"sidebar_{page}",
-                use_container_width=True,
-                type="primary" if page == active else "secondary",
-            ):
+            if st.button(label, key=f"sidebar_{page}", use_container_width=True, type="primary" if page == active else "secondary"):
                 goto(page)
 
 
 def topbar():
     brand_col, currency_col = st.columns([1, 2.15], vertical_alignment="center")
     with brand_col:
-        if st.button(
-            "MedSlime.",
-            key=f"brand_home_{st.session_state.medslime_page}",
-            help="返回首頁",
-        ):
+        if st.button("MedSlime.", key=f"brand_home_{st.session_state.medslime_page}", help="返回首頁"):
             goto("home")
     with currency_col:
         st.markdown(
             f'<div class="currency"><span class="pill">🔥 {st.session_state.streak} 天</span><span class="pill">🪙 {st.session_state.coins}</span><span class="pill">🎫 {st.session_state.tickets}</span></div>',
             unsafe_allow_html=True,
         )
-
-
-def nav(active):
-    # 主導覽已移到左側隱藏式選單。
-    return
 
 
 def slime_markup():
@@ -254,40 +334,18 @@ def home():
     topbar()
     left, right = st.columns([1.35, 1], gap="large", vertical_alignment="center")
     with left:
-        st.markdown(
-            '<div class="home-copy-card">'
-            '<div class="eyebrow">TODAY\'S STUDY</div>'
-            '<div class="hero-title">把今天的知識<br>餵給你的史萊姆。</div>'
-            '<div class="hero-copy">做題、訂正與專注學習都會讓史萊姆成長。先完成一小段，再去看看今天能不能拿到新的抽卡券。</div>'
-            '</div>',
-            unsafe_allow_html=True,
-        )
+        st.markdown('<div class="home-copy-card"><div class="eyebrow">TODAY\'S STUDY</div><div class="hero-title">把今天的知識<br>餵給你的史萊姆。</div><div class="hero-copy">做題、訂正與專注學習都會讓史萊姆成長。先完成一小段，再去看看今天能不能拿到新的抽卡券。</div></div>', unsafe_allow_html=True)
         if st.button("🧠 開始學習", type="primary", use_container_width=True, key="home_start_study"):
             goto("study")
     with right:
-        st.markdown(
-            '<div class="home-slime-card">'
-            + slime_markup()
-            + f'<div class="home-slime-label">{st.session_state.slime_name} · Lv.{st.session_state.player_level}</div>'
-            + f'<div class="home-xp"><div class="home-xp-fill" style="width:{st.session_state.player_exp}%"></div></div>'
-            + f'<div class="muted">{st.session_state.player_exp} / 100 EXP · {st.session_state.selected_slime}</div>'
-            + '</div>',
-            unsafe_allow_html=True,
-        )
+        st.markdown('<div class="home-slime-card">' + slime_markup() + f'<div class="home-slime-label">{st.session_state.slime_name} · Lv.{st.session_state.player_level}</div><div class="home-xp"><div class="home-xp-fill" style="width:{st.session_state.player_exp}%"></div></div><div class="muted">{st.session_state.player_exp} / 100 EXP · {st.session_state.selected_slime}</div></div>', unsafe_allow_html=True)
 
     st.markdown('<div class="section-title">今日任務</div>', unsafe_allow_html=True)
-    tasks = [
-        ("🧠", "完成 5 題", "0 / 5", "+20 EXP"),
-        ("🔍", "訂正 1 題", "0 / 1", "+50 🪙"),
-        ("⏱️", "學習 20 分鐘", "0 / 20", "+1 🎫"),
-    ]
+    tasks = [("🧠", "完成 5 題", "0 / 5", "+20 EXP"), ("🔍", "訂正 1 題", "0 / 1", "+50 🪙"), ("⏱️", "學習 20 分鐘", "0 / 20", "+1 🎫")]
     cols = st.columns(3, gap="medium")
     for col, (icon, title, progress, reward) in zip(cols, tasks):
         with col:
-            st.markdown(
-                f'<div class="home-task"><div class="task-icon">{icon}</div><div class="card-title">{title}</div><div class="muted">{progress}</div><div class="task-reward">{reward}</div></div>',
-                unsafe_allow_html=True,
-            )
+            st.markdown(f'<div class="home-task"><div class="task-icon">{icon}</div><div class="card-title">{title}</div><div class="muted">{progress}</div><div class="task-reward">{reward}</div></div>', unsafe_allow_html=True)
 
 
 def study_home():
@@ -314,19 +372,7 @@ def study_material_intro():
     topbar()
     if st.button("← 返回學習", key="intro_back"):
         goto("study")
-    st.markdown(
-        '<div class="intro-panel">'
-        '<div class="intro-art"><div class="mini-slime"><div class="mini-shine"></div><div class="mini-mouth"></div></div><div class="book-stack">📚</div></div>'
-        '<div class="hero-title" style="font-size:2rem">上傳教材，AI 幫你整理重點<br>並生成專屬測驗。</div>'
-        '<div class="hero-copy" style="max-width:680px;margin:.8rem auto 0">先不用把整份教材硬啃完。MedSlime 會先抓重點，再用題目幫你找出真正需要花時間的地方。</div>'
-        '<div class="check-list">'
-        '<div class="check-item">✓ 快速擷取教材重點</div>'
-        '<div class="check-item">✓ 生成適合複習的選擇題</div>'
-        '<div class="check-item">✓ 標記不確定與答錯觀念</div>'
-        '<div class="check-item">✓ 把需要加強的內容留下來</div>'
-        '</div></div>',
-        unsafe_allow_html=True,
-    )
+    st.markdown('<div class="intro-panel"><div class="intro-art"><div class="mini-slime"><div class="mini-shine"></div><div class="mini-mouth"></div></div><div class="book-stack">📚</div></div><div class="hero-title" style="font-size:2rem">上傳教材，AI 幫你整理重點<br>並生成專屬測驗。</div><div class="hero-copy" style="max-width:680px;margin:.8rem auto 0">先不用把整份教材硬啃完。MedSlime 會先抓重點，再用題目幫你找出真正需要花時間的地方。</div><div class="check-list"><div class="check-item">✓ 快速擷取教材重點</div><div class="check-item">✓ 生成適合複習的選擇題</div><div class="check-item">✓ 標記不確定與答錯觀念</div><div class="check-item">✓ 把需要加強的內容留下來</div></div></div>', unsafe_allow_html=True)
     if st.button("☁️ 上傳教材開始學習", type="primary", use_container_width=True):
         goto("study_material_upload")
 
