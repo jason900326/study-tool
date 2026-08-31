@@ -59,9 +59,15 @@ st.markdown(
     .block-container { max-width:1180px; padding-top:1rem; padding-bottom:4.5rem; }
     h1,h2,h3,p,div,button,label { font-family:"Noto Sans TC","Microsoft JhengHei",sans-serif; }
 
-    [data-testid="stToolbar"], [data-testid="stAppDeployButton"], [data-testid="stStatusWidget"], footer,
-    div[class*="viewerBadge"], div[class*="ViewerBadge"], div[class*="profilePreview"] {
-        display:none !important; visibility:hidden !important;
+    /* Keep the Streamlit header/sidebar controls alive. Only hide product chrome. */
+    [data-testid="stAppDeployButton"],
+    [data-testid="stStatusWidget"],
+    footer,
+    div[class*="viewerBadge"],
+    div[class*="ViewerBadge"],
+    div[class*="profilePreview"] {
+        display:none !important;
+        visibility:hidden !important;
     }
 
     .currency { display:flex; gap:.45rem; justify-content:flex-end; align-items:center; flex-wrap:nowrap; white-space:nowrap; }
@@ -73,61 +79,54 @@ st.markdown(
     .muted { color:#71887b; font-size:.92rem; }
     .card-title { color:#1d4533; font-weight:900; font-size:1.08rem; }
 
-    /* Brand: keep logo look, but leave room for the hamburger. */
+    /* MedSlime logo remains a plain clickable wordmark. */
     [class*="st-key-brand_home_"] button {
-        background:transparent !important; border:none !important; box-shadow:none !important;
-        padding:0 .15rem 0 3rem !important; min-height:48px !important;
-        justify-content:flex-start !important; color:#17372a !important;
-        font-size:1.55rem !important; font-weight:950 !important; letter-spacing:-.035em !important;
+        background:transparent !important;
+        border:none !important;
+        box-shadow:none !important;
+        padding:0 .15rem !important;
+        min-height:48px !important;
+        justify-content:flex-start !important;
+        color:#17372a !important;
+        font-size:1.55rem !important;
+        font-weight:950 !important;
+        letter-spacing:-.035em !important;
     }
     [class*="st-key-brand_home_"] button:hover,
     [class*="st-key-brand_home_"] button:active,
     [class*="st-key-brand_home_"] button:focus {
-        background:transparent !important; border:none !important; box-shadow:none !important;
-        transform:none !important; color:#17372a !important;
+        background:transparent !important;
+        border:none !important;
+        box-shadow:none !important;
+        transform:none !important;
+        color:#17372a !important;
     }
-    [class*="st-key-brand_home_"] button p { font-size:1.55rem !important; font-weight:950 !important; white-space:nowrap !important; }
+    [class*="st-key-brand_home_"] button p {
+        font-size:1.55rem !important;
+        font-weight:950 !important;
+        white-space:nowrap !important;
+    }
 
-    /* Sidebar itself stays close to the old study-tool behavior. */
-    [data-testid="stSidebar"] { background:rgba(248,252,249,.99); border-right:1px solid #d7e7dd; }
+    /* Sidebar: intentionally close to the original study-tool behavior. */
+    [data-testid="stSidebar"] {
+        background:rgba(248,252,249,.99);
+        border-right:1px solid #d7e7dd;
+    }
     [data-testid="stSidebar"] [data-testid="stSidebarContent"] { padding-top:1rem; }
     [data-testid="stSidebar"] div.stButton > button {
-        min-height:50px; border-radius:15px; justify-content:flex-start; padding-left:1rem;
+        min-height:50px;
+        border-radius:15px;
+        justify-content:flex-start;
+        padding-left:1rem;
     }
-    .sidebar-brand { font-size:1.45rem; font-weight:950; letter-spacing:-.035em; color:#17372a; margin:.25rem 0 .15rem; }
+    .sidebar-brand {
+        font-size:1.45rem;
+        font-weight:950;
+        letter-spacing:-.035em;
+        color:#17372a;
+        margin:.25rem 0 .15rem;
+    }
     .sidebar-note { color:#789083; font-size:.82rem; margin-bottom:1rem; }
-
-    /* Collapsed: hamburger immediately to the left of MedSlime. */
-    [data-testid="stSidebarCollapsedControl"] {
-        display:flex !important; visibility:visible !important; opacity:1 !important;
-        position:fixed !important;
-        top:1rem !important;
-        left:max(1rem, calc((100vw - 1180px) / 2 + 1rem)) !important;
-        z-index:10050 !important;
-        transform:none !important;
-    }
-    [data-testid="stSidebarCollapsedControl"] button {
-        width:42px !important; height:48px !important; min-width:42px !important; min-height:48px !important;
-        padding:0 !important; border:none !important; border-radius:12px !important;
-        background:rgba(255,255,255,.78) !important; color:#1e6c45 !important;
-        box-shadow:0 5px 15px rgba(28,103,63,.10) !important;
-    }
-    [data-testid="stSidebarCollapsedControl"] svg { display:none !important; }
-    [data-testid="stSidebarCollapsedControl"] button::after {
-        content:"☰"; font-size:1.45rem; line-height:1; font-weight:900; color:#1e6c45;
-    }
-
-    /* Expanded: simple close control at the sidebar top-right. */
-    [data-testid="stSidebarHeader"] { min-height:46px !important; }
-    [data-testid="stSidebarHeader"] button {
-        position:absolute !important; right:.65rem !important; top:.55rem !important; left:auto !important;
-        width:38px !important; height:38px !important; min-width:38px !important; min-height:38px !important;
-        padding:0 !important; border:none !important; border-radius:11px !important;
-        background:#edf8f1 !important; color:#246844 !important; box-shadow:none !important;
-        transform:none !important;
-    }
-    [data-testid="stSidebarHeader"] button svg { display:none !important; }
-    [data-testid="stSidebarHeader"] button::after { content:"✕"; font-size:1rem; font-weight:900; color:#246844; }
 
     .home-copy-card { background:linear-gradient(135deg,#e6f9ed 0%,#f5fcf7 57%,#e9f8fd 100%); border:1px solid #d6eadd; border-radius:30px; padding:2rem; box-shadow:0 18px 44px rgba(40,106,69,.09); min-height:235px; }
     .home-slime-card { background:rgba(255,255,255,.48); border:1px solid rgba(214,234,221,.8); border-radius:30px; padding:1.45rem; min-height:235px; display:flex; flex-direction:column; align-items:center; justify-content:center; }
@@ -181,27 +180,29 @@ st.markdown(
         .choice-card { min-height:145px; padding:1.2rem; }
         .intro-panel { padding:1.45rem 1.1rem; }
 
-        [data-testid="stSidebarCollapsedControl"] {
-            top:.85rem !important;
-            left:.85rem !important;
-        }
-        [data-testid="stSidebarCollapsedControl"] button {
-            width:38px !important; min-width:38px !important; height:46px !important; min-height:46px !important;
-        }
-        [class*="st-key-brand_home_"] button {
-            padding-left:2.65rem !important;
-            min-height:46px !important;
-        }
-        [class*="st-key-brand_home_"] button p { font-size:1.28rem !important; }
-
         [data-testid="stHorizontalBlock"]:has([class*="st-key-brand_home_"]) {
-            flex-wrap:nowrap !important; gap:.2rem !important; align-items:center !important;
+            flex-wrap:nowrap !important;
+            gap:.2rem !important;
+            align-items:center !important;
         }
         [data-testid="stHorizontalBlock"]:has([class*="st-key-brand_home_"]) > div:first-child {
-            min-width:0 !important; width:43% !important; flex:0 0 43% !important;
+            min-width:0 !important;
+            width:43% !important;
+            flex:0 0 43% !important;
         }
         [data-testid="stHorizontalBlock"]:has([class*="st-key-brand_home_"]) > div:last-child {
-            min-width:0 !important; width:57% !important; flex:0 0 57% !important;
+            min-width:0 !important;
+            width:57% !important;
+            flex:0 0 57% !important;
+        }
+        [class*="st-key-brand_home_"] button {
+            min-height:46px !important;
+            min-width:0 !important;
+            width:100% !important;
+            padding:0 !important;
+        }
+        [class*="st-key-brand_home_"] button p {
+            font-size:1.28rem !important;
         }
         .currency { gap:.18rem !important; }
         .pill { padding:.27rem .34rem !important; font-size:.68rem !important; box-shadow:none !important; }
