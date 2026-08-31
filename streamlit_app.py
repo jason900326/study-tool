@@ -48,62 +48,94 @@ GACHA_POOL = [
 st.markdown(
     """
     <style>
-    :root { --ink:#153b2b; --green:#31c978; --line:#dbe9e1; --soft:#f7fbf8; }
+    :root { --ink:#153b2b; --green:#31c978; --line:#dbe9e1; }
     .stApp {
         background:
-            radial-gradient(circle at 9% 4%, rgba(128,238,169,.18), transparent 25%),
-            radial-gradient(circle at 92% 15%, rgba(116,220,255,.15), transparent 24%),
+            radial-gradient(circle at 8% 3%, rgba(130,239,173,.18), transparent 24%),
+            radial-gradient(circle at 93% 13%, rgba(118,220,255,.15), transparent 23%),
             #f8fcf9;
     }
     [data-testid="stHeader"] { background:transparent; }
-    [data-testid="stToolbar"] { right:1rem; }
-    .block-container { max-width:1180px; padding-top:1.05rem; padding-bottom:4.5rem; }
+    .block-container { max-width:1180px; padding-top:1rem; padding-bottom:4.5rem; }
     h1,h2,h3,p,div,button,label { font-family:"Noto Sans TC","Microsoft JhengHei",sans-serif; }
 
-    .topbar-spacer { height:.25rem; }
-    .currency { display:flex; gap:.55rem; flex-wrap:wrap; justify-content:flex-end; align-items:center; padding-top:.12rem; }
-    .pill { background:rgba(255,255,255,.9); border:1px solid #dfece4; border-radius:999px; padding:.5rem .78rem; font-weight:850; color:#244c39; box-shadow:0 6px 18px rgba(31,83,53,.045); }
+    .currency { display:flex; gap:.55rem; justify-content:flex-end; align-items:center; flex-wrap:wrap; }
+    .pill { background:rgba(255,255,255,.9); border:1px solid #dfece4; border-radius:999px; padding:.5rem .8rem; font-weight:850; color:#244c39; box-shadow:0 6px 18px rgba(31,83,53,.045); }
     .eyebrow { color:#2ba962; font-weight:950; font-size:.86rem; letter-spacing:.04em; text-transform:uppercase; }
-    .hero-title { font-size:2.25rem; line-height:1.13; font-weight:950; color:#143629; letter-spacing:-.045em; }
-    .hero-copy { color:#637f70; margin-top:.58rem; line-height:1.72; }
+    .hero-title { font-size:2.25rem; line-height:1.12; font-weight:950; color:#143629; letter-spacing:-.045em; }
+    .hero-copy { color:#637f70; margin-top:.6rem; line-height:1.72; }
     .section-title { font-size:1.34rem; font-weight:950; color:#173b2b; margin:1.7rem 0 .85rem; }
-
-    .hero { background:linear-gradient(135deg,#e7faed 0%,#f4fcf6 57%,#eaf9fd 100%); border:1px solid #d6eadd; border-radius:30px; padding:2rem; box-shadow:0 18px 44px rgba(40,106,69,.09); margin-bottom:1.15rem; }
-    .card { background:rgba(255,255,255,.94); border:1px solid #dfebe4; border-radius:24px; padding:1.2rem 1.25rem; box-shadow:0 10px 28px rgba(31,83,53,.055); height:100%; }
-    .card-title { color:#1d4533; font-weight:900; font-size:1.08rem; }
     .muted { color:#71887b; font-size:.92rem; }
+    .card-title { color:#1d4533; font-weight:900; font-size:1.08rem; }
 
-    .study-header { margin:.35rem 0 1.2rem; }
+    /* Clickable brand that still looks exactly like a logo */
+    [class*="st-key-brand_home_"] button {
+        background:transparent !important;
+        border:none !important;
+        box-shadow:none !important;
+        padding:0 !important;
+        min-height:auto !important;
+        color:#17372a !important;
+        font-size:1.55rem !important;
+        font-weight:950 !important;
+        letter-spacing:-.035em !important;
+    }
+    [class*="st-key-brand_home_"] button:hover {
+        background:transparent !important;
+        border:none !important;
+        transform:none !important;
+        color:#17372a !important;
+    }
+    [class*="st-key-brand_home_"] button p { font-size:1.55rem !important; font-weight:950 !important; }
+
+    /* New home */
+    .home-hero {
+        position:relative; overflow:hidden;
+        background:linear-gradient(135deg,#e6f9ed 0%,#f5fcf7 57%,#e9f8fd 100%);
+        border:1px solid #d6eadd; border-radius:32px; padding:2rem 2rem 1.8rem;
+        box-shadow:0 18px 44px rgba(40,106,69,.09);
+        min-height:300px;
+    }
+    .home-hero:after {
+        content:""; position:absolute; width:230px; height:230px; right:-80px; bottom:-110px;
+        border-radius:50%; background:rgba(66,201,125,.08);
+    }
+    .home-copy-wrap { padding:.15rem .2rem 0; }
+    .home-slime-wrap { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:250px; }
+    .home-slime-label { font-weight:950; color:#214934; margin-top:.1rem; }
+    .home-xp { width:82%; max-width:300px; height:9px; border-radius:999px; overflow:hidden; background:#dce9df; margin:.55rem auto .25rem; }
+    .home-xp-fill { height:100%; background:linear-gradient(90deg,#58d28a,#42bda4); }
+    .home-task { background:rgba(255,255,255,.95); border:1px solid #dfebe4; border-radius:23px; padding:1.2rem 1.25rem; box-shadow:0 10px 26px rgba(31,83,53,.05); min-height:145px; }
+    .task-icon { width:44px; height:44px; border-radius:14px; display:flex; align-items:center; justify-content:center; background:#eefaf2; font-size:1.45rem; margin-bottom:.7rem; }
+    .task-reward { margin-top:.7rem; font-weight:900; color:#2a9d5e; }
+
     .choice-card { background:rgba(255,255,255,.96); border:1px solid #dceae2; border-radius:25px; padding:1.45rem 1.5rem; min-height:156px; box-shadow:0 12px 28px rgba(30,78,50,.055); }
     .choice-icon-shell { width:50px; height:50px; border-radius:15px; display:flex; align-items:center; justify-content:center; background:linear-gradient(145deg,#e8f9ee,#f1fbf5); border:1px solid #d7eadf; margin-bottom:.9rem; }
     .choice-icon { font-size:1.72rem; }
     .choice-title { font-size:1.17rem; font-weight:950; color:#173b2b; }
     .choice-copy { color:#70877a; line-height:1.55; margin-top:.42rem; }
+    .study-header { margin:.35rem 0 1.2rem; }
 
-    .intro-panel { max-width:840px; margin:.3rem auto 1.15rem; background:rgba(255,255,255,.73); border:1px solid #dfebe4; border-radius:30px; padding:2rem 2rem 1.75rem; box-shadow:0 16px 38px rgba(30,82,51,.055); text-align:center; }
+    .intro-panel { max-width:840px; margin:.3rem auto 1.15rem; background:rgba(255,255,255,.76); border:1px solid #dfebe4; border-radius:30px; padding:2rem 2rem 1.75rem; box-shadow:0 16px 38px rgba(30,82,51,.055); text-align:center; }
     .intro-art { position:relative; width:230px; height:150px; margin:0 auto .65rem; }
     .mini-slime { position:absolute; left:42px; top:35px; width:105px; height:82px; border-radius:50% 50% 40% 40%/62% 62% 38% 38%; background:linear-gradient(145deg,#9bedad,#48c878); box-shadow:inset -9px -10px 0 rgba(25,130,74,.08),0 14px 24px rgba(39,139,82,.14); }
     .mini-slime:before,.mini-slime:after { content:""; position:absolute; top:34px; width:8px; height:12px; background:#153c2b; border-radius:50%; }
     .mini-slime:before { left:30px; } .mini-slime:after { right:30px; }
     .mini-mouth { position:absolute; width:23px; height:9px; border-bottom:3px solid #153c2b; border-radius:0 0 50% 50%; left:41px; top:50px; }
     .mini-shine { position:absolute; width:22px; height:10px; background:rgba(255,255,255,.52); border-radius:50%; left:20px; top:16px; transform:rotate(-23deg); }
-    .book-stack { position:absolute; right:34px; top:34px; font-size:3.6rem; transform:rotate(2deg); }
+    .book-stack { position:absolute; right:34px; top:34px; font-size:3.6rem; }
     .check-list { max-width:575px; margin:1rem auto .2rem; text-align:left; display:grid; gap:.55rem; }
     .check-item { color:#315b47; font-weight:760; background:#f7fcf9; border:1px solid #e0eee6; border-radius:13px; padding:.62rem .8rem; }
 
-    .upload-shell { background:rgba(255,255,255,.9); border:1px solid #dceae2; border-radius:27px; padding:1.1rem 1.15rem 1.2rem; box-shadow:0 12px 30px rgba(30,78,50,.05); }
+    .upload-shell { background:rgba(255,255,255,.92); border:1px solid #dceae2; border-radius:27px; padding:1.1rem 1.15rem 1.2rem; box-shadow:0 12px 30px rgba(30,78,50,.05); }
     [data-testid="stFileUploaderDropzone"] { background:#fbfefc !important; border:1.5px dashed #bcdcc8 !important; border-radius:20px !important; padding:1.6rem !important; }
     [data-testid="stFileUploaderDropzone"] button { background:#2fc675 !important; color:white !important; border-color:#2fc675 !important; }
-    [data-testid="stFileUploaderDropzoneInstructions"] div, [data-testid="stFileUploaderDropzoneInstructions"] span { color:#547565 !important; }
 
-    .slime-stage { text-align:center; padding:1rem 0 .25rem; }
     .slime { width:178px; height:142px; margin:0 auto 1rem; border-radius:50% 50% 40% 40%/62% 62% 38% 38%; background:linear-gradient(145deg,#9bedad,#48c878); box-shadow:inset -14px -18px 0 rgba(25,130,74,.09),0 20px 30px rgba(39,139,82,.18); position:relative; }
     .slime:before,.slime:after { content:""; position:absolute; top:60px; width:13px; height:19px; background:#153c2b; border-radius:50%; }
     .slime:before { left:49px; } .slime:after { right:49px; }
     .mouth { position:absolute; width:35px; height:15px; border-bottom:4px solid #153c2b; border-radius:0 0 50% 50%; left:72px; top:88px; }
     .shine { position:absolute; width:32px; height:16px; background:rgba(255,255,255,.48); border-radius:50%; left:35px; top:29px; transform:rotate(-24deg); }
-    .xp-track { height:10px; background:#dbe9df; border-radius:999px; overflow:hidden; margin:.45rem auto .2rem; max-width:310px; }
-    .xp-fill { height:100%; background:linear-gradient(90deg,#50cb7e,#42b9a3); }
     .locked { filter:grayscale(.8); opacity:.55; }
     .gacha-result { text-align:center; background:white; border:1px solid #dcebe2; border-radius:28px; padding:2rem; }
     .rarity-N { color:#6b7d72; font-weight:900; }.rarity-R { color:#3d72c8; font-weight:900; }.rarity-SSR { color:#b58213; font-weight:950; }
@@ -117,6 +149,7 @@ st.markdown(
     @media (max-width:700px) {
         .block-container { padding-left:1rem; padding-right:1rem; }
         .hero-title { font-size:1.9rem; }
+        .home-hero { padding:1.35rem; }
         .choice-card { min-height:145px; padding:1.2rem; }
         .intro-panel { padding:1.45rem 1.1rem; }
     }
@@ -158,31 +191,51 @@ def nav(active):
                 goto(page)
 
 
-def slime_card():
-    st.markdown(
-        f'<div class="slime-stage"><div class="slime"><div class="shine"></div><div class="mouth"></div></div><div style="font-weight:900;color:#214934">{st.session_state.slime_name} · Lv.{st.session_state.player_level}</div><div class="xp-track"><div class="xp-fill" style="width:{st.session_state.player_exp}%"></div></div><div class="muted">{st.session_state.player_exp} / 100 EXP · {st.session_state.selected_slime}</div></div>',
-        unsafe_allow_html=True,
-    )
+def slime_markup():
+    return '<div class="slime"><div class="shine"></div><div class="mouth"></div></div>'
 
 
 def home():
     topbar()
-    left, right = st.columns([1.45, 1], gap="large")
+    st.markdown('<div class="home-hero">', unsafe_allow_html=True)
+    left, right = st.columns([1.35, 1], gap="large", vertical_alignment="center")
     with left:
-        st.markdown('<div class="hero"><div class="eyebrow">TODAY\'S STUDY</div><div class="hero-title">把今天的知識<br>餵給你的史萊姆。</div><div class="hero-copy">做題、訂正與專注學習都會讓史萊姆成長。完成一小段，再去看看今天能不能拿到新的抽卡券。</div></div>', unsafe_allow_html=True)
-        if st.button("🧠 開始學習", type="primary", use_container_width=True):
+        st.markdown(
+            '<div class="home-copy-wrap">'
+            '<div class="eyebrow">TODAY\'S STUDY</div>'
+            '<div class="hero-title">把今天的知識<br>餵給你的史萊姆。</div>'
+            '<div class="hero-copy">做題、訂正與專注學習都會讓史萊姆成長。先完成一小段，再去看看今天能不能拿到新的抽卡券。</div>'
+            '</div>',
+            unsafe_allow_html=True,
+        )
+        if st.button("🧠 開始學習", type="primary", use_container_width=True, key="home_start_study"):
             goto("study")
     with right:
-        st.markdown('<div class="card">', unsafe_allow_html=True)
-        slime_card()
-        st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown(
+            '<div class="home-slime-wrap">'
+            + slime_markup()
+            + f'<div class="home-slime-label">{st.session_state.slime_name} · Lv.{st.session_state.player_level}</div>'
+            + f'<div class="home-xp"><div class="home-xp-fill" style="width:{st.session_state.player_exp}%"></div></div>'
+            + f'<div class="muted">{st.session_state.player_exp} / 100 EXP · {st.session_state.selected_slime}</div>'
+            + '</div>',
+            unsafe_allow_html=True,
+        )
+    st.markdown('</div>', unsafe_allow_html=True)
 
     st.markdown('<div class="section-title">今日任務</div>', unsafe_allow_html=True)
-    tasks = [("🧠", "完成 5 題", "0 / 5", "+20 EXP"), ("🔍", "訂正 1 題", "0 / 1", "+50 🪙"), ("⏱️", "學習 20 分鐘", "0 / 20", "+1 🎫")]
-    cols = st.columns(3)
+    tasks = [
+        ("🧠", "完成 5 題", "0 / 5", "+20 EXP"),
+        ("🔍", "訂正 1 題", "0 / 1", "+50 🪙"),
+        ("⏱️", "學習 20 分鐘", "0 / 20", "+1 🎫"),
+    ]
+    cols = st.columns(3, gap="medium")
     for col, (icon, title, progress, reward) in zip(cols, tasks):
         with col:
-            st.markdown(f'<div class="card"><div style="font-size:1.65rem">{icon}</div><div class="card-title">{title}</div><div class="muted">{progress}</div><div style="margin-top:.7rem;font-weight:900;color:#2a9d5e">{reward}</div></div>', unsafe_allow_html=True)
+            st.markdown(
+                f'<div class="home-task"><div class="task-icon">{icon}</div><div class="card-title">{title}</div><div class="muted">{progress}</div><div class="task-reward">{reward}</div></div>',
+                unsafe_allow_html=True,
+            )
+
     st.markdown('<div class="section-title">探索 MedSlime</div>', unsafe_allow_html=True)
     nav("home")
 
@@ -258,10 +311,8 @@ def slime_page():
     st.markdown("## 🐾 我的史萊姆")
     left, right = st.columns([1, 1.35], gap="large")
     with left:
-        st.markdown('<div class="card">', unsafe_allow_html=True)
-        slime_card()
+        st.markdown('<div style="text-align:center;padding:1.2rem;background:white;border:1px solid #dfebe4;border-radius:24px">' + slime_markup() + '</div>', unsafe_allow_html=True)
         st.session_state.slime_name = st.text_input("史萊姆名字", value=st.session_state.slime_name, max_chars=16)
-        st.markdown('</div>', unsafe_allow_html=True)
     with right:
         st.markdown("### 收藏")
         for slime in st.session_state.collection:
@@ -278,10 +329,10 @@ def achievements_page():
     st.caption(f"目前解鎖 {len(unlocked)} / {len(ACHIEVEMENTS)}")
     cols = st.columns(3)
     for i, (aid, icon, title, desc, reward) in enumerate(ACHIEVEMENTS):
-        css = "card" if aid in unlocked else "card locked"
+        style = "opacity:1" if aid in unlocked else "filter:grayscale(.8);opacity:.55"
         status = "已解鎖" if aid in unlocked else "尚未解鎖"
         with cols[i % 3]:
-            st.markdown(f'<div class="{css}"><div style="font-size:2rem">{icon}</div><div class="card-title">{title}</div><div class="muted">{desc}</div><div style="margin-top:.6rem;font-weight:850">{status} · {reward}</div></div><br>', unsafe_allow_html=True)
+            st.markdown(f'<div style="{style};background:white;border:1px solid #dfebe4;border-radius:22px;padding:1rem;min-height:150px"><div style="font-size:2rem">{icon}</div><div class="card-title">{title}</div><div class="muted">{desc}</div><div style="margin-top:.6rem;font-weight:850">{status} · {reward}</div></div><br>', unsafe_allow_html=True)
     nav("achievements")
 
 
