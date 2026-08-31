@@ -17,8 +17,8 @@ from openai import OpenAI
 # =========================================================
 
 st.set_page_config(
-    page_title="Study Tool",
-    page_icon="📚",
+    page_title="MedSlime",
+    page_icon="🧪",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
@@ -1018,6 +1018,152 @@ def apply_font_size():
     transition: width 0.2s ease;
 }}
 
+/* =======================================================
+   MedSlime home
+   ======================================================= */
+
+.medslime-hero {{
+    position: relative;
+    overflow: hidden;
+    padding: 2.2rem 2.2rem 2rem 2.2rem;
+    margin: 0.4rem 0 1.4rem 0;
+    border: 1px solid rgba(120, 170, 145, 0.24);
+    border-radius: 28px;
+    background:
+        radial-gradient(
+            circle at 88% 18%,
+            rgba(128, 211, 169, 0.22),
+            transparent 26%
+        ),
+        radial-gradient(
+            circle at 12% 95%,
+            rgba(141, 205, 180, 0.14),
+            transparent 30%
+        ),
+        rgba(128, 128, 128, 0.045);
+}}
+
+.medslime-hero::after {{
+    content: "";
+    position: absolute;
+    width: 175px;
+    height: 125px;
+    right: -38px;
+    bottom: -58px;
+    border-radius: 48% 52% 44% 56% / 60% 42% 58% 40%;
+    background: rgba(111, 202, 154, 0.19);
+    transform: rotate(-8deg);
+}}
+
+.medslime-eyebrow {{
+    display: inline-block;
+    padding: 0.38rem 0.72rem;
+    margin-bottom: 0.75rem;
+    border-radius: 999px;
+    border: 1px solid rgba(80, 160, 120, 0.28);
+    background: rgba(103, 194, 147, 0.11);
+    font-size: 0.82rem !important;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+}}
+
+.medslime-title {{
+    margin: 0;
+    max-width: 850px;
+    font-size: clamp(2rem, 5vw, 4.1rem) !important;
+    line-height: 1.08 !important;
+    letter-spacing: -0.035em;
+    font-weight: 900;
+}}
+
+.medslime-title-accent {{
+    text-decoration: underline;
+    text-decoration-thickness: 0.16em;
+    text-underline-offset: 0.12em;
+    text-decoration-color: rgba(95, 190, 140, 0.42);
+}}
+
+.medslime-subtitle {{
+    max-width: 760px;
+    margin-top: 1rem;
+    margin-bottom: 0;
+    opacity: 0.82;
+    font-size: 1.05rem !important;
+}}
+
+.medslime-chip-row {{
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.55rem;
+    margin-top: 1.15rem;
+}}
+
+.medslime-chip {{
+    display: inline-block;
+    padding: 0.36rem 0.68rem;
+    border-radius: 999px;
+    background: rgba(128, 128, 128, 0.08);
+    border: 1px solid rgba(128, 128, 128, 0.16);
+    font-size: 0.82rem !important;
+    font-weight: 700;
+}}
+
+.medslime-section-title {{
+    margin-top: 0.25rem;
+    margin-bottom: 0.2rem;
+    font-weight: 850;
+}}
+
+.medslime-card-note {{
+    opacity: 0.76;
+    margin-top: -0.2rem;
+}}
+
+.medslime-step {{
+    min-height: 132px;
+    padding: 1rem 1.05rem;
+    border-radius: 20px;
+    border: 1px solid rgba(128, 128, 128, 0.15);
+    background: rgba(128, 128, 128, 0.035);
+}}
+
+.medslime-step-number {{
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    margin-bottom: 0.55rem;
+    border-radius: 50%;
+    background: rgba(105, 192, 145, 0.16);
+    font-weight: 900;
+}}
+
+.medslime-footer-note {{
+    margin-top: 1.2rem;
+    padding: 1rem 1.1rem;
+    border-radius: 18px;
+    background: rgba(105, 192, 145, 0.07);
+    border: 1px solid rgba(105, 192, 145, 0.15);
+    text-align: center;
+    font-weight: 700;
+}}
+
+@media (max-width: 700px) {{
+    .medslime-hero {{
+        padding: 1.45rem 1.2rem 1.35rem 1.2rem;
+        border-radius: 22px;
+    }}
+
+    .medslime-title {{
+        font-size: 2.25rem !important;
+    }}
+
+    .medslime-subtitle {{
+        font-size: 0.98rem !important;
+    }}
+}}
+
 </style>
         """,
         unsafe_allow_html=True,
@@ -1439,7 +1585,7 @@ def load_exam_set(
 
 def show_sidebar():
     with st.sidebar:
-        st.title("📚 Study Tool")
+        st.title("🧪 MedSlime")
 
         if st.button(
             "首頁",
@@ -1529,7 +1675,7 @@ def show_sidebar():
             with st.expander("查看錯誤"):
                 st.code(error)
 
-        st.caption("Prototype v0.24")
+        st.caption("MedSlime · Prototype v0.25")
 
 
 # =========================================================
@@ -2309,24 +2455,179 @@ def show_national_exam():
 # =========================================================
 
 def show_home():
-    st.title("📚 把教材丟進來，先做 5 題")
+    # =====================================================
+    # MedSlime Hero
+    # =====================================================
 
-    st.write(
-        "不用先把整份講義讀完。"
-        "先用 5 題找出你還不熟的地方。"
+    st.markdown(
+        """
+        <div class="medslime-hero">
+            <div class="medslime-eyebrow">
+                MEDSLIME · LEARN BY TESTING
+            </div>
+
+            <div class="medslime-title">
+                別先硬啃整份教材。<br>
+                先用 <span class="medslime-title-accent">5 題</span>
+                找出你不會的地方。
+            </div>
+
+            <p class="medslime-subtitle">
+                MedSlime 會根據你的教材整理重點、準備測驗，
+                再把真正需要複習的地方留下來。
+            </p>
+
+            <div class="medslime-chip-row">
+                <span class="medslime-chip">PDF → 5 題診斷</span>
+                <span class="medslime-chip">教材來源可驗證</span>
+                <span class="medslime-chip">歷屆國考真題</span>
+                <span class="medslime-chip">錯題持續累積</span>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
 
-    st.divider()
+    # =====================================================
+    # 兩個主要入口
+    # =====================================================
+
+    st.markdown(
+        '<div class="medslime-section-title">今天要怎麼開始？</div>',
+        unsafe_allow_html=True,
+    )
+
+    entry_left, entry_right = st.columns(
+        2,
+        gap="large",
+    )
+
+    with entry_left:
+        with st.container(
+            border=True
+        ):
+            st.markdown(
+                "### 🧠 AI 教材測驗"
+            )
+
+            st.markdown(
+                '<div class="medslime-card-note">'
+                "上傳自己的 PDF，先讓 MedSlime 用 5 題幫你找出不熟的地方。"
+                "</div>",
+                unsafe_allow_html=True,
+            )
+
+            st.write("")
+
+            st.markdown(
+                "**適合：** 還沒讀完的講義、考前快速檢查、自己的教材。"
+            )
+
+    with entry_right:
+        with st.container(
+            border=True
+        ):
+            st.markdown(
+                "### 🧪 歷屆國考"
+            )
+
+            st.markdown(
+                '<div class="medslime-card-note">'
+                "直接練習考選部醫事檢驗師歷屆官方真題。"
+                "</div>",
+                unsafe_allow_html=True,
+            )
+
+            st.write("")
+
+            if st.button(
+                "開始練歷屆國考 →",
+                type="primary",
+                use_container_width=True,
+                key="home_go_national_exam",
+            ):
+                st.session_state.page = (
+                    "national_exam"
+                )
+                st.rerun()
+
+    st.write("")
+
+
+    st.write("")
+
+    st.markdown(
+        "## MedSlime 怎麼幫你讀？"
+    )
+
+    step1, step2, step3 = st.columns(
+        3,
+        gap="medium",
+    )
+
+    with step1:
+        st.markdown(
+            """
+            <div class="medslime-step">
+                <div class="medslime-step-number">1</div>
+                <strong>丟教材</strong><br>
+                <span>上傳你現在真的要讀的 PDF。</span>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    with step2:
+        st.markdown(
+            """
+            <div class="medslime-step">
+                <div class="medslime-step-number">2</div>
+                <strong>先做 5 題</strong><br>
+                <span>不用先讀完，先確認自己到底會多少。</span>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    with step3:
+        st.markdown(
+            """
+            <div class="medslime-step">
+                <div class="medslime-step-number">3</div>
+                <strong>只複習需要的地方</strong><br>
+                <span>錯題與不確定的觀念留下來，再回頭補強。</span>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    st.markdown(
+        """
+        <div class="medslime-footer-note">
+            不是先讀完整份教材，而是先知道哪裡值得你花時間。
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.write("")
+
+    # =====================================================
+    # PDF upload
+    # =====================================================
+
+    st.markdown(
+        "## 上傳教材"
+    )
+
+    st.caption(
+        "目前建議使用含有可選取文字的 PDF。"
+        "掃描頁、圖片與圖表內容仍可能無法完整納入 AI 分析。"
+    )
 
     uploaded_file = st.file_uploader(
         "上傳 PDF",
         type=["pdf"],
-    )
-
-    st.info(
-        "建議上傳含有可選取文字的 PDF。"
-        "圖片、掃描頁與圖表內容可能無法完整納入分析，"
-        "AI 分析與出題結果可能因此有所差異。"
     )
 
     if uploaded_file is None:
