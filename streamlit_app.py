@@ -915,6 +915,9 @@ st.markdown(
     [class*="st-key-mistake_folder_row_"] button { min-height:58px !important; justify-content:flex-start !important; text-align:left !important; padding:.72rem .9rem !important; background:transparent !important; color:#244c39 !important; border:0 !important; border-radius:12px !important; box-shadow:none !important; }
     [class*="st-key-mistake_folder_row_"] button:hover { background:#f1faf5 !important; transform:none !important; }
     [class*="st-key-mistake_folder_row_"] button p { width:100% !important; text-align:left !important; color:#244c39 !important; font-weight:800 !important; line-height:1.45 !important; white-space:normal !important; }
+    [class*="st-key-mistake_folder_row_"] button > div,
+    [class*="st-key-mistake_folder_row_"] button [data-testid="stMarkdownContainer"] { width:100% !important; display:flex !important; justify-content:flex-start !important; text-align:left !important; }
+    [class*="st-key-mistake_folder_row_"] button span { text-align:left !important; }
 
     /* Keep mistake expanders light in hover/focus/open states. */
     [class*="st-key-mistake_pending_"] [data-testid="stExpander"],
