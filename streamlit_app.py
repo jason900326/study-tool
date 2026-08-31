@@ -59,7 +59,15 @@ st.markdown(
     .block-container { max-width:1180px; padding-top:1rem; padding-bottom:4.5rem; }
     h1,h2,h3,p,div,button,label { font-family:"Noto Sans TC","Microsoft JhengHei",sans-serif; }
 
-    .currency { display:flex; gap:.45rem; justify-content:flex-end; align-items:center; flex-wrap:nowrap; white-space:nowrap; }
+    .currency {
+        display:flex;
+        gap:.45rem;
+        justify-content:flex-end;
+        align-items:center;
+        flex-wrap:nowrap;
+        white-space:nowrap;
+        min-height:48px;
+    }
     .pill { background:rgba(255,255,255,.9); border:1px solid #dfece4; border-radius:999px; padding:.42rem .68rem; font-weight:850; color:#244c39; box-shadow:0 6px 18px rgba(31,83,53,.045); }
     .eyebrow { color:#2ba962; font-weight:950; font-size:.86rem; letter-spacing:.04em; text-transform:uppercase; }
     .hero-title { font-size:2.25rem; line-height:1.12; font-weight:950; color:#143629; letter-spacing:-.045em; }
@@ -68,11 +76,15 @@ st.markdown(
     .muted { color:#71887b; font-size:.92rem; }
     .card-title { color:#1d4533; font-weight:900; font-size:1.08rem; }
 
+    /* Topbar: hamburger space + exact vertical alignment. */
+    [data-testid="stHorizontalBlock"]:has([class*="st-key-brand_home_"]) {
+        align-items:center !important;
+    }
     [class*="st-key-brand_home_"] button {
         background:transparent !important;
         border:none !important;
         box-shadow:none !important;
-        padding:0 .15rem !important;
+        padding:0 .15rem 0 3.25rem !important;
         min-height:48px !important;
         justify-content:flex-start !important;
         color:#17372a !important;
@@ -93,6 +105,8 @@ st.markdown(
         font-size:1.55rem !important;
         font-weight:950 !important;
         white-space:nowrap !important;
+        line-height:48px !important;
+        margin:0 !important;
     }
 
     [data-testid="stSidebar"] {
@@ -115,24 +129,27 @@ st.markdown(
     }
     .sidebar-note { color:#789083; font-size:.82rem; margin-bottom:1rem; }
 
-    /* Keep Streamlit's real sidebar opener visible and prevent it from covering the logo. */
-    [data-testid="stSidebarCollapsedControl"] {
+    /* Streamlit native sidebar opener: force visible, high contrast, and position next to logo. */
+    [data-testid="stSidebarCollapsedControl"],
+    button[aria-label="Open sidebar"],
+    button[aria-label="open sidebar"] {
         display:flex !important;
         visibility:visible !important;
         opacity:1 !important;
+    }
+    [data-testid="stSidebarCollapsedControl"] {
         position:fixed !important;
         top:.75rem !important;
-        left:.75rem !important;
+        left:max(.75rem, calc((100vw - 1180px) / 2 + .75rem)) !important;
         width:44px !important;
         height:44px !important;
         z-index:99999 !important;
         pointer-events:auto !important;
     }
     [data-testid="stSidebarCollapsedControl"] button,
-    [data-testid="stSidebarCollapsedControl"] [data-testid="stBaseButton-headerNoPadding"] {
-        display:flex !important;
-        visibility:visible !important;
-        opacity:1 !important;
+    [data-testid="stSidebarCollapsedControl"] [data-testid="stBaseButton-headerNoPadding"],
+    button[aria-label="Open sidebar"],
+    button[aria-label="open sidebar"] {
         width:44px !important;
         height:44px !important;
         min-width:44px !important;
@@ -140,18 +157,23 @@ st.markdown(
         padding:0 !important;
         align-items:center !important;
         justify-content:center !important;
-        background:rgba(255,255,255,.96) !important;
-        border:1px solid #cfe3d6 !important;
+        background:#17372a !important;
+        border:1px solid #17372a !important;
         border-radius:12px !important;
-        color:#1d6240 !important;
-        box-shadow:0 5px 16px rgba(30,90,55,.12) !important;
+        color:#ffffff !important;
+        box-shadow:0 5px 16px rgba(23,55,42,.20) !important;
     }
-    [data-testid="stSidebarCollapsedControl"] svg {
+    [data-testid="stSidebarCollapsedControl"] svg,
+    [data-testid="stSidebarCollapsedControl"] svg *,
+    button[aria-label="Open sidebar"] svg,
+    button[aria-label="Open sidebar"] svg *,
+    button[aria-label="open sidebar"] svg,
+    button[aria-label="open sidebar"] svg * {
         display:block !important;
         visibility:visible !important;
         opacity:1 !important;
-        color:#1d6240 !important;
-        stroke:#1d6240 !important;
+        color:#ffffff !important;
+        stroke:#ffffff !important;
         fill:none !important;
         width:22px !important;
         height:22px !important;
@@ -211,28 +233,31 @@ st.markdown(
 
         [data-testid="stHorizontalBlock"]:has([class*="st-key-brand_home_"]) {
             flex-wrap:nowrap !important;
-            gap:.2rem !important;
+            gap:.15rem !important;
             align-items:center !important;
         }
         [data-testid="stHorizontalBlock"]:has([class*="st-key-brand_home_"]) > div:first-child {
             min-width:0 !important;
-            width:43% !important;
-            flex:0 0 43% !important;
+            width:44% !important;
+            flex:0 0 44% !important;
         }
         [data-testid="stHorizontalBlock"]:has([class*="st-key-brand_home_"]) > div:last-child {
             min-width:0 !important;
-            width:57% !important;
-            flex:0 0 57% !important;
+            width:56% !important;
+            flex:0 0 56% !important;
         }
         [class*="st-key-brand_home_"] button {
-            min-height:46px !important;
+            min-height:44px !important;
             min-width:0 !important;
             width:100% !important;
-            padding-left:2.55rem !important;
+            padding-left:2.8rem !important;
         }
-        [class*="st-key-brand_home_"] button p { font-size:1.28rem !important; }
-        .currency { gap:.18rem !important; }
-        .pill { padding:.27rem .34rem !important; font-size:.68rem !important; box-shadow:none !important; }
+        [class*="st-key-brand_home_"] button p {
+            font-size:1.25rem !important;
+            line-height:44px !important;
+        }
+        .currency { min-height:44px !important; gap:.16rem !important; }
+        .pill { padding:.26rem .33rem !important; font-size:.67rem !important; box-shadow:none !important; }
 
         [data-testid="stSidebarCollapsedControl"] {
             top:.7rem !important;
@@ -241,11 +266,14 @@ st.markdown(
             height:40px !important;
         }
         [data-testid="stSidebarCollapsedControl"] button,
-        [data-testid="stSidebarCollapsedControl"] [data-testid="stBaseButton-headerNoPadding"] {
+        [data-testid="stSidebarCollapsedControl"] [data-testid="stBaseButton-headerNoPadding"],
+        button[aria-label="Open sidebar"],
+        button[aria-label="open sidebar"] {
             width:40px !important;
             height:40px !important;
             min-width:40px !important;
             min-height:40px !important;
+            border-radius:11px !important;
         }
     }
     </style>
