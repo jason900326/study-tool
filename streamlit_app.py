@@ -10,6 +10,7 @@ st.set_page_config(
 
 DEFAULT_STATE = {
     "medslime_page": "home",
+    "menu_open": False,
     "player_level": 4,
     "player_exp": 72,
     "coins": 520,
@@ -49,26 +50,46 @@ st.markdown(
     """
     <style>
     :root { --ink:#153b2b; --green:#31c978; --line:#dbe9e1; }
+
     .stApp {
         background:
             radial-gradient(circle at 8% 3%, rgba(130,239,173,.18), transparent 24%),
             radial-gradient(circle at 93% 13%, rgba(118,220,255,.15), transparent 23%),
             #f8fcf9;
     }
-    [data-testid="stHeader"] { background:transparent; }
-    .block-container { max-width:1180px; padding-top:1rem; padding-bottom:4.5rem; }
-    h1,h2,h3,p,div,button,label { font-family:"Noto Sans TC","Microsoft JhengHei",sans-serif; }
+
+    .block-container {
+        max-width:1180px;
+        padding-top:1rem;
+        padding-bottom:4.5rem;
+    }
+
+    h1,h2,h3,p,div,button,label {
+        font-family:"Noto Sans TC","Microsoft JhengHei",sans-serif;
+    }
 
     .currency {
-        display:flex;
-        gap:.45rem;
-        justify-content:flex-end;
-        align-items:center;
-        flex-wrap:nowrap;
-        white-space:nowrap;
         min-height:48px;
+        display:flex;
+        align-items:center;
+        justify-content:flex-end;
+        gap:.42rem;
+        white-space:nowrap;
     }
-    .pill { background:rgba(255,255,255,.9); border:1px solid #dfece4; border-radius:999px; padding:.42rem .68rem; font-weight:850; color:#244c39; box-shadow:0 6px 18px rgba(31,83,53,.045); }
+
+    .pill {
+        display:inline-flex;
+        align-items:center;
+        min-height:38px;
+        background:rgba(255,255,255,.92);
+        border:1px solid #dfece4;
+        border-radius:999px;
+        padding:.38rem .68rem;
+        font-weight:850;
+        color:#244c39;
+        box-shadow:0 6px 18px rgba(31,83,53,.045);
+    }
+
     .eyebrow { color:#2ba962; font-weight:950; font-size:.86rem; letter-spacing:.04em; text-transform:uppercase; }
     .hero-title { font-size:2.25rem; line-height:1.12; font-weight:950; color:#143629; letter-spacing:-.045em; }
     .hero-copy { color:#637f70; margin-top:.6rem; line-height:1.72; }
@@ -76,15 +97,49 @@ st.markdown(
     .muted { color:#71887b; font-size:.92rem; }
     .card-title { color:#1d4533; font-weight:900; font-size:1.08rem; }
 
-    /* Topbar: hamburger space + exact vertical alignment. */
-    [data-testid="stHorizontalBlock"]:has([class*="st-key-brand_home_"]) {
+    /* MedSlime top bar: these are all OUR widgets, not Streamlit's sidebar controls. */
+    [data-testid="stHorizontalBlock"]:has([class*="st-key-nav_toggle"]) {
+        flex-wrap:nowrap !important;
         align-items:center !important;
+        gap:.35rem !important;
     }
+
+    [data-testid="stHorizontalBlock"]:has([class*="st-key-nav_toggle"]) > div:nth-child(1) {
+        min-width:46px !important;
+        width:46px !important;
+        flex:0 0 46px !important;
+    }
+
+    [data-testid="stHorizontalBlock"]:has([class*="st-key-nav_toggle"]) > div:nth-child(2) {
+        min-width:145px !important;
+        flex:1 1 auto !important;
+    }
+
+    [data-testid="stHorizontalBlock"]:has([class*="st-key-nav_toggle"]) > div:nth-child(3) {
+        min-width:0 !important;
+        flex:0 1 auto !important;
+        margin-left:auto !important;
+    }
+
+    [class*="st-key-nav_toggle"] button {
+        width:42px !important;
+        height:42px !important;
+        min-width:42px !important;
+        min-height:42px !important;
+        padding:0 !important;
+        border:none !important;
+        border-radius:12px !important;
+        background:#17372a !important;
+        color:white !important;
+        box-shadow:0 5px 14px rgba(23,55,42,.15) !important;
+        font-size:1.2rem !important;
+    }
+
     [class*="st-key-brand_home_"] button {
         background:transparent !important;
         border:none !important;
         box-shadow:none !important;
-        padding:0 .15rem 0 3.25rem !important;
+        padding:0 !important;
         min-height:48px !important;
         justify-content:flex-start !important;
         color:#17372a !important;
@@ -92,6 +147,7 @@ st.markdown(
         font-weight:950 !important;
         letter-spacing:-.035em !important;
     }
+
     [class*="st-key-brand_home_"] button:hover,
     [class*="st-key-brand_home_"] button:active,
     [class*="st-key-brand_home_"] button:focus {
@@ -101,94 +157,107 @@ st.markdown(
         transform:none !important;
         color:#17372a !important;
     }
+
     [class*="st-key-brand_home_"] button p {
+        margin:0 !important;
         font-size:1.55rem !important;
         font-weight:950 !important;
         white-space:nowrap !important;
         line-height:48px !important;
-        margin:0 !important;
     }
 
-    [data-testid="stSidebar"] {
-        background:rgba(248,252,249,.99);
-        border-right:1px solid #d7e7dd;
+    /* Custom drawer: stable because the key/class belongs to our container. */
+    [class*="st-key-nav_drawer"] {
+        position:fixed !important;
+        top:0 !important;
+        left:0 !important;
+        width:300px !important;
+        max-width:84vw !important;
+        height:100vh !important;
+        z-index:100000 !important;
+        overflow-y:auto !important;
+        padding:1.1rem 1rem !important;
+        background:rgba(248,252,249,.99) !important;
+        border-right:1px solid #d7e7dd !important;
+        box-shadow:16px 0 45px rgba(25,73,47,.16) !important;
     }
-    [data-testid="stSidebar"] [data-testid="stSidebarContent"] { padding-top:1rem; }
-    [data-testid="stSidebar"] div.stButton > button {
-        min-height:50px;
-        border-radius:15px;
-        justify-content:flex-start;
-        padding-left:1rem;
+
+    [class*="st-key-nav_drawer"] div.stButton > button {
+        min-height:50px !important;
+        border-radius:15px !important;
+        justify-content:flex-start !important;
+        padding-left:1rem !important;
     }
-    .sidebar-brand {
-        font-size:1.45rem;
+
+    [class*="st-key-drawer_close"] button {
+        width:40px !important;
+        height:40px !important;
+        min-width:40px !important;
+        min-height:40px !important;
+        padding:0 !important;
+        border-radius:11px !important;
+    }
+
+    .drawer-title {
+        font-size:1.5rem;
         font-weight:950;
         letter-spacing:-.035em;
         color:#17372a;
         margin:.25rem 0 .15rem;
     }
-    .sidebar-note { color:#789083; font-size:.82rem; margin-bottom:1rem; }
 
-    /* Streamlit native sidebar opener: force visible, high contrast, and position next to logo. */
-    [data-testid="stSidebarCollapsedControl"],
-    button[aria-label="Open sidebar"],
-    button[aria-label="open sidebar"] {
-        display:flex !important;
-        visibility:visible !important;
-        opacity:1 !important;
-    }
-    [data-testid="stSidebarCollapsedControl"] {
-        position:fixed !important;
-        top:.75rem !important;
-        left:max(.75rem, calc((100vw - 1180px) / 2 + .75rem)) !important;
-        width:44px !important;
-        height:44px !important;
-        z-index:99999 !important;
-        pointer-events:auto !important;
-    }
-    [data-testid="stSidebarCollapsedControl"] button,
-    [data-testid="stSidebarCollapsedControl"] [data-testid="stBaseButton-headerNoPadding"],
-    button[aria-label="Open sidebar"],
-    button[aria-label="open sidebar"] {
-        width:44px !important;
-        height:44px !important;
-        min-width:44px !important;
-        min-height:44px !important;
-        padding:0 !important;
-        align-items:center !important;
-        justify-content:center !important;
-        background:#17372a !important;
-        border:1px solid #17372a !important;
-        border-radius:12px !important;
-        color:#ffffff !important;
-        box-shadow:0 5px 16px rgba(23,55,42,.20) !important;
-    }
-    [data-testid="stSidebarCollapsedControl"] svg,
-    [data-testid="stSidebarCollapsedControl"] svg *,
-    button[aria-label="Open sidebar"] svg,
-    button[aria-label="Open sidebar"] svg *,
-    button[aria-label="open sidebar"] svg,
-    button[aria-label="open sidebar"] svg * {
-        display:block !important;
-        visibility:visible !important;
-        opacity:1 !important;
-        color:#ffffff !important;
-        stroke:#ffffff !important;
-        fill:none !important;
-        width:22px !important;
-        height:22px !important;
+    .drawer-note {
+        color:#789083;
+        font-size:.82rem;
+        margin-bottom:1rem;
     }
 
-    .home-copy-card { background:linear-gradient(135deg,#e6f9ed 0%,#f5fcf7 57%,#e9f8fd 100%); border:1px solid #d6eadd; border-radius:30px; padding:2rem; box-shadow:0 18px 44px rgba(40,106,69,.09); min-height:235px; }
-    .home-slime-card { background:rgba(255,255,255,.48); border:1px solid rgba(214,234,221,.8); border-radius:30px; padding:1.45rem; min-height:235px; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+    .home-copy-card {
+        background:linear-gradient(135deg,#e6f9ed 0%,#f5fcf7 57%,#e9f8fd 100%);
+        border:1px solid #d6eadd;
+        border-radius:30px;
+        padding:2rem;
+        box-shadow:0 18px 44px rgba(40,106,69,.09);
+        min-height:235px;
+    }
+
+    .home-slime-card {
+        background:rgba(255,255,255,.48);
+        border:1px solid rgba(214,234,221,.8);
+        border-radius:30px;
+        padding:1.45rem;
+        min-height:235px;
+        display:flex;
+        flex-direction:column;
+        align-items:center;
+        justify-content:center;
+    }
+
     .home-slime-label { font-weight:950; color:#214934; margin-top:.1rem; text-align:center; }
     .home-xp { width:82%; max-width:300px; height:9px; border-radius:999px; overflow:hidden; background:#dce9df; margin:.55rem auto .25rem; }
     .home-xp-fill { height:100%; background:linear-gradient(90deg,#58d28a,#42bda4); }
-    .home-task { background:rgba(255,255,255,.95); border:1px solid #dfebe4; border-radius:23px; padding:1.2rem 1.25rem; box-shadow:0 10px 26px rgba(31,83,53,.05); min-height:145px; }
+
+    .home-task {
+        background:rgba(255,255,255,.95);
+        border:1px solid #dfebe4;
+        border-radius:23px;
+        padding:1.2rem 1.25rem;
+        box-shadow:0 10px 26px rgba(31,83,53,.05);
+        min-height:145px;
+    }
+
     .task-icon { width:44px; height:44px; border-radius:14px; display:flex; align-items:center; justify-content:center; background:#eefaf2; font-size:1.45rem; margin-bottom:.7rem; }
     .task-reward { margin-top:.7rem; font-weight:900; color:#2a9d5e; }
 
-    .choice-card { background:rgba(255,255,255,.96); border:1px solid #dceae2; border-radius:25px; padding:1.45rem 1.5rem; min-height:156px; box-shadow:0 12px 28px rgba(30,78,50,.055); }
+    .choice-card {
+        background:rgba(255,255,255,.96);
+        border:1px solid #dceae2;
+        border-radius:25px;
+        padding:1.45rem 1.5rem;
+        min-height:156px;
+        box-shadow:0 12px 28px rgba(30,78,50,.055);
+    }
+
     .choice-icon-shell { width:50px; height:50px; border-radius:15px; display:flex; align-items:center; justify-content:center; background:linear-gradient(145deg,#e8f9ee,#f1fbf5); border:1px solid #d7eadf; margin-bottom:.9rem; }
     .choice-icon { font-size:1.72rem; }
     .choice-title { font-size:1.17rem; font-weight:950; color:#173b2b; }
@@ -199,10 +268,12 @@ st.markdown(
     .intro-art { position:relative; width:230px; height:150px; margin:0 auto .65rem; }
     .mini-slime { position:absolute; left:42px; top:35px; width:105px; height:82px; border-radius:50% 50% 40% 40%/62% 62% 38% 38%; background:linear-gradient(145deg,#9bedad,#48c878); }
     .mini-slime:before,.mini-slime:after { content:""; position:absolute; top:34px; width:8px; height:12px; background:#153c2b; border-radius:50%; }
-    .mini-slime:before { left:30px; } .mini-slime:after { right:30px; }
+    .mini-slime:before { left:30px; }
+    .mini-slime:after { right:30px; }
     .mini-mouth { position:absolute; width:23px; height:9px; border-bottom:3px solid #153c2b; border-radius:0 0 50% 50%; left:41px; top:50px; }
     .mini-shine { position:absolute; width:22px; height:10px; background:rgba(255,255,255,.52); border-radius:50%; left:20px; top:16px; transform:rotate(-23deg); }
     .book-stack { position:absolute; right:34px; top:34px; font-size:3.6rem; }
+
     .check-list { max-width:575px; margin:1rem auto .2rem; text-align:left; display:grid; gap:.55rem; }
     .check-item { color:#315b47; font-weight:760; background:#f7fcf9; border:1px solid #e0eee6; border-radius:13px; padding:.62rem .8rem; }
 
@@ -212,11 +283,15 @@ st.markdown(
 
     .slime { width:178px; height:142px; margin:0 auto 1rem; border-radius:50% 50% 40% 40%/62% 62% 38% 38%; background:linear-gradient(145deg,#9bedad,#48c878); box-shadow:inset -14px -18px 0 rgba(25,130,74,.09),0 20px 30px rgba(39,139,82,.18); position:relative; }
     .slime:before,.slime:after { content:""; position:absolute; top:60px; width:13px; height:19px; background:#153c2b; border-radius:50%; }
-    .slime:before { left:49px; } .slime:after { right:49px; }
+    .slime:before { left:49px; }
+    .slime:after { right:49px; }
     .mouth { position:absolute; width:35px; height:15px; border-bottom:4px solid #153c2b; border-radius:0 0 50% 50%; left:72px; top:88px; }
     .shine { position:absolute; width:32px; height:16px; background:rgba(255,255,255,.48); border-radius:50%; left:35px; top:29px; transform:rotate(-24deg); }
+
     .gacha-result { text-align:center; background:white; border:1px solid #dcebe2; border-radius:28px; padding:2rem; }
-    .rarity-N { color:#6b7d72; font-weight:900; }.rarity-R { color:#3d72c8; font-weight:900; }.rarity-SSR { color:#b58213; font-weight:950; }
+    .rarity-N { color:#6b7d72; font-weight:900; }
+    .rarity-R { color:#3d72c8; font-weight:900; }
+    .rarity-SSR { color:#b58213; font-weight:950; }
 
     div.stButton > button { border-radius:15px; min-height:46px; font-weight:850; transition:.15s ease; }
     div.stButton > button:hover { transform:translateY(-1px); }
@@ -231,50 +306,37 @@ st.markdown(
         .choice-card { min-height:145px; padding:1.2rem; }
         .intro-panel { padding:1.45rem 1.1rem; }
 
-        [data-testid="stHorizontalBlock"]:has([class*="st-key-brand_home_"]) {
-            flex-wrap:nowrap !important;
-            gap:.15rem !important;
-            align-items:center !important;
+        [data-testid="stHorizontalBlock"]:has([class*="st-key-nav_toggle"]) {
+            gap:.18rem !important;
         }
-        [data-testid="stHorizontalBlock"]:has([class*="st-key-brand_home_"]) > div:first-child {
-            min-width:0 !important;
-            width:44% !important;
-            flex:0 0 44% !important;
-        }
-        [data-testid="stHorizontalBlock"]:has([class*="st-key-brand_home_"]) > div:last-child {
-            min-width:0 !important;
-            width:56% !important;
-            flex:0 0 56% !important;
-        }
-        [class*="st-key-brand_home_"] button {
-            min-height:44px !important;
-            min-width:0 !important;
-            width:100% !important;
-            padding-left:2.8rem !important;
-        }
-        [class*="st-key-brand_home_"] button p {
-            font-size:1.25rem !important;
-            line-height:44px !important;
-        }
-        .currency { min-height:44px !important; gap:.16rem !important; }
-        .pill { padding:.26rem .33rem !important; font-size:.67rem !important; box-shadow:none !important; }
 
-        [data-testid="stSidebarCollapsedControl"] {
-            top:.7rem !important;
-            left:.65rem !important;
-            width:40px !important;
-            height:40px !important;
+        [data-testid="stHorizontalBlock"]:has([class*="st-key-nav_toggle"]) > div:nth-child(1) {
+            min-width:42px !important;
+            width:42px !important;
+            flex:0 0 42px !important;
         }
-        [data-testid="stSidebarCollapsedControl"] button,
-        [data-testid="stSidebarCollapsedControl"] [data-testid="stBaseButton-headerNoPadding"],
-        button[aria-label="Open sidebar"],
-        button[aria-label="open sidebar"] {
-            width:40px !important;
-            height:40px !important;
-            min-width:40px !important;
-            min-height:40px !important;
-            border-radius:11px !important;
+
+        [data-testid="stHorizontalBlock"]:has([class*="st-key-nav_toggle"]) > div:nth-child(2) {
+            min-width:112px !important;
         }
+
+        [class*="st-key-nav_toggle"] button {
+            width:38px !important;
+            height:38px !important;
+            min-width:38px !important;
+            min-height:38px !important;
+            font-size:1.05rem !important;
+        }
+
+        [class*="st-key-brand_home_"] button,
+        [class*="st-key-brand_home_"] button p {
+            min-height:42px !important;
+            line-height:42px !important;
+            font-size:1.25rem !important;
+        }
+
+        .currency { min-height:42px; gap:.15rem; }
+        .pill { min-height:31px; padding:.23rem .32rem; font-size:.67rem; box-shadow:none; }
     }
     </style>
     """,
@@ -284,10 +346,14 @@ st.markdown(
 
 def goto(page):
     st.session_state.medslime_page = page
+    st.session_state.menu_open = False
     st.rerun()
 
 
-def sidebar_nav():
+def render_drawer():
+    if not st.session_state.menu_open:
+        return
+
     active = st.session_state.medslime_page
     if active.startswith("study_material"):
         active = "study"
@@ -300,19 +366,38 @@ def sidebar_nav():
         ("achievements", "🏆  成就"),
     ]
 
-    with st.sidebar:
-        st.markdown('<div class="sidebar-brand">MedSlime<span style="color:#31b96c">.</span></div>', unsafe_allow_html=True)
-        st.markdown('<div class="sidebar-note">選擇你要前往的地方</div>', unsafe_allow_html=True)
+    with st.container(key="nav_drawer"):
+        close_col, _ = st.columns([1, 5])
+        with close_col:
+            if st.button("✕", key="drawer_close"):
+                st.session_state.menu_open = False
+                st.rerun()
+
+        st.markdown('<div class="drawer-title">MedSlime<span style="color:#31b96c">.</span></div>', unsafe_allow_html=True)
+        st.markdown('<div class="drawer-note">選擇你要前往的地方</div>', unsafe_allow_html=True)
+
         for page, label in items:
-            if st.button(label, key=f"sidebar_{page}", use_container_width=True, type="primary" if page == active else "secondary"):
+            if st.button(
+                label,
+                key=f"drawer_{page}",
+                use_container_width=True,
+                type="primary" if page == active else "secondary",
+            ):
                 goto(page)
 
 
 def topbar():
-    brand_col, currency_col = st.columns([1, 2.15], vertical_alignment="center")
+    menu_col, brand_col, currency_col = st.columns([0.12, 1, 2.1], vertical_alignment="center")
+
+    with menu_col:
+        if st.button("☰", key="nav_toggle", help="開啟選單"):
+            st.session_state.menu_open = True
+            st.rerun()
+
     with brand_col:
         if st.button("MedSlime.", key=f"brand_home_{st.session_state.medslime_page}", help="返回首頁"):
             goto("home")
+
     with currency_col:
         st.markdown(
             f'<div class="currency"><span class="pill">🔥 {st.session_state.streak} 天</span><span class="pill">🪙 {st.session_state.coins}</span><span class="pill">🎫 {st.session_state.tickets}</span></div>',
@@ -327,33 +412,73 @@ def slime_markup():
 def home():
     topbar()
     left, right = st.columns([1.35, 1], gap="large", vertical_alignment="center")
+
     with left:
-        st.markdown('<div class="home-copy-card"><div class="eyebrow">TODAY\'S STUDY</div><div class="hero-title">把今天的知識<br>餵給你的史萊姆。</div><div class="hero-copy">做題、訂正與專注學習都會讓史萊姆成長。先完成一小段，再去看看今天能不能拿到新的抽卡券。</div></div>', unsafe_allow_html=True)
+        st.markdown(
+            '<div class="home-copy-card">'
+            '<div class="eyebrow">TODAY\'S STUDY</div>'
+            '<div class="hero-title">把今天的知識<br>餵給你的史萊姆。</div>'
+            '<div class="hero-copy">做題、訂正與專注學習都會讓史萊姆成長。先完成一小段，再去看看今天能不能拿到新的抽卡券。</div>'
+            '</div>',
+            unsafe_allow_html=True,
+        )
         if st.button("🧠 開始學習", type="primary", use_container_width=True, key="home_start_study"):
             goto("study")
+
     with right:
-        st.markdown('<div class="home-slime-card">' + slime_markup() + f'<div class="home-slime-label">{st.session_state.slime_name} · Lv.{st.session_state.player_level}</div><div class="home-xp"><div class="home-xp-fill" style="width:{st.session_state.player_exp}%"></div></div><div class="muted">{st.session_state.player_exp} / 100 EXP · {st.session_state.selected_slime}</div></div>', unsafe_allow_html=True)
+        st.markdown(
+            '<div class="home-slime-card">'
+            + slime_markup()
+            + f'<div class="home-slime-label">{st.session_state.slime_name} · Lv.{st.session_state.player_level}</div>'
+            + f'<div class="home-xp"><div class="home-xp-fill" style="width:{st.session_state.player_exp}%"></div></div>'
+            + f'<div class="muted">{st.session_state.player_exp} / 100 EXP · {st.session_state.selected_slime}</div>'
+            + '</div>',
+            unsafe_allow_html=True,
+        )
 
     st.markdown('<div class="section-title">今日任務</div>', unsafe_allow_html=True)
-    tasks = [("🧠", "完成 5 題", "0 / 5", "+20 EXP"), ("🔍", "訂正 1 題", "0 / 1", "+50 🪙"), ("⏱️", "學習 20 分鐘", "0 / 20", "+1 🎫")]
+
+    tasks = [
+        ("🧠", "完成 5 題", "0 / 5", "+20 EXP"),
+        ("🔍", "訂正 1 題", "0 / 1", "+50 🪙"),
+        ("⏱️", "學習 20 分鐘", "0 / 20", "+1 🎫"),
+    ]
+
     cols = st.columns(3, gap="medium")
     for col, (icon, title, progress, reward) in zip(cols, tasks):
         with col:
-            st.markdown(f'<div class="home-task"><div class="task-icon">{icon}</div><div class="card-title">{title}</div><div class="muted">{progress}</div><div class="task-reward">{reward}</div></div>', unsafe_allow_html=True)
+            st.markdown(
+                f'<div class="home-task"><div class="task-icon">{icon}</div><div class="card-title">{title}</div><div class="muted">{progress}</div><div class="task-reward">{reward}</div></div>',
+                unsafe_allow_html=True,
+            )
 
 
 def study_home():
     topbar()
-    st.markdown('<div class="study-header"><div class="eyebrow">STUDY</div><div class="hero-title" style="font-size:2.05rem">你想怎麼學習呢？</div><div class="hero-copy">選擇適合你現在狀態的方式，MedSlime 陪你一起進步。</div></div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="study-header"><div class="eyebrow">STUDY</div><div class="hero-title" style="font-size:2.05rem">你想怎麼學習呢？</div><div class="hero-copy">選擇適合你現在狀態的方式，MedSlime 陪你一起進步。</div></div>',
+        unsafe_allow_html=True,
+    )
+
     rows = [
-        [("📄", "我有教材", "上傳 PDF 教材，讓 AI 幫你整理重點並生成測驗。", "study_material_intro"), ("🧪", "我要刷國考", "練習歷屆國考題目，快速檢測實力與弱點。", None)],
-        [("📘", "我要複習錯題", "回顧答錯或不確定的題目，加強你的弱點。", None), ("⏱️", "我要專心讀書", "進入專注計時器，累積今天的學習效率。", None)],
+        [
+            ("📄", "我有教材", "上傳 PDF 教材，讓 AI 幫你整理重點並生成測驗。", "study_material_intro"),
+            ("🧪", "我要刷國考", "練習歷屆國考題目，快速檢測實力與弱點。", None),
+        ],
+        [
+            ("📘", "我要複習錯題", "回顧答錯或不確定的題目，加強你的弱點。", None),
+            ("⏱️", "我要專心讀書", "進入專注計時器，累積今天的學習效率。", None),
+        ],
     ]
+
     for row in rows:
         cols = st.columns(2, gap="large")
         for col, (icon, title, copy, target) in zip(cols, row):
             with col:
-                st.markdown(f'<div class="choice-card"><div class="choice-icon-shell"><div class="choice-icon">{icon}</div></div><div class="choice-title">{title}</div><div class="choice-copy">{copy}</div></div>', unsafe_allow_html=True)
+                st.markdown(
+                    f'<div class="choice-card"><div class="choice-icon-shell"><div class="choice-icon">{icon}</div></div><div class="choice-title">{title}</div><div class="choice-copy">{copy}</div></div>',
+                    unsafe_allow_html=True,
+                )
                 if target:
                     if st.button(f"進入 {title} →", key=f"go_{target}", use_container_width=True, type="primary"):
                         goto(target)
@@ -364,21 +489,43 @@ def study_home():
 
 def study_material_intro():
     topbar()
+
     if st.button("← 返回學習", key="intro_back"):
         goto("study")
-    st.markdown('<div class="intro-panel"><div class="intro-art"><div class="mini-slime"><div class="mini-shine"></div><div class="mini-mouth"></div></div><div class="book-stack">📚</div></div><div class="hero-title" style="font-size:2rem">上傳教材，AI 幫你整理重點<br>並生成專屬測驗。</div><div class="hero-copy" style="max-width:680px;margin:.8rem auto 0">先不用把整份教材硬啃完。MedSlime 會先抓重點，再用題目幫你找出真正需要花時間的地方。</div><div class="check-list"><div class="check-item">✓ 快速擷取教材重點</div><div class="check-item">✓ 生成適合複習的選擇題</div><div class="check-item">✓ 標記不確定與答錯觀念</div><div class="check-item">✓ 把需要加強的內容留下來</div></div></div>', unsafe_allow_html=True)
+
+    st.markdown(
+        '<div class="intro-panel">'
+        '<div class="intro-art"><div class="mini-slime"><div class="mini-shine"></div><div class="mini-mouth"></div></div><div class="book-stack">📚</div></div>'
+        '<div class="hero-title" style="font-size:2rem">上傳教材，AI 幫你整理重點<br>並生成專屬測驗。</div>'
+        '<div class="hero-copy" style="max-width:680px;margin:.8rem auto 0">先不用把整份教材硬啃完。MedSlime 會先抓重點，再用題目幫你找出真正需要花時間的地方。</div>'
+        '<div class="check-list">'
+        '<div class="check-item">✓ 快速擷取教材重點</div>'
+        '<div class="check-item">✓ 生成適合複習的選擇題</div>'
+        '<div class="check-item">✓ 標記不確定與答錯觀念</div>'
+        '<div class="check-item">✓ 把需要加強的內容留下來</div>'
+        '</div></div>',
+        unsafe_allow_html=True,
+    )
+
     if st.button("☁️ 上傳教材開始學習", type="primary", use_container_width=True):
         goto("study_material_upload")
 
 
 def study_material_upload():
     topbar()
+
     if st.button("← 返回介紹", key="upload_back"):
         goto("study_material_intro")
-    st.markdown('<div class="study-header"><div class="eyebrow">YOUR MATERIAL</div><div class="hero-title" style="font-size:2.05rem">上傳你的教材</div><div class="hero-copy">目前先支援 PDF。建議使用含有可選取文字的檔案。</div></div>', unsafe_allow_html=True)
+
+    st.markdown(
+        '<div class="study-header"><div class="eyebrow">YOUR MATERIAL</div><div class="hero-title" style="font-size:2.05rem">上傳你的教材</div><div class="hero-copy">目前先支援 PDF。建議使用含有可選取文字的檔案。</div></div>',
+        unsafe_allow_html=True,
+    )
+
     st.markdown('<div class="upload-shell">', unsafe_allow_html=True)
     uploaded = st.file_uploader("選擇 PDF 教材", type=["pdf"], key="medslime_material_pdf")
     st.markdown('</div>', unsafe_allow_html=True)
+
     if uploaded is not None:
         st.session_state.uploaded_learning_file = uploaded.name
         size_mb = len(uploaded.getvalue()) / (1024 * 1024)
@@ -392,10 +539,17 @@ def study_material_upload():
 def slime_page():
     topbar()
     st.markdown("## 🐾 我的史萊姆")
+
     left, right = st.columns([1, 1.35], gap="large")
     with left:
-        st.markdown('<div style="text-align:center;padding:1.2rem;background:white;border:1px solid #dfebe4;border-radius:24px">' + slime_markup() + '</div>', unsafe_allow_html=True)
+        st.markdown(
+            '<div style="text-align:center;padding:1.2rem;background:white;border:1px solid #dfebe4;border-radius:24px">'
+            + slime_markup()
+            + '</div>',
+            unsafe_allow_html=True,
+        )
         st.session_state.slime_name = st.text_input("史萊姆名字", value=st.session_state.slime_name, max_chars=16)
+
     with right:
         st.markdown("### 收藏")
         for slime in st.session_state.collection:
@@ -407,37 +561,49 @@ def slime_page():
 def achievements_page():
     topbar()
     st.markdown("## 🏆 成就")
+
     unlocked = set(st.session_state.unlocked_achievements)
     st.caption(f"目前解鎖 {len(unlocked)} / {len(ACHIEVEMENTS)}")
+
     cols = st.columns(3)
     for i, (aid, icon, title, desc, reward) in enumerate(ACHIEVEMENTS):
         style = "opacity:1" if aid in unlocked else "filter:grayscale(.8);opacity:.55"
         status = "已解鎖" if aid in unlocked else "尚未解鎖"
         with cols[i % 3]:
-            st.markdown(f'<div style="{style};background:white;border:1px solid #dfebe4;border-radius:22px;padding:1rem;min-height:150px"><div style="font-size:2rem">{icon}</div><div class="card-title">{title}</div><div class="muted">{desc}</div><div style="margin-top:.6rem;font-weight:850">{status} · {reward}</div></div><br>', unsafe_allow_html=True)
+            st.markdown(
+                f'<div style="{style};background:white;border:1px solid #dfebe4;border-radius:22px;padding:1rem;min-height:150px"><div style="font-size:2rem">{icon}</div><div class="card-title">{title}</div><div class="muted">{desc}</div><div style="margin-top:.6rem;font-weight:850">{status} · {reward}</div></div><br>',
+                unsafe_allow_html=True,
+            )
 
 
 def gacha_page():
     topbar()
     st.markdown("## 🎰 史萊姆召喚")
     st.caption("1 張抽卡券 = 1 次召喚 · N 70% · R 25% · SSR 5%")
+
     if st.button("🎫 召喚一次", type="primary", use_container_width=True, disabled=st.session_state.tickets <= 0):
         st.session_state.tickets -= 1
         result = random.choices(GACHA_POOL, weights=[x["weight"] for x in GACHA_POOL], k=1)[0]
         duplicate = result["name"] in st.session_state.collection
+
         if duplicate:
             st.session_state.coins += 50 if result["rarity"] == "N" else 120 if result["rarity"] == "R" else 300
         else:
             st.session_state.collection.append(result["name"])
+
         st.session_state.last_gacha = {**result, "duplicate": duplicate}
         st.rerun()
+
     result = st.session_state.last_gacha
     if result:
         msg = "重複獲得，已轉換成金幣" if result["duplicate"] else "NEW！已加入收藏"
-        st.markdown(f'<div class="gacha-result"><div class="muted">{msg}</div><div style="font-size:5rem">{result["emoji"]}</div><div class="rarity-{result["rarity"]}">{result["rarity"]}</div><div class="card-title">{result["name"]}</div></div>', unsafe_allow_html=True)
+        st.markdown(
+            f'<div class="gacha-result"><div class="muted">{msg}</div><div style="font-size:5rem">{result["emoji"]}</div><div class="rarity-{result["rarity"]}">{result["rarity"]}</div><div class="card-title">{result["name"]}</div></div>',
+            unsafe_allow_html=True,
+        )
 
 
-sidebar_nav()
+render_drawer()
 
 page = st.session_state.medslime_page
 if page == "home":
