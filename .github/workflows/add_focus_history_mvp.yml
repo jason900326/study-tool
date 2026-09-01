@@ -1,0 +1,32 @@
+name: Add focus history MVP
+on:
+  push:
+    paths:
+      - 'scripts/add_focus_history_mvp.py'
+      - '.github/workflows/add_focus_history_mvp.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply patch
+        run: python scripts/add_focus_history_mvp.py
+      - name: Syntax check
+        run: python -m py_compile streamlit_app.py
+      - name: Anchor checks
+        run: |
+          grep -q 'def _focus_record_round' streamlit_app.py
+          grep -q 'focus_sessions' streamlit_app.py
+          grep -q '最近專注' streamlit_app.py
+      - name: Commit app
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add streamlit_app.py
+          git diff --cached --quiet && exit 0
+          git commit -m "Persist focus session history"
+          git push
