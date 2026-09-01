@@ -127,6 +127,7 @@ DEFAULT_STATE = {
     "game_state_error": None,
     "game_state_fingerprint": None,
     "slime_accessories": {},
+    "slime_accessory_equipped": {},
     "focus_round": 1,
     "focus_last_duration_minutes": 30,
     "slime_collection_filter": "全部",
@@ -3229,6 +3230,7 @@ def slime_page():
     st.session_state.setdefault("slime_detail_name",None)
     st.session_state.setdefault("slime_sort","稀有度")
     st.session_state.setdefault("slime_accessories",{})
+    st.session_state.setdefault("slime_accessory_equipped",{})
     for x in SLIME_CATALOG: st.session_state.slime_progress.setdefault(x["name"],{}).setdefault("fragments",0)
 
     title_col, achievement_col, gacha_col = st.columns([3, 1, 1])
@@ -3273,9 +3275,12 @@ def slime_page():
                 if detail_open:
                     if owned:
                         acc=st.session_state.slime_accessories.setdefault(x["name"],False)
+                        equipped=bool(st.session_state.slime_accessory_equipped.setdefault(x["name"],False) and acc)
                         remain=max(0,30-frag)
                         pct=max(0,min(100,round(frag/30*100)))
-                        if acc:
+                        if equipped:
+                            status='專屬飾品已裝備'
+                        elif acc:
                             status='專屬飾品已解鎖'
                         elif frag>=30:
                             status='已可解鎖專屬飾品'
@@ -3335,9 +3340,19 @@ def slime_page():
                             if st.button("設為陪伴",type="primary",use_container_width=True,key=f"set_companion_{x['theme']}"):
                                 st.session_state.selected_slime=x["name"]
                                 st.rerun()
-                        if not acc and st.button("解鎖專屬飾品",disabled=frag<30,use_container_width=True,key=f"unlock_accessory_{x['theme']}"):
+                        if acc:
+                            equipped = bool(st.session_state.slime_accessory_equipped.get(x["name"], False))
+                            if st.button(
+                                "卸下專屬飾品" if equipped else "裝備專屬飾品",
+                                use_container_width=True,
+                                key=f"toggle_accessory_{x['theme']}",
+                            ):
+                                st.session_state.slime_accessory_equipped[x["name"]] = not equipped
+                                st.rerun()
+                        elif st.button("解鎖專屬飾品",disabled=frag<30,use_container_width=True,key=f"unlock_accessory_{x['theme']}"):
                             st.session_state.slime_progress[x["name"]]["fragments"]-=30
                             st.session_state.slime_accessories[x["name"]]=True
+                            st.session_state.slime_accessory_equipped[x["name"]]=False
                             st.rerun()
 
 
@@ -3423,6 +3438,7 @@ def _game_state_snapshot():
     }
 
     accessories = st.session_state.setdefault("slime_accessories", {})
+    equipped_accessories = st.session_state.setdefault("slime_accessory_equipped", {})
     nicknames = st.session_state.setdefault("slime_nicknames", {})
     slimes = []
     for item in SLIME_CATALOG:
@@ -3436,6 +3452,7 @@ def _game_state_snapshot():
                 "owned": owned,
                 "fragments": max(0, int(progress.get("fragments", 0) or 0)),
                 "accessory_unlocked": bool(accessories.get(name, False)),
+                "accessory_equipped": bool(accessories.get(name, False) and equipped_accessories.get(name, False)),
                 "nickname": nickname,
                 "acquired_order": collection.index(name) if owned else None,
             }
@@ -3513,7 +3530,7 @@ def _load_game_state_from_supabase_once():
         )
         slime_response = (
             client.table("player_slimes")
-            .select("slime_name,owned,fragments,accessory_unlocked,nickname,acquired_order")
+            .select("slime_name,owned,fragments,accessory_unlocked,accessory_equipped,nickname,acquired_order")
             .eq("user_key", user_key)
             .execute()
         )
@@ -3546,11 +3563,13 @@ def _load_game_state_from_supabase_once():
             st.session_state.collection = collection
 
             accessories = st.session_state.setdefault("slime_accessories", {})
+            equipped_accessories = st.session_state.setdefault("slime_accessory_equipped", {})
             nicknames = st.session_state.setdefault("slime_nicknames", {})
             for slime_row in valid_rows:
                 name = slime_row["slime_name"]
                 get_slime_progress(name)["fragments"] = max(0, int(slime_row.get("fragments", 0) or 0))
                 accessories[name] = bool(slime_row.get("accessory_unlocked", False))
+                equipped_accessories[name] = bool(accessories[name] and slime_row.get("accessory_equipped", False))
                 nickname = str(slime_row.get("nickname") or "").strip()
                 if nickname:
                     nicknames[name] = nickname

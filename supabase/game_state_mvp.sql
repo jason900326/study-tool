@@ -22,12 +22,16 @@ create table if not exists public.player_slimes (
     owned boolean not null default false,
     fragments integer not null default 0 check (fragments >= 0),
     accessory_unlocked boolean not null default false,
+    accessory_equipped boolean not null default false,
     nickname text,
     acquired_order integer,
     acquired_at timestamptz,
     updated_at timestamptz not null default now(),
     primary key (user_key, slime_name)
 );
+
+alter table public.player_slimes
+    add column if not exists accessory_equipped boolean not null default false;
 
 create index if not exists player_slimes_user_key_idx
     on public.player_slimes (user_key);
