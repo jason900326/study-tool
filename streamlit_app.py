@@ -3221,8 +3221,10 @@ def slime_page():
                         expanded_body = f'<div class="slime-v2-expanded-body"><div class="slime-v2-expanded-copy">{html.escape(locked_copy)}</div></div>'
 
                 card_class = f'slime-v2-card{"" if owned else " locked"}{" expanded" if detail_open else ""}'
+                current_nickname = st.session_state.slime_nicknames.get(x["name"], title) if owned else title
+                shown_title = f"{current_nickname} ✏️" if detail_open and owned else title
                 st.markdown(
-                    f'<div class="{card_class}">{avatar}<div class="slime-v2-card-name">{html.escape(title)}</div>'
+                    f'<div class="{card_class}">{avatar}<div class="slime-v2-card-name">{html.escape(shown_title)}</div>'
                     f'<div class="slime-v2-meta">{x["rarity"]} · {"已擁有" if owned else "尚未取得"}</div>{companion_line}{expanded_body}</div>',
                     unsafe_allow_html=True,
                 )
@@ -3233,6 +3235,17 @@ def slime_page():
 
                 if detail_open and owned:
                     acc=st.session_state.slime_accessories.setdefault(x["name"],False)
+                    rename_value = st.text_input(
+                        "修改史萊姆名稱",
+                        value=st.session_state.slime_nicknames.get(x["name"], x["name"]),
+                        max_chars=20,
+                        key=f"rename_input_{x['theme']}",
+                    )
+                    if st.button("儲存名稱", use_container_width=True, key=f"rename_save_{x['theme']}"):
+                        cleaned_name = str(rename_value or "").strip()
+                        if cleaned_name:
+                            st.session_state.slime_nicknames[x["name"]] = cleaned_name
+                            st.rerun()
                     if x["name"]!=st.session_state.selected_slime:
                         if st.button("設為陪伴",type="primary",use_container_width=True,key=f"set_companion_{x['theme']}"):
                             st.session_state.selected_slime=x["name"]
@@ -3434,13 +3447,14 @@ def gacha_page():
     st.session_state.setdefault("last_gacha_results", [])
 
     topbar()
+    st.markdown('<div class="gacha-mvp-marker"></div>', unsafe_allow_html=True)
     render_back_button("返回我的史萊姆", "slime", "back_gacha")
     st.markdown(
         """
         <style>
         .gacha-mvp-hero{border:1px solid #dbe9e1;background:rgba(255,255,255,.92);border-radius:24px;padding:1.25rem 1.35rem;margin:.4rem 0 1rem;box-shadow:0 12px 28px rgba(32,85,54,.06)}
-        .gacha-mvp-title{font-size:1.75rem;font-weight:950;color:#17372a;letter-spacing:-.03em}.gacha-mvp-copy{color:#789083;margin-top:.35rem;line-height:1.55}
-        .gacha-mvp-pity{display:inline-flex;margin-top:.75rem;padding:.35rem .7rem;border-radius:999px;background:#f2f8f4;color:#315b45;font-size:.78rem;font-weight:850}
+        .gacha-mvp-marker{display:none}.gacha-mvp-title{font-size:1.75rem;font-weight:950;color:#17372a!important;letter-spacing:-.03em}.gacha-mvp-copy{color:#789083!important;margin-top:.35rem;line-height:1.55}
+        [data-testid="stMainBlockContainer"]:has(.gacha-mvp-marker) h1,[data-testid="stMainBlockContainer"]:has(.gacha-mvp-marker) h2,[data-testid="stMainBlockContainer"]:has(.gacha-mvp-marker) h3,[data-testid="stMainBlockContainer"]:has(.gacha-mvp-marker) h4,[data-testid="stMainBlockContainer"]:has(.gacha-mvp-marker) p,[data-testid="stMainBlockContainer"]:has(.gacha-mvp-marker) label{color:#244c39!important}[data-testid="stMainBlockContainer"]:has(.gacha-mvp-marker) [data-testid="stCaptionContainer"] p{color:#789083!important}
         .gacha-result-card{border:1px solid #d7e8df;background:rgba(255,255,255,.97);border-radius:28px;padding:1.4rem;text-align:center;margin:1.1rem auto 0;max-width:520px;box-shadow:0 16px 36px rgba(32,85,54,.10)}
         .gacha-result-card .official-slime-art-home,.gacha-result-card .catalog-slime-home{margin:0 auto}.gacha-result-rarity{font-weight:950;font-size:.8rem;color:#57a976;margin-top:.55rem}.gacha-result-name{font-size:1.45rem;font-weight:950;color:#17372a;margin-top:.18rem}.gacha-result-msg{margin-top:.55rem;color:#607d6d;font-weight:800}.gacha-result-frag{margin-top:.35rem;color:#789083;font-size:.82rem}
         .gacha-ten-card{border:1px solid #dbe9e1;background:rgba(255,255,255,.96);border-radius:18px;padding:.7rem .55rem;text-align:center;min-height:205px}.gacha-ten-card .official-slime-art-card,.gacha-ten-card .catalog-slime-card{margin:0 auto}.gacha-ten-name{font-size:.82rem;font-weight:900;color:#17372a;margin-top:.3rem;min-height:2.2rem}.gacha-ten-meta{font-size:.7rem;color:#789083;margin-top:.2rem}.gacha-ten-new{font-size:.7rem;font-weight:900;color:#31915b;margin-top:.25rem}
@@ -3450,17 +3464,15 @@ def gacha_page():
         unsafe_allow_html=True,
     )
 
-    pity = int(st.session_state.get("gacha_pity", 0) or 0)
     today_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     free_available = st.session_state.get("gacha_free_date") != today_key
 
     st.markdown(
-        f'<div class="gacha-mvp-hero"><div class="gacha-mvp-title">🎰 史萊姆召喚</div>'
-        f'<div class="gacha-mvp-copy">測試版：單抽與 10 連都直接顯示結果，暫時沒有翻牌動畫。</div>'
-        f'<div class="gacha-mvp-pity">SSR 保底：{pity} / 100</div></div>',
+        '<div class="gacha-mvp-hero"><div class="gacha-mvp-title">🎰 史萊姆召喚</div>'
+        '<div class="gacha-mvp-copy">測試版：單抽與 10 連都直接顯示結果，暫時沒有翻牌動畫。</div></div>',
         unsafe_allow_html=True,
     )
-    st.caption("機率：N 32% · R 38% · SR 27% · SSR 3%　｜　所有抽法共用 100 抽 SSR 保底")
+    st.caption("機率：N 32% · R 38% · SR 27% · SSR 3%")
     st.caption("🧪 測試模式：金幣與抽卡券暫時無限")
 
     def do_pull(payment):
@@ -3480,16 +3492,23 @@ def gacha_page():
 
         duplicate = result["name"] in st.session_state.collection
         fragments = 0
+        refund = 0
         if duplicate:
-            fragments = 10
-            get_slime_progress(result["name"])["fragments"] += 10
+            progress = get_slime_progress(result["name"])
+            accessory_unlocked = bool(st.session_state.slime_accessories.get(result["name"], False))
+            if accessory_unlocked or int(progress.get("fragments", 0) or 0) >= 30:
+                refund = {"N": 10, "R": 20, "SR": 40, "SSR": 80}[result["rarity"]]
+                st.session_state.coins += refund
+            else:
+                fragments = min(10, 30 - int(progress.get("fragments", 0) or 0))
+                progress["fragments"] += fragments
         else:
             st.session_state.collection.append(result["name"])
             get_slime_progress(result["name"])
             get_slime_nickname(result["name"])
 
         st.session_state.gacha_pity = 0 if result["rarity"] == "SSR" else current_pity + 1
-        return {**result, "duplicate": duplicate, "fragments": fragments, "payment": payment}
+        return {**result, "duplicate": duplicate, "fragments": fragments, "refund": refund, "payment": payment}
 
     c1, c2, c3 = st.columns(3, gap="medium")
     with c1:
@@ -3534,7 +3553,10 @@ def gacha_page():
         avatar = slime_avatar_markup(item, size="home")
         if result.get("duplicate"):
             message = "重複獲得"
-            sub = f'+10 {html.escape(result["name"])}專屬碎片'
+            if result.get("refund", 0):
+                sub = f'專屬飾品碎片已滿 · +{result["refund"]} 🪙'
+            else:
+                sub = f'+{result.get("fragments", 0)} {html.escape(result["name"])}專屬碎片'
         else:
             message = "NEW！已加入收藏"
             sub = "現在可以到史萊姆圖鑑查看它"
@@ -3552,7 +3574,10 @@ def gacha_page():
                 with col:
                     item = SLIME_BY_NAME.get(result["name"], result)
                     avatar = slime_avatar_markup(item, size="card")
-                    status = "重複 · +10 碎片" if result.get("duplicate") else "NEW！"
+                    if result.get("duplicate"):
+                        status = f"重複 · +{result['refund']} 金幣" if result.get("refund", 0) else f"重複 · +{result.get('fragments', 0)} 碎片"
+                    else:
+                        status = "NEW！"
                     st.markdown(
                         f'<div class="gacha-ten-card">{avatar}<div class="gacha-result-rarity">{html.escape(result["rarity"])}</div>'
                         f'<div class="gacha-ten-name">{html.escape(result["name"])}</div><div class="gacha-ten-new">{html.escape(status)}</div></div>',
