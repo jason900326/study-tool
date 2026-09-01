@@ -750,23 +750,25 @@ def _render_strikeable_options(prefix, index, options, answer_store, struck_stor
     struck = set(struck_store.get(index, []))
     selected_index = answer_store.get(index)
     for option_index, option in enumerate(options):
-        circle_col, text_col = st.columns([0.075, 0.925], gap="small")
+        circle_col, text_col = st.columns([0.09, 0.91], gap="small")
         with circle_col:
             circle = "●" if selected_index == option_index else "○"
-            if st.button(circle, key=f"{prefix}_pick_{index}_{option_index}", help="選擇這個答案"):
-                answer_store[index] = option_index
-                st.rerun()
+            with st.container(key=f"{prefix}_pick_wrap_{index}_{option_index}"):
+                if st.button(circle, key=f"{prefix}_pick_{index}_{option_index}"):
+                    answer_store[index] = option_index
+                    st.rerun()
         with text_col:
             is_struck = option_index in struck
             key_state = "on" if is_struck else "off"
             label = normalize_scientific_notation(option)
-            if st.button(label, key=f"{prefix}_strike_{key_state}_{index}_{option_index}", use_container_width=True, help="劃掉 / 取消劃掉這個選項"):
-                if is_struck:
-                    struck.discard(option_index)
-                else:
-                    struck.add(option_index)
-                struck_store[index] = sorted(struck)
-                st.rerun()
+            with st.container(key=f"{prefix}_strike_{key_state}_{index}_{option_index}"):
+                if st.button(label, key=f"{prefix}_strike_btn_{index}_{option_index}", use_container_width=True):
+                    if is_struck:
+                        struck.discard(option_index)
+                    else:
+                        struck.add(option_index)
+                    struck_store[index] = sorted(struck)
+                    st.rerun()
 
 
 # =========================================================
@@ -1083,9 +1085,13 @@ st.markdown(
     [class*="st-key-national_strike_on_"] button p,
     [class*="st-key-material_strike_on_"] button p { text-decoration:line-through !important; opacity:.42 !important; }
     [class*="st-key-national_strike_"] button,
-    [class*="st-key-material_strike_"] button { justify-content:flex-start !important; text-align:left !important; background:rgba(255,255,255,.82) !important; color:#244c39 !important; border:1px solid #e0ebe5 !important; box-shadow:none !important; }
-    [class*="st-key-national_pick_"] button,
-    [class*="st-key-material_pick_"] button { min-width:38px !important; width:38px !important; padding:0 !important; border:none !important; background:transparent !important; box-shadow:none !important; font-size:1.15rem !important; }
+    [class*="st-key-material_strike_"] button { justify-content:flex-start !important; text-align:left !important; background:rgba(255,255,255,.82) !important; color:#244c39 !important; border:1px solid #e0ebe5 !important; box-shadow:none !important; padding-left:.9rem !important; }
+    [class*="st-key-national_strike_"] button p,
+    [class*="st-key-material_strike_"] button p { width:100% !important; text-align:left !important; }
+    [class*="st-key-national_pick_wrap_"] button,
+    [class*="st-key-material_pick_wrap_"] button { display:flex !important; align-items:center !important; justify-content:center !important; min-width:38px !important; width:38px !important; min-height:38px !important; height:38px !important; padding:0 !important; margin:0 auto !important; border:none !important; background:transparent !important; color:#17212a !important; box-shadow:none !important; font-size:1.2rem !important; }
+    [class*="st-key-national_pick_wrap_"] button p,
+    [class*="st-key-material_pick_wrap_"] button p { color:#17212a !important; opacity:1 !important; font-size:1.2rem !important; line-height:1 !important; }
     .quiz-result-stats { display:flex; gap:.65rem; flex-wrap:wrap; margin:.9rem 0 1.25rem; }
     .quiz-result-stat { background:#fff; border:1px solid #dceae2; border-radius:16px; padding:.75rem 1rem; color:#315b47; font-weight:800; }
     .quiz-result-stat strong { color:#173b2b; font-size:1.18rem; }
