@@ -571,15 +571,27 @@ def load_national_exam_paper(exam_year, exam_round, subject):
     usable, excluded = [], []
 
     for row in rows:
-        options = row.get("options") or []
+        options = list(row.get("options") or [])
         correct_answers = row.get("correct_answers") or []
+        has_image_hint = bool(row.get("has_image_hint"))
+        valid_answer = len(correct_answers) == 1 and correct_answers[0] in answer_map
+        image_choice_mode = False
         reason = None
-        if row.get("parse_status") != "ok":
+
+        # A valid official A-D answer is mandatory for every interactive question.
+        if not valid_answer:
+            reason = "多答案或答案格式特殊"
+        elif has_image_hint:
+            # Image questions are allowed even when the parser cannot reconstruct
+            # all four option texts. In that case, show the original PDF question
+            # inline and let the learner answer with A / B / C / D.
+            if row.get("parse_status") != "ok" or len(options) != 4:
+                options = ["A", "B", "C", "D"]
+                image_choice_mode = True
+        elif row.get("parse_status") != "ok":
             reason = "解析異常"
         elif len(options) != 4:
             reason = "選項不完整"
-        elif len(correct_answers) != 1 or correct_answers[0] not in answer_map:
-            reason = "多答案或答案格式特殊"
 
         if reason:
             excluded.append({"question_number": row.get("question_number"), "reason": reason})
@@ -598,7 +610,8 @@ def load_national_exam_paper(exam_year, exam_round, subject):
             "question_pdf_url": row.get("question_pdf_url"),
             "source_page_url": row.get("source_page_url"),
             "source_page": _extract_pdf_page_hint(row.get("source_page_url")) or _extract_pdf_page_hint(row.get("question_pdf_url")),
-            "has_image_hint": bool(row.get("has_image_hint")),
+            "has_image_hint": has_image_hint,
+            "image_choice_mode": image_choice_mode,
             "official_question_number": number,
             "national_exam_id": row.get("id"),
         })
@@ -940,6 +953,8 @@ st.markdown(
     [class*="st-key-exam_source_compact_"] { display:flex; justify-content:flex-end; margin-top:.45rem; }
     [class*="st-key-exam_source_compact_"] button { min-height:32px !important; height:32px !important; width:auto !important; padding:.22rem .68rem !important; border-radius:10px !important; font-size:.76rem !important; font-weight:800 !important; box-shadow:none !important; }
     [class*="st-key-exam_source_compact_"] button p { font-size:.76rem !important; white-space:nowrap !important; }
+    .exam-paper-name { margin-left:auto; color:#789083; font-size:.78rem; font-weight:800; text-align:right; line-height:1.35; max-width:62%; }
+    @media (max-width:700px) { .exam-paper-name { max-width:58%; font-size:.7rem; } }
     .exam-inline-figure-label { color:#6b8275; font-size:.78rem; font-weight:800; text-align:center; margin:.15rem 0 .35rem; }
 
     /* 明確指定測驗互動文字，避免被 Streamlit theme 吃成白色。 */
@@ -1891,9 +1906,12 @@ def national_exam_quiz_page():
     remaining = sum(1 for i in range(len(questions)) if _national_question_progress_state(i) in ("gray", "red"))
     progress_text = f"第 {index + 1} / {len(questions)} 題 · 尚有 {remaining} 題未作答"
     safe_exam_question = html.escape(normalize_scientific_notation(question["question"]))
+    meta = st.session_state.national_exam_meta or {}
+    paper_name = f'{roc_year_label(meta.get("exam_year", 2026))} {meta.get("exam_round", "")} · {meta.get("subject", "")}'
+    safe_paper_name = html.escape(str(paper_name).strip())
     with st.container(key=f"exam_question_card_{index}"):
         st.markdown(
-            f'<div class="quiz-card"><div class="quiz-meta-row"><div class="eyebrow">{progress_text}</div></div><div class="quiz-question">{safe_exam_question}</div></div>',
+            f'<div class="quiz-card"><div class="quiz-meta-row"><div class="eyebrow">{progress_text}</div><div class="exam-paper-name">{safe_paper_name}</div></div><div class="quiz-question">{safe_exam_question}</div></div>',
             unsafe_allow_html=True,
         )
         if question.get("source_url") or question.get("question_pdf_url"):
@@ -1911,7 +1929,11 @@ def national_exam_quiz_page():
         if inline_url and inline_number:
             try:
                 with st.spinner("正在載入題目圖片…"):
-                    inline_images = _render_pdf_question_images(inline_url, inline_number)
+                    if question.get("image_choice_mode"):
+                        crops, _ = _render_pdf_question_crops(inline_url, inline_number)
+                        inline_images = crops
+                    else:
+                        inline_images = _render_pdf_question_images(inline_url, inline_number)
             except Exception:
                 inline_images = []
         if inline_images:
