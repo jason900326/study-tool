@@ -67,6 +67,9 @@ DEFAULT_STATE = {
     "material_subject": None,
     "material_questions": None,
     "material_generation_error": None,
+    "material_pending_bytes": None,
+    "material_pending_name": None,
+    "material_pending_hash": None,
     "quiz_index": 0,
     "quiz_answers": {},
     "quiz_uncertain": {},
@@ -1133,6 +1136,10 @@ st.markdown(
         .focus-runner-mouth { left:23px; top:28px; width:15px; }
         .home-copy-card,.home-slime-card { min-height:auto; }
         .choice-card { height:178px; min-height:178px; padding:1.2rem; }
+        [class*="st-key-study_choices_grid"] [data-testid="stHorizontalBlock"] { gap:.85rem !important; }
+        [class*="st-key-study_choices_grid"] [data-testid="stColumn"] { margin-bottom:0 !important; }
+        [class*="st-key-study_choice_"] { margin-bottom:0 !important; }
+        [class*="st-key-study_choice_"] [data-testid="stButton"] { margin-top:.55rem !important; margin-bottom:0 !important; }
         .intro-panel { padding:1.45rem 1.1rem; }
         .quiz-card { padding:1.2rem 1.1rem; }
         .quiz-question { font-size:1.08rem; }
@@ -1318,23 +1325,24 @@ def study_home():
         [("📄", "我有教材", "上傳 PDF 教材，AI 會直接生成 10 題並開始測驗。", "study_material_intro"), ("🧪", "我要刷國考", "練習歷屆國考題目，快速檢測實力與弱點。", "national_exam")],
         [("📘", "我要複習錯題", "回顧答錯或不確定的題目，加強你的弱點。", "mistakes"), ("⏱️", "我要專心讀書", "用番茄鐘陪你專注，完成每一小段就累積學習時間。", "focus_timer")],
     ]
-    for row_index, row in enumerate(rows):
-        cols = st.columns(2, gap="large")
-        for col_index, (col, (icon, title, copy, target)) in enumerate(zip(cols, row)):
-            with col:
-                with st.container(key=f"study_choice_{row_index}_{col_index}"):
-                    st.markdown(f'<div class="choice-card"><div class="choice-icon-shell"><div class="choice-icon">{icon}</div></div><div class="choice-title">{title}</div><div class="choice-copy">{copy}</div></div>', unsafe_allow_html=True)
-                    if target:
-                        st.button(
-                            "進入 →",
-                            key=f"go_{target}",
-                            use_container_width=True,
-                            type="primary",
-                            on_click=set_page_without_extra_rerun,
-                            args=(target,),
-                        )
-                    else:
-                        st.button("即將開放", key=f"soon_{title}", use_container_width=True, disabled=True)
+    with st.container(key="study_choices_grid"):
+        for row_index, row in enumerate(rows):
+            cols = st.columns(2, gap="large")
+            for col_index, (col, (icon, title, copy, target)) in enumerate(zip(cols, row)):
+                with col:
+                    with st.container(key=f"study_choice_{row_index}_{col_index}"):
+                        st.markdown(f'<div class="choice-card"><div class="choice-icon-shell"><div class="choice-icon">{icon}</div></div><div class="choice-title">{title}</div><div class="choice-copy">{copy}</div></div>', unsafe_allow_html=True)
+                        if target:
+                            st.button(
+                                "進入 →",
+                                key=f"go_{target}",
+                                use_container_width=True,
+                                type="primary",
+                                on_click=set_page_without_extra_rerun,
+                                args=(target,),
+                            )
+                        else:
+                            st.button("即將開放", key=f"soon_{title}", use_container_width=True, disabled=True)
 
     # Warm the current-year exam subject list while the Study page is already open.
     # This avoids leaving the old cards on screen while Supabase is queried after navigation.
@@ -1622,6 +1630,24 @@ def national_exam_result_page():
             goto("national_exam")
 
 
+def _queue_material_processing(uploaded):
+    file_bytes = uploaded.getvalue()
+    file_hash = hashlib.sha256(file_bytes).hexdigest()
+    if st.session_state.material_file_hash == file_hash and st.session_state.material_questions and len(st.session_state.material_questions) == QUIZ_SIZE:
+        clear_quiz_answers()
+        st.session_state.medslime_page = "quiz"
+        st.session_state.menu_open = False
+        st.rerun()
+    st.session_state.uploaded_learning_file = uploaded.name
+    st.session_state.material_pending_bytes = file_bytes
+    st.session_state.material_pending_name = uploaded.name
+    st.session_state.material_pending_hash = file_hash
+    st.session_state.material_generation_error = None
+    st.session_state.medslime_page = "material_processing"
+    st.session_state.menu_open = False
+    st.rerun()
+
+
 def study_material_intro():
     topbar()
     render_back_button("返回學習", "study", "intro_back")
@@ -1630,23 +1656,27 @@ def study_material_intro():
         with st.container(key="material_intro_uploader"):
             uploaded = st.file_uploader("上傳教材開始學習", type=["pdf"], key="medslime_material_pdf_intro", label_visibility="collapsed")
 
-
     if uploaded is None:
         if st.session_state.material_generation_error:
             st.error(st.session_state.material_generation_error)
         return
+    _queue_material_processing(uploaded)
 
-    file_bytes = uploaded.getvalue()
-    file_hash = hashlib.sha256(file_bytes).hexdigest()
-    if st.session_state.material_file_hash == file_hash and st.session_state.material_questions and len(st.session_state.material_questions) == QUIZ_SIZE:
-        clear_quiz_answers()
-        goto("quiz")
 
-    st.session_state.uploaded_learning_file = uploaded.name
-    st.session_state.material_generation_error = None
-    loading = st.empty()
-    with loading.container():
-        render_loading_card(uploaded.name)
+def material_processing_page():
+    topbar()
+    filename = st.session_state.material_pending_name or st.session_state.uploaded_learning_file or "教材.pdf"
+    file_bytes = st.session_state.material_pending_bytes
+    file_hash = st.session_state.material_pending_hash
+
+    # The loading card is rendered first at the top of its own page, then Streamlit
+    # continues with the slower PDF parsing / AI request below.
+    render_loading_card(filename)
+
+    if not file_bytes or not file_hash:
+        st.session_state.material_generation_error = "找不到待處理的教材，請重新上傳。"
+        st.session_state.medslime_page = "study_material_intro"
+        st.rerun()
 
     try:
         _, pages = extract_pdf_text(file_bytes)
@@ -1659,14 +1689,19 @@ def study_material_intro():
         st.session_state.material_questions = payload["questions"]
         clear_quiz_answers()
         st.session_state.material_generation_error = None
-        loading.empty()
-        goto("quiz")
+        st.session_state.material_pending_bytes = None
+        st.session_state.material_pending_name = None
+        st.session_state.material_pending_hash = None
+        st.session_state.medslime_page = "quiz"
+        st.session_state.menu_open = False
+        st.rerun()
     except Exception as error:
-        loading.empty()
         st.session_state.material_generation_error = f"{type(error).__name__}: {error}"
-        st.error("教材處理失敗，請重新上傳或稍後再試。")
-        with st.expander("查看錯誤資訊"):
-            st.code(st.session_state.material_generation_error)
+        st.session_state.material_pending_bytes = None
+        st.session_state.material_pending_name = None
+        st.session_state.material_pending_hash = None
+        st.session_state.medslime_page = "study_material_intro"
+        st.rerun()
 
 
 def study_material_upload():
@@ -1682,38 +1717,7 @@ def study_material_upload():
         st.caption("建議使用含有可選取文字的 PDF；掃描型 PDF 之後再加入圖片辨識。")
         return
 
-    file_bytes = uploaded.getvalue()
-    file_hash = hashlib.sha256(file_bytes).hexdigest()
-
-    if st.session_state.material_file_hash == file_hash and st.session_state.material_questions and len(st.session_state.material_questions) == QUIZ_SIZE:
-        clear_quiz_answers()
-        goto("quiz")
-
-    st.session_state.uploaded_learning_file = uploaded.name
-    st.session_state.material_generation_error = None
-    loading = st.empty()
-    with loading.container():
-        render_loading_card(uploaded.name)
-
-    try:
-        _, pages = extract_pdf_text(file_bytes)
-        document_text = build_document_text(pages)
-        if len(document_text.strip()) < 250:
-            raise ValueError("這份 PDF 可讀取的文字太少，可能是掃描檔或圖片型 PDF。")
-        payload = generate_material_quiz(document_text)
-        st.session_state.material_file_hash = file_hash
-        st.session_state.material_subject = payload.get("subject") or "教材測驗"
-        st.session_state.material_questions = payload["questions"]
-        clear_quiz_answers()
-        st.session_state.material_generation_error = None
-        loading.empty()
-        goto("quiz")
-    except Exception as error:
-        loading.empty()
-        st.session_state.material_generation_error = f"{type(error).__name__}: {error}"
-        st.error("教材處理失敗，請重新上傳或稍後再試。")
-        with st.expander("查看錯誤資訊"):
-            st.code(st.session_state.material_generation_error)
+    _queue_material_processing(uploaded)
 
 
 # =========================================================
@@ -2599,6 +2603,8 @@ elif page == "study_material_intro":
     study_material_intro()
 elif page == "study_material_upload":
     study_material_upload()
+elif page == "material_processing":
+    material_processing_page()
 elif page == "quiz":
     material_quiz_page()
 elif page == "quiz_result":
