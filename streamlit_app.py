@@ -935,6 +935,7 @@ st.markdown(
     .quiz-meta-row { display:flex; align-items:center; justify-content:space-between; gap:.75rem; flex-wrap:wrap; margin-bottom:.45rem; }
     .official-inline-link { display:inline-flex; align-items:center; justify-content:center; padding:.34rem .62rem; border-radius:10px; background:#20252d; color:#fff !important; text-decoration:none !important; font-size:.78rem; font-weight:800; line-height:1.2; white-space:nowrap; }
     .official-inline-link:hover { opacity:.88; }
+    .exam-inline-figure-label { color:#6b8275; font-size:.78rem; font-weight:800; text-align:center; margin:.15rem 0 .35rem; }
 
     /* 明確指定測驗互動文字，避免被 Streamlit theme 吃成白色。 */
     [data-testid="stRadio"] [role="radiogroup"] { gap:.5rem; }
@@ -1319,6 +1320,65 @@ def _render_pdf_question_crops(url, question_number):
         if not rendered:
             raise ValueError("定位成功，但沒有可顯示的題目區域。")
         return rendered, page_count
+    finally:
+        document.close()
+
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def _render_pdf_question_images(url, question_number):
+    """Render only image blocks that belong to Qn, bounded by Qn and Q(n+1)."""
+    pdf_bytes = _download_pdf_for_viewer(url)
+    document = fitz.open(stream=pdf_bytes, filetype="pdf")
+    try:
+        anchors, _ = _pdf_question_anchors(url)
+        qn = int(question_number)
+        start_anchor = anchors.get(qn)
+        next_anchor = anchors.get(qn + 1)
+        if not start_anchor:
+            return []
+
+        start_page = int(start_anchor["page_index"])
+        end_page = int(next_anchor["page_index"]) if next_anchor else start_page
+        rendered = []
+
+        for page_index in range(start_page, end_page + 1):
+            page = document.load_page(page_index)
+            page_rect = page.rect
+            top = 0.0
+            bottom = page_rect.height
+            if page_index == start_page:
+                top = max(0.0, float(start_anchor["y"]) - 4.0)
+            if next_anchor and page_index == int(next_anchor["page_index"]):
+                bottom = min(page_rect.height, float(next_anchor["y"]) - 4.0)
+
+            payload = page.get_text("dict")
+            for block in payload.get("blocks", []):
+                if block.get("type") != 1 or not block.get("bbox"):
+                    continue
+                bbox = fitz.Rect(block["bbox"])
+                # Image must overlap the current question's vertical range.
+                if bbox.y1 <= top or bbox.y0 >= bottom:
+                    continue
+                # Ignore tiny decorative / accidental image objects.
+                if bbox.width < 36 or bbox.height < 36:
+                    continue
+
+                pad = 4.0
+                clip = fitz.Rect(
+                    max(0.0, bbox.x0 - pad),
+                    max(top, bbox.y0 - pad),
+                    min(page_rect.width, bbox.x1 + pad),
+                    min(bottom, bbox.y1 + pad),
+                )
+                if clip.width <= 8 or clip.height <= 8:
+                    continue
+                pixmap = page.get_pixmap(matrix=fitz.Matrix(2.0, 2.0), clip=clip, alpha=False)
+                rendered.append({
+                    "png": pixmap.tobytes("png"),
+                    "page": page_index + 1,
+                })
+
+        return rendered
     finally:
         document.close()
 
@@ -1761,7 +1821,29 @@ def national_exam_quiz_page():
         unsafe_allow_html=True,
     )
     if question.get("has_image_hint"):
-        st.info("本題含圖片，請查看官方原題後再作答。")
+        inline_url = question.get("question_pdf_url") or question.get("source_url")
+        inline_number = question.get("official_question_number")
+        inline_images = []
+        if inline_url and inline_number:
+            try:
+                with st.spinner("正在載入題目圖片…"):
+                    inline_images = _render_pdf_question_images(inline_url, inline_number)
+            except Exception:
+                inline_images = []
+        if inline_images:
+            for row_start in range(0, len(inline_images), 2):
+                image_row = inline_images[row_start:row_start + 2]
+                cols = st.columns(len(image_row), gap="small")
+                for offset, (col, image_item) in enumerate(zip(cols, image_row)):
+                    with col:
+                        figure_number = row_start + offset + 1
+                        st.image(image_item["png"], use_container_width=True)
+                        st.markdown(
+                            f'<div class="exam-inline-figure-label">圖 {figure_number}</div>',
+                            unsafe_allow_html=True,
+                        )
+        else:
+            st.info("本題含圖片；圖片暫時無法自動載入，可查看官方原題。")
     if question.get("source_url") or question.get("question_pdf_url"):
         page_hint = question.get("source_page")
         source_label = f"📄 查看官方原題 · PDF 第 {page_hint} 頁" if page_hint else "📄 查看官方原題"
