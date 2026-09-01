@@ -94,9 +94,10 @@ DEFAULT_STATE = {
     "focus_end_at": None,
     "focus_rewarded_blocks": 0,
     "focus_session_coins": 0,
+    "focus_coins_today": 0,
     "focus_seconds_today": 0,
     "focus_round": 1,
-    "focus_last_duration_minutes": 25,
+    "focus_last_duration_minutes": 30,
     "slime_collection_filter": "全部",
     "slime_progress": {"青蘋果史萊姆": {"level": 4, "exp": 72, "fragments": 0}},
     "slime_nicknames": {"青蘋果史萊姆": "Medi"},
@@ -1906,8 +1907,9 @@ def material_quiz_result():
 # Focus timer / Pomodoro
 # =========================================================
 
-FOCUS_COINS_PER_BLOCK = 2
-FOCUS_REWARD_BLOCK_SECONDS = 5 * 60
+FOCUS_COINS_PER_BLOCK = 5
+FOCUS_REWARD_BLOCK_SECONDS = 10 * 60
+FOCUS_DAILY_COIN_CAP = 30
 FOCUS_BREAK_SECONDS = 5 * 60
 
 
@@ -1927,12 +1929,17 @@ def _award_focus_blocks(elapsed_seconds, toast=True):
     new_blocks = completed_blocks - int(st.session_state.focus_rewarded_blocks or 0)
     if new_blocks <= 0:
         return
-    earned = new_blocks * FOCUS_COINS_PER_BLOCK
+    potential = new_blocks * FOCUS_COINS_PER_BLOCK
+    remaining_cap = max(0, FOCUS_DAILY_COIN_CAP - int(st.session_state.focus_coins_today or 0))
+    earned = min(potential, remaining_cap)
     st.session_state.focus_rewarded_blocks = completed_blocks
+    if earned <= 0:
+        return
     st.session_state.focus_session_coins += earned
+    st.session_state.focus_coins_today += earned
     st.session_state.coins += earned
     if toast:
-        st.toast(f"專注滿 {completed_blocks * 5} 分鐘，+{earned} 🪙")
+        st.toast(f"專注滿 {completed_blocks * 10} 分鐘，+{earned} 🪙")
 
 
 def start_focus_round(minutes, new_session=False):
@@ -2035,7 +2042,7 @@ def _focus_runner_markup(progress, resting=False, runner_progress=None):
 def show_focus_stop_confirmation():
     @st.dialog("停止這次專注嗎？")
     def _dialog():
-        st.write("已完成的專注時間與已拿到的金幣會保留；尚未滿 5 分鐘的區段不會另外給金幣。")
+        st.write("已完成的專注時間與已拿到的金幣會保留；尚未滿 10 分鐘的區段不會另外給金幣。")
         left, right = st.columns(2)
         with left:
             if st.button("繼續專注", use_container_width=True, key="focus_stop_cancel"):
@@ -2083,7 +2090,7 @@ def render_focus_timer_fragment():
             companion_nickname = st.session_state.slime_nicknames.get(st.session_state.selected_slime, st.session_state.selected_slime)
             st.markdown(f'<div class="focus-sub">{html.escape(companion_nickname)} 正陪你往終點前進{paused_text}</div>', unsafe_allow_html=True)
             st.markdown(_focus_runner_markup(progress, resting=status == "paused"), unsafe_allow_html=True)
-            st.markdown(f'<div class="focus-reward-note">每完整 5 分鐘 +{FOCUS_COINS_PER_BLOCK} 🪙　<span class="focus-earned">這次已獲得 {st.session_state.focus_session_coins} 🪙</span></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="focus-reward-note">每完整 10 分鐘 +{FOCUS_COINS_PER_BLOCK} 🪙，每日最多 {FOCUS_DAILY_COIN_CAP} 🪙　<span class="focus-earned">今天計時器已獲得 {st.session_state.focus_coins_today} 🪙</span></div>', unsafe_allow_html=True)
         else:
             # During break, the slime stays at the finish line while the green bar
             # shrinks from right to left, revealing white space as rest time passes.
@@ -2091,7 +2098,7 @@ def render_focus_timer_fragment():
             st.markdown(f'<div class="focus-phase">BREAK · 第 {st.session_state.focus_round} 輪完成</div><div class="focus-clock">{_format_clock(remaining)}</div>', unsafe_allow_html=True)
             st.markdown('<div class="focus-sub">休息是番茄鐘的一部分。史萊姆也在終點喘口氣。</div>', unsafe_allow_html=True)
             st.markdown(_focus_runner_markup(break_fill, resting=True, runner_progress=1.0), unsafe_allow_html=True)
-            st.markdown(f'<div class="focus-reward-note">休息時間不累積金幣　<span class="focus-earned">這次已獲得 {st.session_state.focus_session_coins} 🪙</span></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="focus-reward-note">休息時間不累積金幣　<span class="focus-earned">今天計時器已獲得 {st.session_state.focus_coins_today} 🪙</span></div>', unsafe_allow_html=True)
 
         if status == "break_done":
             st.markdown('<div class="focus-done-card"><div class="focus-done-title">休息完成，要再來一輪嗎？</div><div class="muted">下一輪會沿用剛剛的專注時間。</div></div>', unsafe_allow_html=True)
@@ -2140,12 +2147,12 @@ def focus_timer_page():
     if st.session_state.focus_status == "idle":
         with st.container(key="focus_setup_card"):
             st.markdown('<div class="card-title" style="font-size:1.15rem;margin-bottom:.75rem">這一輪要專注多久？</div>', unsafe_allow_html=True)
-            choice = st.radio("專注時間", ["25 分鐘", "50 分鐘", "自訂"], horizontal=True, key="focus_duration_choice", label_visibility="collapsed")
+            choice = st.radio("專注時間", ["30 分鐘", "60 分鐘", "自訂"], horizontal=True, key="focus_duration_choice", label_visibility="collapsed")
             if choice == "自訂":
                 minutes = st.number_input("自訂分鐘", min_value=5, max_value=120, value=int(st.session_state.focus_last_duration_minutes), step=5, key="focus_custom_minutes")
             else:
-                minutes = 25 if choice == "25 分鐘" else 50
-            st.markdown(f'<div class="focus-reward-note">目前暫定：每完整 5 分鐘 +{FOCUS_COINS_PER_BLOCK} 🪙。金幣經濟之後再一起平衡。</div>', unsafe_allow_html=True)
+                minutes = 30 if choice == "30 分鐘" else 60
+            st.markdown(f'<div class="focus-reward-note">每完整 10 分鐘 +{FOCUS_COINS_PER_BLOCK} 🪙，休息時間不計；每天最多從計時器獲得 {FOCUS_DAILY_COIN_CAP} 🪙。</div>', unsafe_allow_html=True)
             if st.button("🍅 開始專注", type="primary", use_container_width=True, key="focus_start"):
                 start_focus_round(minutes, new_session=True)
                 st.rerun()
