@@ -5,12 +5,14 @@ import json
 import random
 import re
 import time
+import urllib.request
 from urllib.parse import urlsplit, urlunsplit, parse_qs
 from io import BytesIO
 from pathlib import Path
 from datetime import datetime, timezone
 
 import streamlit as st
+import fitz
 from openai import OpenAI
 from pypdf import PdfReader
 from supabase import create_client
@@ -87,6 +89,10 @@ DEFAULT_STATE = {
     "national_exam_load_error": None,
     "national_exam_pending_choice": None,
     "national_exam_picker_version": 0,
+    "pdf_viewer_url": None,
+    "pdf_viewer_page": None,
+    "pdf_viewer_title": None,
+    "pdf_viewer_return_page": "national_exam_quiz",
     "material_mistakes_saved": False,
     "national_exam_mistakes_saved": False,
     "mistake_filter": "全部",
@@ -1205,6 +1211,89 @@ st.markdown(
 )
 
 
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def _download_pdf_for_viewer(url):
+    raw = str(url or "").strip()
+    if not raw.startswith(("https://", "http://")):
+        raise ValueError("PDF 網址格式不正確。")
+    # Fragments are browser-only and must not be sent to the server.
+    parts = urlsplit(raw)
+    raw = urlunsplit((parts.scheme, parts.netloc, parts.path, parts.query, ""))
+    request = urllib.request.Request(
+        raw,
+        headers={
+            "User-Agent": "Mozilla/5.0 (MedSlime PDF viewer)",
+            "Accept": "application/pdf,*/*;q=0.8",
+        },
+    )
+    with urllib.request.urlopen(request, timeout=30) as response:
+        data = response.read()
+    if not data:
+        raise ValueError("官方 PDF 沒有回傳內容。")
+    return data
+
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def _render_pdf_page_png(url, page_number):
+    pdf_bytes = _download_pdf_for_viewer(url)
+    document = fitz.open(stream=pdf_bytes, filetype="pdf")
+    try:
+        if document.page_count <= 0:
+            raise ValueError("PDF 沒有可顯示的頁面。")
+        page_number = max(1, min(int(page_number or 1), document.page_count))
+        page = document.load_page(page_number - 1)
+        # 1.7x keeps text readable on phones without producing an enormous image.
+        pixmap = page.get_pixmap(matrix=fitz.Matrix(1.7, 1.7), alpha=False)
+        return pixmap.tobytes("png"), page_number, document.page_count
+    finally:
+        document.close()
+
+
+def open_pdf_viewer(question, return_page="national_exam_quiz"):
+    pdf_url = question.get("question_pdf_url") or question.get("source_url") or question.get("source_page_url")
+    page_hint = question.get("source_page") or _extract_pdf_page_hint(question.get("source_page_url")) or _extract_pdf_page_hint(question.get("source_url"))
+    if not pdf_url:
+        st.session_state.national_exam_load_error = "這題目前沒有官方 PDF 連結。"
+        return
+    st.session_state.pdf_viewer_url = str(pdf_url)
+    st.session_state.pdf_viewer_page = int(page_hint or 1)
+    official = question.get("official_question_number")
+    st.session_state.pdf_viewer_title = f"官方原題 · 第 {official} 題" if official else "官方原題"
+    st.session_state.pdf_viewer_return_page = return_page
+    st.session_state.medslime_page = "pdf_viewer"
+    st.session_state.menu_open = False
+
+
+def pdf_viewer_page():
+    topbar()
+    return_page = st.session_state.pdf_viewer_return_page or "national_exam_quiz"
+    render_back_button("返回題目", return_page, "back_pdf_viewer")
+    url = st.session_state.pdf_viewer_url
+    page_number = st.session_state.pdf_viewer_page or 1
+    title = st.session_state.pdf_viewer_title or "官方原題"
+    st.markdown(
+        f'<div class="study-header"><div class="eyebrow">SOURCE</div>'
+        f'<div class="hero-title" style="font-size:2rem">{html.escape(str(title))}</div>'
+        f'<div class="hero-copy">直接顯示原 PDF 的定位頁，不依賴手機瀏覽器的 PDF 跳頁功能。</div></div>',
+        unsafe_allow_html=True,
+    )
+    if not url:
+        st.error("找不到這題的官方 PDF。")
+        return
+    try:
+        with st.spinner("正在載入官方原題…"):
+            png_bytes, shown_page, page_count = _render_pdf_page_png(url, page_number)
+        st.caption(f"PDF 第 {shown_page} / {page_count} 頁")
+        st.image(png_bytes, use_container_width=True)
+        clean_url = urlunsplit((*urlsplit(str(url))[:4], ""))
+        st.link_button("開啟完整官方 PDF ↗", clean_url, use_container_width=True)
+    except Exception as error:
+        st.error("原題頁面暫時無法載入，但仍可以開啟完整官方 PDF。")
+        st.caption(f"{type(error).__name__}: {error}")
+        st.link_button("開啟完整官方 PDF ↗", str(url), use_container_width=True)
+
+
 # =========================================================
 # Navigation / shared visuals
 # =========================================================
@@ -1557,17 +1646,21 @@ def national_exam_quiz_page():
     render_national_exam_progress(index, len(questions))
     remaining = sum(1 for i in range(len(questions)) if _national_question_progress_state(i) in ("gray", "red"))
     progress_text = f"第 {index + 1} / {len(questions)} 題 · 尚有 {remaining} 題未作答"
-    source_link = ""
-    if question.get("source_url"):
-        safe_url = html.escape(str(question["source_url"]), quote=True)
-        page_hint = question.get("source_page")
-        link_label = f"官方原題 · Page {page_hint} ↗" if page_hint else "官方原題 ↗"
-        source_link = f'<a class="official-inline-link" href="{safe_url}" target="_blank" rel="noopener noreferrer">{link_label}</a>'
     safe_exam_question = html.escape(normalize_scientific_notation(question["question"]))
     st.markdown(
-        f'<div class="quiz-card"><div class="quiz-meta-row"><div class="eyebrow">{progress_text}</div>{source_link}</div><div class="quiz-question">{safe_exam_question}</div></div>',
+        f'<div class="quiz-card"><div class="quiz-meta-row"><div class="eyebrow">{progress_text}</div></div><div class="quiz-question">{safe_exam_question}</div></div>',
         unsafe_allow_html=True,
     )
+    if question.get("source_url") or question.get("question_pdf_url"):
+        page_hint = question.get("source_page")
+        source_label = f"📄 查看官方原題 · PDF 第 {page_hint} 頁" if page_hint else "📄 查看官方原題"
+        st.button(
+            source_label,
+            key=f"exam_source_{index}",
+            use_container_width=True,
+            on_click=open_pdf_viewer,
+            args=(question, "national_exam_quiz"),
+        )
 
     answer_key = f"exam_answer_{index}"
     uncertain_key = f"exam_uncertain_{index}"
@@ -1646,10 +1739,16 @@ def national_exam_result_page():
             if question.get("explanation"):
                 with st.expander("查看解析"):
                     st.markdown(question["explanation"])
-            if question.get("source_url"):
+            if question.get("source_url") or question.get("question_pdf_url"):
                 page_hint = question.get("source_page")
-                label = f"查看官方原題 · Page {page_hint} ↗" if page_hint else "查看官方原題 ↗"
-                st.link_button(label, question["source_url"])
+                label = f"📄 查看官方原題 · PDF 第 {page_hint} 頁" if page_hint else "📄 查看官方原題"
+                st.button(
+                    label,
+                    key=f"exam_result_source_{index}",
+                    use_container_width=True,
+                    on_click=open_pdf_viewer,
+                    args=(question, "national_exam_result"),
+                )
 
     left, right = st.columns(2)
     with left:
@@ -2684,6 +2783,8 @@ elif page == "national_exam_quiz":
     national_exam_quiz_page()
 elif page == "national_exam_result":
     national_exam_result_page()
+elif page == "pdf_viewer":
+    pdf_viewer_page()
 elif page == "study_material_intro":
     study_material_intro()
 elif page == "study_material_upload":

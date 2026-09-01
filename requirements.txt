@@ -2,3 +2,4 @@ streamlit
 supabase>=2.18.0
 pypdf
 openai
+PyMuPDF>=1.24.0
