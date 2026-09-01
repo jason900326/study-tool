@@ -698,6 +698,25 @@ st.markdown(
     [data-testid="stFileUploaderDropzone"] { background:#fbfefc !important; border:1.5px dashed #bcdcc8 !important; border-radius:20px !important; padding:1.6rem !important; }
     [data-testid="stFileUploaderDropzone"] button { background:#2fc675 !important; color:white !important; border-color:#2fc675 !important; }
 
+    .material-processing-overlay {
+        position:fixed;
+        inset:0;
+        z-index:99990;
+        display:flex;
+        align-items:flex-start;
+        justify-content:center;
+        padding:5.4rem 1rem 2rem;
+        overflow:auto;
+        background:
+            radial-gradient(circle at 8% 3%, rgba(130,239,173,.18), transparent 24%),
+            radial-gradient(circle at 93% 13%, rgba(118,220,255,.15), transparent 23%),
+            #f8fcf9;
+        animation:processingOverlayIn .16s ease-out both;
+    }
+    .material-processing-overlay .digest-card {
+        width:min(620px, calc(100vw - 2rem));
+        margin:0 auto;
+    }
     .digest-card { max-width:620px; margin:1rem auto; padding:2rem 1.25rem; border:1px solid #dcebe2; border-radius:28px; background:rgba(255,255,255,.94); text-align:center; box-shadow:0 15px 34px rgba(31,83,53,.06); animation:pageIn .22s ease-out both; }
     .digest-slime { width:84px; height:68px; margin:0 auto 1rem; border-radius:50% 50% 40% 40%/62% 62% 38% 38%; background:linear-gradient(145deg,#9bedad,#48c878); position:relative; animation:slimeBounce 1.05s ease-in-out infinite; }
     .digest-slime:before,.digest-slime:after { content:""; position:absolute; top:28px; width:7px; height:10px; border-radius:50%; background:#153c2b; }
@@ -1112,6 +1131,7 @@ st.markdown(
     .home-copy-card,.home-slime-card,.home-task,.intro-panel { animation:pageIn .20s ease-out both; }
     @keyframes drawerIn { from { transform:translateX(-18px); opacity:0; } to { transform:translateX(0); opacity:1; } }
     @keyframes pageIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+    @keyframes processingOverlayIn { from { opacity:0; } to { opacity:1; } }
     @keyframes studyPageIn { from { opacity:0; transform:translateY(5px); } to { opacity:1; transform:translateY(0); } }
     @keyframes questionIn { from { opacity:0; transform:translateX(9px); } to { opacity:1; transform:translateX(0); } }
     @keyframes slimeBounce { 0%,100% { transform:translateY(0) scaleX(1); } 45% { transform:translateY(-8px) scaleX(.97); } 60% { transform:translateY(-5px) scaleX(1.03); } }
@@ -1120,6 +1140,8 @@ st.markdown(
 
     @media (max-width:700px) {
         .block-container { padding-left:.85rem; padding-right:.85rem; padding-bottom:3rem; }
+        .material-processing-overlay { padding:4.4rem .75rem 1.5rem; align-items:flex-start; }
+        .material-processing-overlay .digest-card { width:calc(100vw - 1.5rem); }
         [class*="st-key-material_intro_uploader"] [data-testid="stFileUploaderDropzone"] button { width:100% !important; max-width:100% !important; min-width:0 !important; }
         [class*="st-key-material_intro_card"] { padding:1.45rem 1.05rem 1.3rem !important; border-radius:24px !important; }
         [class*="st-key-material_intro_card"] .material-intro-title { font-size:1.42rem !important; line-height:1.28 !important; letter-spacing:-.025em !important; max-width:100% !important; overflow-wrap:normal !important; word-break:keep-all !important; }
@@ -1278,11 +1300,11 @@ def slime_avatar_markup(item, size="card", locked=False, mystery=False, selected
     )
 
 
-def render_loading_card(filename):
-    st.markdown(
-        f'<div class="digest-card"><div class="digest-slime"></div><div class="card-title" style="font-size:1.25rem">史萊姆正在消化教材</div><div class="muted" style="margin-top:.45rem">{html.escape(str(filename))}</div><div class="hero-copy" style="margin-top:.75rem">正在讀取內容、整理概念並準備 {QUIZ_SIZE} 題測驗。</div><div class="digest-dots"><span>●</span><span>●</span><span>●</span></div></div>',
-        unsafe_allow_html=True,
-    )
+def render_loading_card(filename, overlay=False):
+    card = f'<div class="digest-card"><div class="digest-slime"></div><div class="card-title" style="font-size:1.25rem">史萊姆正在消化教材</div><div class="muted" style="margin-top:.45rem">{html.escape(str(filename))}</div><div class="hero-copy" style="margin-top:.75rem">正在讀取內容、整理概念並準備 {QUIZ_SIZE} 題測驗。</div><div class="digest-dots"><span>●</span><span>●</span><span>●</span></div></div>'
+    if overlay:
+        card = f'<div class="material-processing-overlay">{card}</div>'
+    st.markdown(card, unsafe_allow_html=True)
 
 
 # =========================================================
@@ -1671,7 +1693,7 @@ def material_processing_page():
 
     # The loading card is rendered first at the top of its own page, then Streamlit
     # continues with the slower PDF parsing / AI request below.
-    render_loading_card(filename)
+    render_loading_card(filename, overlay=True)
 
     if not file_bytes or not file_hash:
         st.session_state.material_generation_error = "找不到待處理的教材，請重新上傳。"
