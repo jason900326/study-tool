@@ -3,6 +3,7 @@ on:
   push:
     paths:
       - 'scripts/rebuild_slime_page.py'
+      - 'scripts/fix_rebuild_slime_page.py'
       - '.github/workflows/rebuild_slime_page.yml'
 permissions:
   contents: write
@@ -13,6 +14,8 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - name: Fix patch script
+        run: python scripts/fix_rebuild_slime_page.py
       - name: Apply patch
         run: python scripts/rebuild_slime_page.py
       - name: Syntax check
