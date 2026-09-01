@@ -1143,7 +1143,40 @@ st.markdown(
     [class*="st-key-material_uncertain_text_"] { min-height:38px !important; display:flex !important; align-items:center !important; }
     .uncertain-inline-text {
         min-height:38px; display:flex; align-items:center; gap:.35rem; padding:.45rem .15rem;
-        color:#244c39; line-height:1.45;
+        color:#244c39; line-height:1.45; font-size:1rem !important;
+    }
+    [class*="st-key-national_strike_"] button p,
+    [class*="st-key-material_strike_"] button p {
+        font-size:1rem !important;
+    }
+
+    /* Mobile quiz rows: keep the answer circle and option text on the same row.
+       The text column uses all remaining width and wraps only when it truly needs to. */
+    @media (max-width:700px) {
+        [data-testid="stHorizontalBlock"]:has([class*="st-key-national_pick_wrap_"]),
+        [data-testid="stHorizontalBlock"]:has([class*="st-key-material_pick_wrap_"]),
+        [data-testid="stHorizontalBlock"]:has([class*="st-key-national_uncertain_pick_wrap_"]),
+        [data-testid="stHorizontalBlock"]:has([class*="st-key-material_uncertain_pick_wrap_"]) {
+            flex-wrap:nowrap !important;
+            align-items:flex-start !important;
+            gap:.35rem !important;
+        }
+        [data-testid="stHorizontalBlock"]:has([class*="st-key-national_pick_wrap_"]) > [data-testid="stColumn"]:first-child,
+        [data-testid="stHorizontalBlock"]:has([class*="st-key-material_pick_wrap_"]) > [data-testid="stColumn"]:first-child,
+        [data-testid="stHorizontalBlock"]:has([class*="st-key-national_uncertain_pick_wrap_"]) > [data-testid="stColumn"]:first-child,
+        [data-testid="stHorizontalBlock"]:has([class*="st-key-material_uncertain_pick_wrap_"]) > [data-testid="stColumn"]:first-child {
+            flex:0 0 44px !important;
+            width:44px !important;
+            min-width:44px !important;
+        }
+        [data-testid="stHorizontalBlock"]:has([class*="st-key-national_pick_wrap_"]) > [data-testid="stColumn"]:last-child,
+        [data-testid="stHorizontalBlock"]:has([class*="st-key-material_pick_wrap_"]) > [data-testid="stColumn"]:last-child,
+        [data-testid="stHorizontalBlock"]:has([class*="st-key-national_uncertain_pick_wrap_"]) > [data-testid="stColumn"]:last-child,
+        [data-testid="stHorizontalBlock"]:has([class*="st-key-material_uncertain_pick_wrap_"]) > [data-testid="stColumn"]:last-child {
+            flex:1 1 auto !important;
+            width:auto !important;
+            min-width:0 !important;
+        }
     }
     .quiz-result-stats { display:flex; gap:.65rem; flex-wrap:wrap; margin:.9rem 0 1.25rem; }
     .quiz-result-stat { background:#fff; border:1px solid #dceae2; border-radius:16px; padding:.75rem 1rem; color:#315b47; font-weight:800; }
