@@ -15,9 +15,59 @@ s = s.replace(old_inline_css, new_inline_css, 1)
 
 start = s.index('            with col:\n                avatar = slime_avatar_markup', s.index('def slime_page():'))
 end = s.index('\n\n\ndef achievements_page():', start)
-old_block = s[start:end]
-new_block = '''            with col:\n                avatar = slime_avatar_markup(x, size="card", locked=not owned, mystery=(x["rarity"]=="SSR" and not owned))\n                is_companion = owned and x["name"] == st.session_state.selected_slime\n                companion_line = '<div class="slime-v2-card-companion">✓ 陪伴中</div>' if is_companion else ''\n                detail_open = st.session_state.get("slime_detail_name") == x["name"]\n\n                expanded_body = ''\n                if detail_open:\n                    if owned:\n                        acc=st.session_state.slime_accessories.setdefault(x["name"],False)\n                        remain=max(0,30-frag)\n                        pct=max(0,min(100,round(frag/30*100)))\n                        if acc:\n                            status='專屬飾品已解鎖'\n                        elif frag>=30:\n                            status='已可解鎖專屬飾品'\n                        else:\n                            status=f'專屬飾品還差 {remain} 碎片'\n                        expanded_body = (\n                            f'<div class="slime-v2-expanded-body">'\n                            f'<div class="slime-v2-expanded-copy">{html.escape(x["tagline"])}</div>'\n                            f'<div class="slime-v2-expanded-label"><span>專屬碎片</span><strong>{frag} / 30</strong></div>'\n                            f'<div class="slime-v2-expanded-track"><div class="slime-v2-expanded-fill" style="width:{pct}%"></div></div>'\n                            f'<div class="slime-v2-expanded-status">{html.escape(status)}</div>'\n                            f'<div class="slime-v2-expanded-accessory">✨ 專屬飾品：{html.escape(x["accessory"])}</div>'\n                            f'</div>'\n                        )\n                    else:\n                        locked_copy = "取得後才會揭曉真正身分。" if x["rarity"]=="SSR" else "取得這隻史萊姆後，即可累積專屬碎片、設為陪伴並解鎖專屬飾品。"\n                        expanded_body = f'<div class="slime-v2-expanded-body"><div class="slime-v2-expanded-copy">{html.escape(locked_copy)}</div></div>'\n\n                card_class = f'slime-v2-card{"" if owned else " locked"}{" expanded" if detail_open else ""}'\n                st.markdown(\n                    f'<div class="{card_class}">{avatar}<div class="slime-v2-card-name">{html.escape(title)}</div>'\n                    f'<div class="slime-v2-meta">{x["rarity"]} · {"已擁有" if owned else "尚未取得"}</div>{companion_line}{expanded_body}</div>',\n                    unsafe_allow_html=True,\n                )\n\n                if st.button("收起詳情" if detail_open else "查看詳情",key=f"slime_v2_{x['theme']}",use_container_width=True):\n                    st.session_state.slime_detail_name = None if detail_open else x["name"]\n                    st.rerun()\n\n                if detail_open and owned:\n                    acc=st.session_state.slime_accessories.setdefault(x["name"],False)\n                    if x["name"]!=st.session_state.selected_slime:\n                        if st.button("設為陪伴",type="primary",use_container_width=True,key=f"set_companion_{x['theme']}"):\n                            st.session_state.selected_slime=x["name"]\n                            st.rerun()\n                    if not acc and st.button("解鎖專屬飾品",disabled=frag<30,use_container_width=True,key=f"unlock_accessory_{x['theme']}"):\n                        st.session_state.slime_progress[x["name"]]["fragments"]-=30\n                        st.session_state.slime_accessories[x["name"]]=True\n                        st.rerun()\n'''
+new_block = '''            with col:
+                avatar = slime_avatar_markup(x, size="card", locked=not owned, mystery=(x["rarity"]=="SSR" and not owned))
+                is_companion = owned and x["name"] == st.session_state.selected_slime
+                companion_line = '<div class="slime-v2-card-companion">✓ 陪伴中</div>' if is_companion else ''
+                detail_open = st.session_state.get("slime_detail_name") == x["name"]
+
+                expanded_body = ''
+                if detail_open:
+                    if owned:
+                        acc=st.session_state.slime_accessories.setdefault(x["name"],False)
+                        remain=max(0,30-frag)
+                        pct=max(0,min(100,round(frag/30*100)))
+                        if acc:
+                            status='專屬飾品已解鎖'
+                        elif frag>=30:
+                            status='已可解鎖專屬飾品'
+                        else:
+                            status=f'專屬飾品還差 {remain} 碎片'
+                        expanded_body = (
+                            f'<div class="slime-v2-expanded-body">'
+                            f'<div class="slime-v2-expanded-copy">{html.escape(x["tagline"])}</div>'
+                            f'<div class="slime-v2-expanded-label"><span>專屬碎片</span><strong>{frag} / 30</strong></div>'
+                            f'<div class="slime-v2-expanded-track"><div class="slime-v2-expanded-fill" style="width:{pct}%"></div></div>'
+                            f'<div class="slime-v2-expanded-status">{html.escape(status)}</div>'
+                            f'<div class="slime-v2-expanded-accessory">✨ 專屬飾品：{html.escape(x["accessory"])}</div>'
+                            f'</div>'
+                        )
+                    else:
+                        locked_copy = "取得後才會揭曉真正身分。" if x["rarity"]=="SSR" else "取得這隻史萊姆後，即可累積專屬碎片、設為陪伴並解鎖專屬飾品。"
+                        expanded_body = f'<div class="slime-v2-expanded-body"><div class="slime-v2-expanded-copy">{html.escape(locked_copy)}</div></div>'
+
+                card_class = f'slime-v2-card{"" if owned else " locked"}{" expanded" if detail_open else ""}'
+                st.markdown(
+                    f'<div class="{card_class}">{avatar}<div class="slime-v2-card-name">{html.escape(title)}</div>'
+                    f'<div class="slime-v2-meta">{x["rarity"]} · {"已擁有" if owned else "尚未取得"}</div>{companion_line}{expanded_body}</div>',
+                    unsafe_allow_html=True,
+                )
+
+                if st.button("收起詳情" if detail_open else "查看詳情",key=f"slime_v2_{x['theme']}",use_container_width=True):
+                    st.session_state.slime_detail_name = None if detail_open else x["name"]
+                    st.rerun()
+
+                if detail_open and owned:
+                    acc=st.session_state.slime_accessories.setdefault(x["name"],False)
+                    if x["name"]!=st.session_state.selected_slime:
+                        if st.button("設為陪伴",type="primary",use_container_width=True,key=f"set_companion_{x['theme']}"):
+                            st.session_state.selected_slime=x["name"]
+                            st.rerun()
+                    if not acc and st.button("解鎖專屬飾品",disabled=frag<30,use_container_width=True,key=f"unlock_accessory_{x['theme']}"):
+                        st.session_state.slime_progress[x["name"]]["fragments"]-=30
+                        st.session_state.slime_accessories[x["name"]]=True
+                        st.rerun()
+'''
 s = s[:start] + new_block + s[end:]
 
 p.write_text(s, encoding='utf-8')
-'''
