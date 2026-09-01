@@ -1085,9 +1085,31 @@ st.markdown(
     [class*="st-key-national_strike_on_"] button p,
     [class*="st-key-material_strike_on_"] button p { text-decoration:line-through !important; opacity:.42 !important; }
     [class*="st-key-national_strike_"] button,
-    [class*="st-key-material_strike_"] button { justify-content:flex-start !important; text-align:left !important; background:rgba(255,255,255,.82) !important; color:#244c39 !important; border:1px solid #e0ebe5 !important; box-shadow:none !important; padding-left:.9rem !important; }
+    [class*="st-key-material_strike_"] button {
+        justify-content:flex-start !important;
+        text-align:left !important;
+        background:transparent !important;
+        color:#244c39 !important;
+        border:none !important;
+        box-shadow:none !important;
+        border-radius:0 !important;
+        padding:.45rem .15rem !important;
+        min-height:38px !important;
+        width:100% !important;
+    }
+    [class*="st-key-national_strike_"] button:hover,
+    [class*="st-key-material_strike_"] button:hover { background:transparent !important; border:none !important; box-shadow:none !important; transform:none !important; }
+    [class*="st-key-national_strike_"] button > div,
+    [class*="st-key-material_strike_"] button > div,
+    [class*="st-key-national_strike_"] [data-testid="stMarkdownContainer"],
+    [class*="st-key-material_strike_"] [data-testid="stMarkdownContainer"],
     [class*="st-key-national_strike_"] button p,
-    [class*="st-key-material_strike_"] button p { width:100% !important; text-align:left !important; }
+    [class*="st-key-material_strike_"] button p {
+        width:100% !important;
+        justify-content:flex-start !important;
+        text-align:left !important;
+        margin:0 !important;
+    }
     [class*="st-key-national_pick_wrap_"] button,
     [class*="st-key-material_pick_wrap_"] button { display:flex !important; align-items:center !important; justify-content:center !important; min-width:38px !important; width:38px !important; min-height:38px !important; height:38px !important; padding:0 !important; margin:0 auto !important; border:none !important; background:transparent !important; color:#17212a !important; box-shadow:none !important; font-size:1.2rem !important; }
     [class*="st-key-national_pick_wrap_"] button p,
@@ -1103,6 +1125,10 @@ st.markdown(
     [data-testid="stCheckbox"] label span { color:#244c39 !important; opacity:1 !important; }
     [data-testid="stRadio"] label:has(input:checked) { border-color:#69cf94; background:#effbf4; }
     [data-testid="stCheckbox"] { margin-top:.35rem; margin-bottom:.7rem; }
+    [data-testid="stCheckbox"] input + div,
+    [data-testid="stCheckbox"] [data-testid="stCheckbox"] { border-radius:50% !important; }
+    [data-testid="stCheckbox"] svg { border-radius:50% !important; }
+    [data-testid="stCheckbox"] label > div:first-child { border-radius:50% !important; }
 
     .result-card { background:rgba(255,255,255,.96); border:1px solid #dceae2; border-radius:25px; padding:1.3rem 1.4rem; margin:.8rem 0; animation:pageIn .2s ease-out both; }
     .review-options { display:grid; gap:.48rem; margin-top:.9rem; }
@@ -2062,7 +2088,7 @@ def national_exam_quiz_page():
         st.session_state[uncertain_key] = bool(st.session_state.national_exam_uncertain.get(index, False))
 
     _render_strikeable_options("national", index, options, st.session_state.national_exam_answers, st.session_state.national_exam_struck)
-    uncertain = st.checkbox("❓ 我不確定這個觀念", key=uncertain_key)
+    uncertain = st.checkbox("❓ 我不確定", key=uncertain_key)
     st.session_state.national_exam_uncertain[index] = bool(uncertain)
 
     left, middle, right = st.columns(3)
@@ -2346,7 +2372,7 @@ def material_quiz_page():
         st.session_state[uncertain_key] = bool(st.session_state.quiz_uncertain.get(index, False))
 
     _render_strikeable_options("material", index, options, st.session_state.quiz_answers, st.session_state.material_quiz_struck)
-    uncertain = st.checkbox("❓ 我不確定這個觀念", key=uncertain_key)
+    uncertain = st.checkbox("❓ 我不確定", key=uncertain_key)
     st.session_state.quiz_uncertain[index] = bool(uncertain)
 
     left, middle, right = st.columns([1, 1, 1])
