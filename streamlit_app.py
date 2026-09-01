@@ -935,6 +935,11 @@ st.markdown(
     .quiz-meta-row { display:flex; align-items:center; justify-content:space-between; gap:.75rem; flex-wrap:wrap; margin-bottom:.45rem; }
     .official-inline-link { display:inline-flex; align-items:center; justify-content:center; padding:.34rem .62rem; border-radius:10px; background:#20252d; color:#fff !important; text-decoration:none !important; font-size:.78rem; font-weight:800; line-height:1.2; white-space:nowrap; }
     .official-inline-link:hover { opacity:.88; }
+    [class*="st-key-exam_question_card_"] { background:rgba(255,255,255,.96); border:1px solid #dceae2; border-radius:27px; padding:1.55rem 1.6rem .9rem; box-shadow:0 14px 34px rgba(31,83,53,.06); animation:questionIn .22s ease-out both; margin-bottom:.8rem; }
+    [class*="st-key-exam_question_card_"] .quiz-card { background:transparent !important; border:0 !important; box-shadow:none !important; padding:0 !important; margin:0 !important; animation:none !important; }
+    [class*="st-key-exam_source_compact_"] { display:flex; justify-content:flex-end; margin-top:.45rem; }
+    [class*="st-key-exam_source_compact_"] button { min-height:32px !important; height:32px !important; width:auto !important; padding:.22rem .68rem !important; border-radius:10px !important; font-size:.76rem !important; font-weight:800 !important; box-shadow:none !important; }
+    [class*="st-key-exam_source_compact_"] button p { font-size:.76rem !important; white-space:nowrap !important; }
     .exam-inline-figure-label { color:#6b8275; font-size:.78rem; font-weight:800; text-align:center; margin:.15rem 0 .35rem; }
 
     /* 明確指定測驗互動文字，避免被 Streamlit theme 吃成白色。 */
@@ -1886,10 +1891,19 @@ def national_exam_quiz_page():
     remaining = sum(1 for i in range(len(questions)) if _national_question_progress_state(i) in ("gray", "red"))
     progress_text = f"第 {index + 1} / {len(questions)} 題 · 尚有 {remaining} 題未作答"
     safe_exam_question = html.escape(normalize_scientific_notation(question["question"]))
-    st.markdown(
-        f'<div class="quiz-card"><div class="quiz-meta-row"><div class="eyebrow">{progress_text}</div></div><div class="quiz-question">{safe_exam_question}</div></div>',
-        unsafe_allow_html=True,
-    )
+    with st.container(key=f"exam_question_card_{index}"):
+        st.markdown(
+            f'<div class="quiz-card"><div class="quiz-meta-row"><div class="eyebrow">{progress_text}</div></div><div class="quiz-question">{safe_exam_question}</div></div>',
+            unsafe_allow_html=True,
+        )
+        if question.get("source_url") or question.get("question_pdf_url"):
+            with st.container(key=f"exam_source_compact_{index}"):
+                st.button(
+                    "📄 官方原題",
+                    key=f"exam_source_{index}",
+                    on_click=open_pdf_viewer,
+                    args=(question, "national_exam_quiz"),
+                )
     if question.get("has_image_hint"):
         inline_url = question.get("question_pdf_url") or question.get("source_url")
         inline_number = question.get("official_question_number")
@@ -1914,17 +1928,6 @@ def national_exam_quiz_page():
                             )
         else:
             st.info("本題含圖片；圖片暫時無法自動載入，可查看官方原題。")
-    if question.get("source_url") or question.get("question_pdf_url"):
-        page_hint = question.get("source_page")
-        source_label = f"📄 查看官方原題 · PDF 第 {page_hint} 頁" if page_hint else "📄 查看官方原題"
-        st.button(
-            source_label,
-            key=f"exam_source_{index}",
-            use_container_width=True,
-            on_click=open_pdf_viewer,
-            args=(question, "national_exam_quiz"),
-        )
-
     answer_key = f"exam_answer_{index}"
     uncertain_key = f"exam_uncertain_{index}"
     previous_answer = st.session_state.national_exam_answers.get(index)
