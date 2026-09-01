@@ -746,6 +746,20 @@ def _format_quiz_elapsed(seconds):
     return f"{secs} 秒"
 
 
+def _render_uncertain_toggle(prefix, index, uncertain_store):
+    is_uncertain = bool(uncertain_store.get(index, False))
+    circle_col, text_col = st.columns([0.09, 0.91], gap="small")
+    with circle_col:
+        circle = "●" if is_uncertain else "○"
+        with st.container(key=f"{prefix}_uncertain_pick_wrap_{index}"):
+            if st.button(circle, key=f"{prefix}_uncertain_pick_{index}"):
+                uncertain_store[index] = not is_uncertain
+                st.rerun()
+    with text_col:
+        with st.container(key=f"{prefix}_uncertain_text_{index}"):
+            st.markdown('<div class="uncertain-inline-text"><span>❓</span> 我不確定</div>', unsafe_allow_html=True)
+
+
 def _render_strikeable_options(prefix, index, options, answer_store, struck_store):
     struck = set(struck_store.get(index, []))
     selected_index = answer_store.get(index)
@@ -1114,6 +1128,23 @@ st.markdown(
     [class*="st-key-material_pick_wrap_"] button { display:flex !important; align-items:center !important; justify-content:center !important; min-width:38px !important; width:38px !important; min-height:38px !important; height:38px !important; padding:0 !important; margin:0 auto !important; border:none !important; background:transparent !important; color:#17212a !important; box-shadow:none !important; font-size:1.2rem !important; }
     [class*="st-key-national_pick_wrap_"] button p,
     [class*="st-key-material_pick_wrap_"] button p { color:#17212a !important; opacity:1 !important; font-size:1.2rem !important; line-height:1 !important; }
+    [class*="st-key-national_uncertain_pick_wrap_"] button,
+    [class*="st-key-material_uncertain_pick_wrap_"] button {
+        display:flex !important; align-items:center !important; justify-content:center !important;
+        min-width:38px !important; width:38px !important; min-height:38px !important; height:38px !important;
+        padding:0 !important; margin:0 auto !important; border:none !important; background:transparent !important;
+        color:#17212a !important; box-shadow:none !important; font-size:1.2rem !important;
+    }
+    [class*="st-key-national_uncertain_pick_wrap_"] button p,
+    [class*="st-key-material_uncertain_pick_wrap_"] button p {
+        color:#17212a !important; opacity:1 !important; font-size:1.2rem !important; line-height:1 !important; margin:0 !important;
+    }
+    [class*="st-key-national_uncertain_text_"] ,
+    [class*="st-key-material_uncertain_text_"] { min-height:38px !important; display:flex !important; align-items:center !important; }
+    .uncertain-inline-text {
+        min-height:38px; display:flex; align-items:center; gap:.35rem; padding:.45rem .15rem;
+        color:#244c39; line-height:1.45;
+    }
     .quiz-result-stats { display:flex; gap:.65rem; flex-wrap:wrap; margin:.9rem 0 1.25rem; }
     .quiz-result-stat { background:#fff; border:1px solid #dceae2; border-radius:16px; padding:.75rem 1rem; color:#315b47; font-weight:800; }
     .quiz-result-stat strong { color:#173b2b; font-size:1.18rem; }
@@ -2020,8 +2051,8 @@ def render_national_exam_progress(current_index, question_count):
 
 
 def save_current_national_exam_state(index, options):
-    uncertain_key = f"exam_uncertain_{index}"
-    st.session_state.national_exam_uncertain[index] = bool(st.session_state.get(uncertain_key, False))
+    # Answer and uncertainty are saved immediately by their custom controls.
+    return
 
 
 def national_exam_unanswered_numbers(question_count):
@@ -2088,8 +2119,7 @@ def national_exam_quiz_page():
         st.session_state[uncertain_key] = bool(st.session_state.national_exam_uncertain.get(index, False))
 
     _render_strikeable_options("national", index, options, st.session_state.national_exam_answers, st.session_state.national_exam_struck)
-    uncertain = st.checkbox("❓ 我不確定", key=uncertain_key)
-    st.session_state.national_exam_uncertain[index] = bool(uncertain)
+    _render_uncertain_toggle("national", index, st.session_state.national_exam_uncertain)
 
     left, middle, right = st.columns(3)
     with left:
@@ -2274,8 +2304,8 @@ def study_material_upload():
 # =========================================================
 
 def save_current_quiz_state(index, options):
-    uncertain_key = f"material_uncertain_{index}"
-    st.session_state.quiz_uncertain[index] = bool(st.session_state.get(uncertain_key, False))
+    # Answer and uncertainty are saved immediately by their custom controls.
+    return
 
 
 def unanswered_numbers(question_count):
@@ -2372,8 +2402,7 @@ def material_quiz_page():
         st.session_state[uncertain_key] = bool(st.session_state.quiz_uncertain.get(index, False))
 
     _render_strikeable_options("material", index, options, st.session_state.quiz_answers, st.session_state.material_quiz_struck)
-    uncertain = st.checkbox("❓ 我不確定", key=uncertain_key)
-    st.session_state.quiz_uncertain[index] = bool(uncertain)
+    _render_uncertain_toggle("material", index, st.session_state.quiz_uncertain)
 
     left, middle, right = st.columns([1, 1, 1])
     with left:
