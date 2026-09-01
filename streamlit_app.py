@@ -3126,8 +3126,9 @@ def mistake_subject_page():
 # =========================================================
 
 def slime_page():
-    st.markdown('\n<style>\n.slime-v2-head{display:flex;justify-content:space-between;align-items:flex-end;gap:1rem;margin:.25rem 0 1rem}.slime-v2-title{font-size:2rem;font-weight:950;color:#17372a;letter-spacing:-.04em}.slime-v2-sub{color:#789083;font-size:.9rem;margin-top:.25rem}.slime-v2-res{white-space:nowrap;font-weight:850;color:#315b45}.slime-v2-card{border:1px solid #dbe9e1;background:rgba(255,255,255,.9);border-radius:20px;padding:.7rem;text-align:center;min-height:210px;box-shadow:0 8px 22px rgba(32,85,54,.05)}.slime-v2-card.locked{background:#f5f8f6}.slime-v2-card-name{font-weight:900;color:#1c4130;font-size:.88rem;min-height:2.3rem;margin-top:.25rem}.slime-v2-meta{font-size:.72rem;color:#789083;margin-top:.18rem}.slime-v2-detail{border:1px solid #dbe9e1;background:rgba(255,255,255,.94);border-radius:24px;padding:1.25rem;box-shadow:0 12px 28px rgba(32,85,54,.06);position:sticky;top:1rem}.slime-v2-detail-name{font-size:1.35rem;font-weight:950;color:#17372a;text-align:center;margin:.4rem 0}.slime-v2-rarity{text-align:center;color:#57a976;font-weight:900;font-size:.78rem}.slime-v2-summary{margin-top:1.5rem;border:1px solid #dbe9e1;background:rgba(255,255,255,.9);border-radius:22px;padding:1.15rem}@media(max-width:767px){.slime-v2-head{align-items:flex-start;flex-direction:column}.slime-v2-title{font-size:1.65rem}.slime-v2-detail{position:static}.slime-v2-card{min-height:180px;padding:.55rem}[data-testid="stHorizontalBlock"]:has([class*="st-key-slime_v2_"]) {gap:.55rem!important}}\n</style>\n', unsafe_allow_html=True)
+    st.markdown('\n<style>\n.slime-v2-head{display:flex;justify-content:space-between;align-items:flex-end;gap:1rem;margin:.25rem 0 1rem}.slime-v2-title{font-size:2rem;font-weight:950;color:#17372a;letter-spacing:-.04em}.slime-v2-sub{color:#789083;font-size:.9rem;margin-top:.25rem}.slime-v2-res{white-space:nowrap;font-weight:850;color:#315b45}.slime-v2-page-marker{display:none}.slime-v2-card{border:1px solid #dbe9e1;background:rgba(255,255,255,.9);border-radius:20px;padding:.7rem;text-align:center;min-height:210px;box-shadow:0 8px 22px rgba(32,85,54,.05)}.slime-v2-card.locked{background:#f5f8f6}.slime-v2-card-name{font-weight:900;color:#1c4130;font-size:.88rem;min-height:2.3rem;margin-top:.25rem}.slime-v2-meta{font-size:.72rem;color:#789083;margin-top:.18rem}.slime-v2-detail{border:1px solid #dbe9e1;background:rgba(255,255,255,.94);border-radius:24px;padding:1.25rem;box-shadow:0 12px 28px rgba(32,85,54,.06);position:sticky;top:1rem}.slime-v2-detail-name{font-size:1.35rem;font-weight:950;color:#17372a;text-align:center;margin:.4rem 0}.slime-v2-rarity{text-align:center;color:#57a976;font-weight:900;font-size:.78rem}.slime-v2-summary{margin-top:1.5rem;border:1px solid #dbe9e1;background:rgba(255,255,255,.9);border-radius:22px;padding:1.15rem}[data-testid="stMainBlockContainer"]:has(.slime-v2-page-marker) h1,[data-testid="stMainBlockContainer"]:has(.slime-v2-page-marker) h2,[data-testid="stMainBlockContainer"]:has(.slime-v2-page-marker) h3,[data-testid="stMainBlockContainer"]:has(.slime-v2-page-marker) h4,[data-testid="stMainBlockContainer"]:has(.slime-v2-page-marker) p,[data-testid="stMainBlockContainer"]:has(.slime-v2-page-marker) label,[data-testid="stMainBlockContainer"]:has(.slime-v2-page-marker) [data-testid="stCaptionContainer"]{color:#244c39!important}[data-testid="stMainBlockContainer"]:has(.slime-v2-page-marker) [data-testid="stCaptionContainer"] p{color:#789083!important}[data-testid="stMainBlockContainer"]:has(.slime-v2-page-marker) [data-testid="stMetricLabel"] p{color:#789083!important}[data-testid="stMainBlockContainer"]:has(.slime-v2-page-marker) [data-testid="stMetricValue"]{color:#17372a!important}@media(max-width:767px){.slime-v2-head{align-items:flex-start;flex-direction:column}.slime-v2-title{font-size:1.65rem}.slime-v2-detail{position:static}.slime-v2-card{min-height:180px;padding:.55rem}[data-testid="stHorizontalBlock"]:has([class*="st-key-slime_v2_"]) {gap:.55rem!important}}\n</style>\n', unsafe_allow_html=True)
     topbar()
+    st.markdown('<div class="slime-v2-page-marker"></div>', unsafe_allow_html=True)
     render_back_button("返回首頁", "home", "back_slime")
     names={x["name"] for x in SLIME_CATALOG}
     st.session_state.collection=[x for x in st.session_state.collection if x in names]
@@ -3148,11 +3149,14 @@ def slime_page():
     st.caption(f"🪙 {st.session_state.coins:,}　🎟️ {st.session_state.tickets:,}")
 
     visible=[x for x in SLIME_CATALOG if filt=="全部" or x["rarity"]==filt]
-    rank={"SSR":0,"SR":1,"R":2,"N":3}
+    rank={"N":0,"R":1,"SR":2,"SSR":3}
     if sort=="稀有度": visible.sort(key=lambda x:(rank[x["rarity"]],x["name"]))
-    elif sort=="是否擁有": visible.sort(key=lambda x:(x["name"] not in st.session_state.collection,rank[x["rarity"]]))
+    elif sort=="是否擁有": visible.sort(key=lambda x:(x["name"] not in st.session_state.collection,rank[x["rarity"]],x["name"]))
     elif sort=="碎片數": visible.sort(key=lambda x:-st.session_state.slime_progress[x["name"]]["fragments"])
     elif sort=="最近取得": visible.sort(key=lambda x:(x["name"] not in st.session_state.collection,-st.session_state.collection.index(x["name"]) if x["name"] in st.session_state.collection else 0))
+
+    # The active companion is always pinned first without changing the chosen sort order.
+    visible.sort(key=lambda x: x["name"] != st.session_state.selected_slime)
 
     left,right=st.columns([2.1,1],gap="large")
     with left:
