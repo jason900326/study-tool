@@ -137,6 +137,9 @@ DEFAULT_STATE = {
     "slime_progress": {"綠色史萊姆": {"level": 4, "exp": 72, "fragments": 0}},
     "slime_nicknames": {"綠色史萊姆": "Medi"},
     "slime_name_editing": False,
+    "auth_user_id": None,
+    "auth_email": None,
+    "auth_mode": "login",
     "slime_dev_preview": False,
 }
 
@@ -464,10 +467,13 @@ def _sort_mistake_rows(rows):
 
 
 def load_mistake_bank():
+    client = _achievement_supabase_client()
+    if not client or not _auth_user_id():
+        return []
     response = (
-        get_supabase()
-        .table("mistakes")
+        client.table("mistakes")
         .select("*")
+        .eq("user_id", _auth_user_id())
         .order("created_at", desc=True)
         .execute()
     )
@@ -476,11 +482,14 @@ def load_mistake_bank():
 
 def mark_mistake_reviewed(record_id):
     reviewed_at = datetime.now(timezone.utc).isoformat()
+    client = _achievement_supabase_client()
+    if not client or not _auth_user_id():
+        raise RuntimeError("尚未登入")
     (
-        get_supabase()
-        .table("mistakes")
+        client.table("mistakes")
         .update({"label": f"{_REVIEWED_PREFIX}{reviewed_at}"})
         .eq("id", record_id)
+        .eq("user_id", _auth_user_id())
         .execute()
     )
     _task_record_event(reviewed=1)
@@ -530,6 +539,7 @@ def _save_mistake_rows(questions, answers, uncertain_map, source_type, meta=None
             source_url = None
 
         rows.append({
+            "user_id": _auth_user_id(),
             "subject": subject,
             "concept": question.get("concept") or "未分類",
             "question": question.get("question") or "",
@@ -552,7 +562,10 @@ def _save_mistake_rows(questions, answers, uncertain_map, source_type, meta=None
         })
 
     if rows:
-        get_supabase().table("mistakes").insert(rows).execute()
+        client = _achievement_supabase_client()
+        if not client:
+            raise RuntimeError("尚未登入")
+        client.table("mistakes").insert(rows).execute()
 
 
 def save_material_mistakes_if_needed():
@@ -1927,7 +1940,7 @@ def render_back_button(label, target, key):
 
 def topbar():
     with st.container(key="topbar_shell"):
-        brand_col, currency_col = st.columns([1, 2.1], vertical_alignment="center")
+        brand_col, currency_col, auth_col = st.columns([1, 2.1, .45], vertical_alignment="center")
         with brand_col:
             if st.button("MedSlime.", key=f"brand_home_{st.session_state.medslime_page}", help="返回首頁"):
                 goto("home")
@@ -1936,7 +1949,10 @@ def topbar():
                 f'<div class="currency"><span class="pill">🔥 {st.session_state.streak} 天</span><span class="pill">🪙 {st.session_state.coins}</span><span class="pill">🎫 {st.session_state.tickets}</span></div>',
                 unsafe_allow_html=True,
             )
-
+        with auth_col:
+            if st.button("登出", key=f"logout_{st.session_state.medslime_page}", use_container_width=True):
+                _sign_out()
+                st.rerun()
 
 def slime_markup():
     return '<div class="slime"><div class="shine"></div><div class="mouth"></div></div>'
@@ -2720,6 +2736,7 @@ def _focus_record_round(elapsed_seconds, completed=False):
     try:
         client.table("focus_sessions").upsert({
             "user_key": _prototype_user_key(),
+            "user_id": _auth_user_id(),
             "session_token": token,
             "started_at": started_at,
             "ended_at": datetime.now(timezone.utc).isoformat(),
@@ -3431,63 +3448,151 @@ def slime_page():
 
 
 
-def _achievement_supabase_client():
-    """Best-effort client for the prototype; UI still works if the table is not ready."""
+
+def _auth_client():
+    """Per-Streamlit-session Supabase client. Never cache this globally: auth state is user-specific."""
+    client = st.session_state.get("_auth_client_obj")
+    if client is not None:
+        return client
     try:
-        url = None
-        key = None
-        for candidate in ("SUPABASE_URL", "supabase_url"):
-            try:
-                if candidate in st.secrets:
-                    url = st.secrets[candidate]
-                    break
-            except Exception:
-                pass
-        for candidate in ("SUPABASE_KEY", "SUPABASE_ANON_KEY", "supabase_key", "supabase_anon_key"):
-            try:
-                if candidate in st.secrets:
-                    key = st.secrets[candidate]
-                    break
-            except Exception:
-                pass
-        try:
-            if "supabase" in st.secrets:
-                section = st.secrets["supabase"]
-                url = url or section.get("url") or section.get("URL")
-                key = key or section.get("key") or section.get("anon_key") or section.get("KEY")
-        except Exception:
-            pass
-        if url and key:
-            return create_client(str(url), str(key))
+        url = str(st.secrets["SUPABASE_URL"]).strip().replace("\ufeff", "").replace("\u200b", "")
+        key = str(st.secrets["SUPABASE_KEY"]).strip().replace("\ufeff", "").replace("\u200b", "")
+        client = create_client(url, key)
+        st.session_state["_auth_client_obj"] = client
+        return client
+    except Exception:
+        return None
+
+
+def _auth_user_id():
+    value = str(st.session_state.get("auth_user_id") or "").strip()
+    return value or None
+
+
+def _auth_user():
+    user_id = _auth_user_id()
+    if not user_id:
+        return None
+    return {"id": user_id, "email": st.session_state.get("auth_email")}
+
+
+def _reset_user_scoped_state():
+    """Prevent one account's Streamlit state from leaking into the next login in the same browser session."""
+    user_keys = [
+        "coins", "tickets", "streak", "selected_slime", "collection", "gacha_pity", "gacha_free_date",
+        "gacha_pull_count", "focus_seconds_total", "focus_seconds_today", "focus_coins_today",
+        "achievement_claimed", "achievement_unlocked_at", "slime_accessories", "slime_accessory_equipped",
+        "slime_progress", "slime_nicknames", "game_state_fingerprint",
+    ]
+    for key in user_keys:
+        default = DEFAULT_STATE.get(key)
+        if isinstance(default, dict):
+            st.session_state[key] = default.copy()
+        elif isinstance(default, list):
+            st.session_state[key] = default.copy()
+        else:
+            st.session_state[key] = default
+    st.session_state.game_state_loaded = False
+    st.session_state.game_state_db_ready = False
+    st.session_state.game_state_error = None
+    st.session_state.achievement_user_key = None
+    st.session_state.medslime_page = "home"
+
+
+def _set_authenticated_user(user):
+    user_id = str(getattr(user, "id", "") or "").strip()
+    if not user_id:
+        raise ValueError("Supabase 沒有回傳使用者 ID。")
+    _reset_user_scoped_state()
+    st.session_state.auth_user_id = user_id
+    st.session_state.auth_email = str(getattr(user, "email", "") or "").strip()
+    st.session_state.achievement_user_key = user_id
+
+
+def _sign_out():
+    client = _auth_client()
+    try:
+        if client:
+            client.auth.sign_out()
     except Exception:
         pass
-    return None
+    _reset_user_scoped_state()
+    st.session_state.auth_user_id = None
+    st.session_state.auth_email = None
+    st.session_state.auth_mode = "login"
+    st.session_state.pop("_auth_client_obj", None)
+
+
+def auth_page():
+    st.markdown(
+        """
+        <style>
+        .auth-shell{max-width:480px;margin:5vh auto 0}.auth-brand{font-size:2rem;font-weight:950;color:#17372a!important;letter-spacing:-.04em}.auth-card{border:1px solid #dbe9e1;background:rgba(255,255,255,.96);border-radius:24px;padding:1.35rem 1.4rem;margin-top:1rem;box-shadow:0 14px 34px rgba(32,85,54,.08)}.auth-title{font-size:1.35rem;font-weight:950;color:#17372a!important}.auth-copy{color:#789083!important;margin:.25rem 0 .9rem}.auth-marker{display:none}[data-testid="stMainBlockContainer"]:has(.auth-marker) p,[data-testid="stMainBlockContainer"]:has(.auth-marker) label{color:#244c39!important}
+        </style>
+        <div class="auth-marker"></div><div class="auth-shell"><div class="auth-brand">MedSlime.</div></div>
+        """,
+        unsafe_allow_html=True,
+    )
+    mode = st.radio("帳號", ["登入", "註冊", "忘記密碼"], horizontal=True, label_visibility="collapsed", key="auth_mode_radio")
+    client = _auth_client()
+    if not client:
+        st.error("目前無法連線 Supabase Auth。")
+        return
+
+    with st.container(key="auth_form_card"):
+        if mode == "登入":
+            st.markdown('<div class="auth-title">登入</div><div class="auth-copy">使用 Email + Password。</div>', unsafe_allow_html=True)
+            email = st.text_input("Email", key="auth_login_email")
+            password = st.text_input("密碼", type="password", key="auth_login_password")
+            if st.button("登入", type="primary", use_container_width=True, key="auth_login_submit"):
+                try:
+                    response = client.auth.sign_in_with_password({"email": email.strip(), "password": password})
+                    if not response.user:
+                        raise ValueError("登入失敗")
+                    _set_authenticated_user(response.user)
+                    st.rerun()
+                except Exception as error:
+                    st.error("登入失敗，請確認 Email 與密碼。")
+                    st.caption(f"{type(error).__name__}: {error}")
+        elif mode == "註冊":
+            st.markdown('<div class="auth-title">建立帳號</div><div class="auth-copy">MVP 先只支援 Email + Password。</div>', unsafe_allow_html=True)
+            email = st.text_input("Email", key="auth_signup_email")
+            password = st.text_input("密碼", type="password", key="auth_signup_password")
+            password2 = st.text_input("再次輸入密碼", type="password", key="auth_signup_password2")
+            if st.button("註冊", type="primary", use_container_width=True, key="auth_signup_submit"):
+                if len(password) < 6:
+                    st.warning("密碼至少 6 個字元。")
+                elif password != password2:
+                    st.warning("兩次密碼不一致。")
+                else:
+                    try:
+                        response = client.auth.sign_up({"email": email.strip(), "password": password})
+                        if response.session and response.user:
+                            _set_authenticated_user(response.user)
+                            st.rerun()
+                        else:
+                            st.success("註冊成功。請先到信箱完成 Email 驗證，再回來登入。")
+                    except Exception as error:
+                        st.error("註冊失敗。")
+                        st.caption(f"{type(error).__name__}: {error}")
+        else:
+            st.markdown('<div class="auth-title">忘記密碼</div><div class="auth-copy">輸入註冊 Email，Supabase 會寄出重設密碼信。</div>', unsafe_allow_html=True)
+            email = st.text_input("Email", key="auth_reset_email")
+            if st.button("寄送重設密碼信", type="primary", use_container_width=True, key="auth_reset_submit"):
+                try:
+                    client.auth.reset_password_email(email.strip())
+                    st.success("如果這個 Email 已註冊，重設密碼信已寄出。")
+                except Exception as error:
+                    st.error("目前無法寄送重設密碼信。")
+                    st.caption(f"{type(error).__name__}: {error}")
+
+def _achievement_supabase_client():
+    return _auth_client() if _auth_user_id() else None
 
 
 def _prototype_user_key():
-    """Stable per-browser-link key for the MVP until real authentication exists."""
-    try:
-        query_value = st.query_params.get("player")
-        if isinstance(query_value, (list, tuple)):
-            query_value = query_value[0] if query_value else None
-        query_value = str(query_value or "").strip()
-    except Exception:
-        query_value = ""
-
-    existing = str(st.session_state.get("achievement_user_key") or "").strip()
-    key = query_value or existing
-    if not key:
-        seed = f"{time.time_ns()}-{random.random()}-{st.session_state.get('slime_name','Medi')}"
-        key = hashlib.sha256(seed.encode("utf-8")).hexdigest()[:24]
-
-    st.session_state.achievement_user_key = key
-    if not query_value:
-        try:
-            st.query_params["player"] = key
-        except Exception:
-            pass
-    return key
-
+    """Legacy compatibility name. Private data is now keyed by auth.users.id."""
+    return _auth_user_id()
 
 def _game_state_snapshot():
     collection = [name for name in st.session_state.get("collection", []) if name in SLIME_BY_NAME]
@@ -3559,12 +3664,12 @@ def _save_game_state_to_supabase(force=False):
     user_key = _prototype_user_key()
     now_iso = datetime.now(timezone.utc).isoformat()
     try:
-        player_row = {"user_key": user_key, **snapshot["player"], "updated_at": now_iso}
+        player_row = {"user_key": user_key, "user_id": _auth_user_id(), **snapshot["player"], "updated_at": now_iso}
         client.table("player_game_state").upsert(player_row, on_conflict="user_key").execute()
 
         slime_rows = []
         for row in snapshot["slimes"]:
-            slime_row = {"user_key": user_key, **row, "updated_at": now_iso}
+            slime_row = {"user_key": user_key, "user_id": _auth_user_id(), **row, "updated_at": now_iso}
             if row["owned"]:
                 # Preserve the first acquisition timestamp. We only set acquired_at on insert-like rows;
                 # acquired_order remains the reliable ordering field for the current MVP.
@@ -3674,13 +3779,7 @@ def _save_game_state_to_supabase_if_changed():
 
 
 def _achievement_user_key():
-    value = st.session_state.get("achievement_user_key")
-    if not value:
-        seed = f"{time.time_ns()}-{random.random()}-{st.session_state.get('slime_name','Medi')}"
-        value = hashlib.sha256(seed.encode("utf-8")).hexdigest()[:24]
-        st.session_state.achievement_user_key = value
-    return value
-
+    return _auth_user_id()
 
 def _achievement_progress(item):
     metric = item["metric"]
@@ -3757,6 +3856,7 @@ def _achievement_record_unlock(item):
         client.table("achievement_claims").upsert(
             {
                 "user_key": _achievement_user_key(),
+                "user_id": _auth_user_id(),
                 "achievement_id": aid,
                 "unlocked_at": unlocked_at,
                 "claimed_at": None,
@@ -3871,6 +3971,7 @@ def _task_mark_active_day():
         if not (existing.data or []):
             client.table("player_task_events").insert({
                 "user_key": user_key,
+                "user_id": _auth_user_id(),
                 "event_date": day_key,
                 "answered_count": 0,
                 "reviewed_count": 0,
@@ -3905,6 +4006,7 @@ def _task_record_event(answered=0, reviewed=0, focus_seconds=0):
         row = rows[0] if rows else {}
         payload = {
             "user_key": user_key,
+            "user_id": _auth_user_id(),
             "event_date": day_key,
             "answered_count": int(row.get("answered_count", 0) or 0) + answered,
             "reviewed_count": int(row.get("reviewed_count", 0) or 0) + reviewed,
@@ -3945,6 +4047,7 @@ def _task_record_quiz_once(kind, token, answered_count):
             return False
         client.table("player_task_quiz_events").insert({
             "user_key": user_key,
+            "user_id": _auth_user_id(),
             "quiz_token": quiz_token,
             "answered_count": answered_count,
         }).execute()
@@ -4047,6 +4150,7 @@ def _task_claim(task, period_type, period_key, progress_value, completed_overrid
     try:
         client.table("player_task_claims").insert({
             "user_key": user_key,
+            "user_id": _auth_user_id(),
             "period_type": period_type,
             "period_key": period_key,
             "task_id": task["id"],
@@ -4533,7 +4637,12 @@ def gacha_page():
         st.button("🐾 去史萊姆圖鑑", use_container_width=True, key="gacha_to_collection", on_click=leave_gacha_to_collection)
 
 
-# Load persistent player/slime state before rendering pages.
+# Authentication gate: private data is never loaded before Supabase Auth succeeds.
+if not _auth_user():
+    auth_page()
+    st.stop()
+
+# Load persistent player/slime state only for the authenticated auth.users.id.
 _load_game_state_from_supabase_once()
 _task_mark_active_day()
 render_quick_scroll_nav()
