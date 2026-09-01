@@ -669,11 +669,18 @@ st.markdown(
     .task-icon { width:44px; height:44px; border-radius:14px; display:flex; align-items:center; justify-content:center; background:#eefaf2; font-size:1.45rem; margin-bottom:.7rem; }
     .task-reward { margin-top:.7rem; font-weight:900; color:#2a9d5e; }
 
-    .choice-card { background:rgba(255,255,255,.96); border:1px solid #dceae2; border-radius:25px; padding:1.45rem 1.5rem; min-height:156px; box-shadow:0 12px 28px rgba(30,78,50,.055); }
-    .choice-icon-shell { width:50px; height:50px; border-radius:15px; display:flex; align-items:center; justify-content:center; background:linear-gradient(145deg,#e8f9ee,#f1fbf5); border:1px solid #d7eadf; margin-bottom:.9rem; }
+    .choice-card { background:rgba(255,255,255,.96); border:1px solid #dceae2; border-radius:25px; padding:1.45rem 1.5rem; height:196px; box-sizing:border-box; box-shadow:0 12px 28px rgba(30,78,50,.055); display:flex; flex-direction:column; }
+    .choice-icon-shell { width:50px; height:50px; min-height:50px; border-radius:15px; display:flex; align-items:center; justify-content:center; background:linear-gradient(145deg,#e8f9ee,#f1fbf5); border:1px solid #d7eadf; margin-bottom:.9rem; }
     .choice-icon { font-size:1.72rem; }
     .choice-title { font-size:1.17rem; font-weight:950; color:#173b2b; }
     .choice-copy { color:#70877a; line-height:1.55; margin-top:.42rem; }
+    [class*="st-key-study_choice_"] { margin-bottom:1.55rem; }
+    [class*="st-key-study_choice_"] > div { height:100%; }
+    [class*="st-key-study_choice_"] [data-testid="stButton"] { margin-top:.55rem; }
+    .study-page-transition-anchor { height:0; overflow:hidden; }
+    .block-container:has(.study-page-transition-anchor) { animation:studyPageIn .22s ease-out both; }
+    .block-container:has(.study-page-transition-anchor) [class*="st-key-study_choice_"] { animation:none !important; }
+    .block-container:has(.study-page-transition-anchor):has([class*="st-key-go_"] button:active) { opacity:.72; transform:translateY(2px); transition:opacity .10s ease,transform .10s ease; }
     .study-header { margin:.35rem 0 1.2rem; }
     .intro-panel { max-width:840px; margin:.3rem auto 1.15rem; background:rgba(255,255,255,.76); border:1px solid #dfebe4; border-radius:30px; padding:2rem 2rem 1.75rem; box-shadow:0 16px 38px rgba(30,82,51,.055); text-align:center; }
     .intro-art { position:relative; width:230px; height:150px; margin:0 auto .65rem; }
@@ -1099,9 +1106,10 @@ st.markdown(
     div.stButton > button[kind="secondary"] { background:rgba(255,255,255,.9); color:#244c39; border:1px solid #d8e8df; }
     div.stButton > button:disabled { background:#f2f6f3 !important; color:#9aac9f !important; border-color:#e2ebe5 !important; }
 
-    .home-copy-card,.home-slime-card,.home-task,.choice-card,.study-header,.intro-panel { animation:pageIn .20s ease-out both; }
+    .home-copy-card,.home-slime-card,.home-task,.intro-panel { animation:pageIn .20s ease-out both; }
     @keyframes drawerIn { from { transform:translateX(-18px); opacity:0; } to { transform:translateX(0); opacity:1; } }
     @keyframes pageIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+    @keyframes studyPageIn { from { opacity:0; transform:translateY(5px); } to { opacity:1; transform:translateY(0); } }
     @keyframes questionIn { from { opacity:0; transform:translateX(9px); } to { opacity:1; transform:translateX(0); } }
     @keyframes slimeBounce { 0%,100% { transform:translateY(0) scaleX(1); } 45% { transform:translateY(-8px) scaleX(.97); } 60% { transform:translateY(-5px) scaleX(1.03); } }
     @keyframes dots { 0%,70%,100% { opacity:.28; transform:translateY(0); } 35% { opacity:1; transform:translateY(-3px); } }
@@ -1124,7 +1132,7 @@ st.markdown(
         .focus-runner::after { right:17px; }
         .focus-runner-mouth { left:23px; top:28px; width:15px; }
         .home-copy-card,.home-slime-card { min-height:auto; }
-        .choice-card { min-height:145px; padding:1.2rem; }
+        .choice-card { height:178px; min-height:178px; padding:1.2rem; }
         .intro-panel { padding:1.45rem 1.1rem; }
         .quiz-card { padding:1.2rem 1.1rem; }
         .quiz-question { font-size:1.08rem; }
@@ -1304,28 +1312,29 @@ def home():
 def study_home():
     topbar()
     render_back_button("返回首頁", "home", "back_study_home")
+    st.markdown('<div class="study-page-transition-anchor"></div>', unsafe_allow_html=True)
     st.markdown('<div class="study-header"><div class="eyebrow">STUDY</div><div class="hero-title" style="font-size:2.05rem">你想怎麼學習呢？</div><div class="hero-copy">選擇適合你現在狀態的方式，MedSlime 陪你一起進步。</div></div>', unsafe_allow_html=True)
     rows = [
         [("📄", "我有教材", "上傳 PDF 教材，AI 會直接生成 10 題並開始測驗。", "study_material_intro"), ("🧪", "我要刷國考", "練習歷屆國考題目，快速檢測實力與弱點。", "national_exam")],
         [("📘", "我要複習錯題", "回顧答錯或不確定的題目，加強你的弱點。", "mistakes"), ("⏱️", "我要專心讀書", "用番茄鐘陪你專注，完成每一小段就累積學習時間。", "focus_timer")],
     ]
-    for row in rows:
+    for row_index, row in enumerate(rows):
         cols = st.columns(2, gap="large")
-        for col, (icon, title, copy, target) in zip(cols, row):
+        for col_index, (col, (icon, title, copy, target)) in enumerate(zip(cols, row)):
             with col:
-                st.markdown(f'<div class="choice-card"><div class="choice-icon-shell"><div class="choice-icon">{icon}</div></div><div class="choice-title">{title}</div><div class="choice-copy">{copy}</div></div>', unsafe_allow_html=True)
-                if target:
-                    st.button(
-                        "進入 →",
-                        key=f"go_{target}",
-                        use_container_width=True,
-                        type="primary",
-                        on_click=set_page_without_extra_rerun,
-                        args=(target,),
-                    )
-                else:
-                    st.button("即將開放", key=f"soon_{title}", use_container_width=True, disabled=True)
-        st.write("")
+                with st.container(key=f"study_choice_{row_index}_{col_index}"):
+                    st.markdown(f'<div class="choice-card"><div class="choice-icon-shell"><div class="choice-icon">{icon}</div></div><div class="choice-title">{title}</div><div class="choice-copy">{copy}</div></div>', unsafe_allow_html=True)
+                    if target:
+                        st.button(
+                            "進入 →",
+                            key=f"go_{target}",
+                            use_container_width=True,
+                            type="primary",
+                            on_click=set_page_without_extra_rerun,
+                            args=(target,),
+                        )
+                    else:
+                        st.button("即將開放", key=f"soon_{title}", use_container_width=True, disabled=True)
 
     # Warm the current-year exam subject list while the Study page is already open.
     # This avoids leaving the old cards on screen while Supabase is queried after navigation.
