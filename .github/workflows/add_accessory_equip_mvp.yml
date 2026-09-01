@@ -1,0 +1,33 @@
+name: Add accessory equip MVP
+on:
+  push:
+    paths:
+      - 'scripts/add_accessory_equip_mvp.py'
+      - '.github/workflows/add_accessory_equip_mvp.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply accessory equip patch
+        run: python scripts/add_accessory_equip_mvp.py
+      - name: Syntax check
+        run: python -m py_compile streamlit_app.py
+      - name: Anchor checks
+        run: |
+          grep -q 'slime_accessory_equipped' streamlit_app.py
+          grep -q 'accessory_equipped' streamlit_app.py
+          grep -q '裝備專屬飾品' streamlit_app.py
+          grep -q 'accessory_equipped boolean' supabase/game_state_mvp.sql
+      - name: Commit app and SQL
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add streamlit_app.py supabase/game_state_mvp.sql
+          git diff --cached --quiet && exit 0
+          git commit -m "Persist accessory equip state"
+          git push
