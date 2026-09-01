@@ -61,8 +61,8 @@ DEFAULT_STATE = {
     "tickets": 0,
     "streak": 3,
     "slime_name": "Medi",
-    "selected_slime": "青蘋果史萊姆",
-    "collection": ["青蘋果史萊姆"],
+    "selected_slime": "綠色史萊姆",
+    "collection": ["綠色史萊姆"],
     "unlocked_achievements": ["first_steps", "three_day_streak"],
     "last_gacha": None,
     "uploaded_learning_file": None,
@@ -118,8 +118,8 @@ DEFAULT_STATE = {
     "focus_round": 1,
     "focus_last_duration_minutes": 30,
     "slime_collection_filter": "全部",
-    "slime_progress": {"青蘋果史萊姆": {"level": 4, "exp": 72, "fragments": 0}},
-    "slime_nicknames": {"青蘋果史萊姆": "Medi"},
+    "slime_progress": {"綠色史萊姆": {"level": 4, "exp": 72, "fragments": 0}},
+    "slime_nicknames": {"綠色史萊姆": "Medi"},
     "slime_name_editing": False,
     "slime_dev_preview": False,
 }
@@ -138,17 +138,23 @@ ACHIEVEMENTS = [
 ]
 
 SLIME_CATALOG = [
-    {"name": "青蘋果史萊姆", "emoji": "🟢", "rarity": "N", "family": "水果系列", "mark": "🍃", "theme": "apple", "gradient": "linear-gradient(145deg,#a9efad,#47c977)", "tagline": "MedSlime 的品牌夥伴，清爽又充滿活力。", "weight": 15},
-    {"name": "葡萄史萊姆", "emoji": "🟣", "rarity": "N", "family": "水果系列", "mark": "●", "theme": "grape", "gradient": "linear-gradient(145deg,#d9b0f1,#8f59bd)", "tagline": "圓滾滾又有彈性，身上帶著葡萄般的光澤。", "weight": 15},
-    {"name": "草莓史萊姆", "emoji": "🍓", "rarity": "N", "family": "水果系列", "mark": "✦", "theme": "strawberry", "gradient": "linear-gradient(145deg,#ffb0b8,#ed6672)", "tagline": "活潑愛笑，身體散著像草莓籽的小亮點。", "weight": 15},
-    {"name": "檸檬史萊姆", "emoji": "🟡", "rarity": "N", "family": "水果系列", "mark": "🍃", "theme": "lemon", "gradient": "linear-gradient(145deg,#fff397,#ebcf42)", "tagline": "酸酸亮亮，總是一副精神很好的樣子。", "weight": 15},
-    {"name": "牛奶史萊姆", "emoji": "🥛", "rarity": "R", "family": "特殊食物系列", "mark": "◌", "theme": "milk", "gradient": "linear-gradient(145deg,#fffdf5,#e9e7df)", "tagline": "像奶凍一樣柔軟，帶著溫柔的霧面光澤。", "weight": 8.34},
-    {"name": "蜂蜜史萊姆", "emoji": "🍯", "rarity": "R", "family": "特殊食物系列", "mark": "⌁", "theme": "honey", "gradient": "linear-gradient(145deg,#ffe58b,#d99425)", "tagline": "琥珀色的身體慢慢流動，甜甜又黏呼呼。", "weight": 8.33},
-    {"name": "咖啡史萊姆", "emoji": "☕", "rarity": "R", "family": "特殊食物系列", "mark": "☕", "theme": "coffee", "gradient": "linear-gradient(145deg,#d6a06f,#795039)", "tagline": "帶著咖啡香氣的沉穩夥伴，頭頂有奶泡般的紋路。", "weight": 8.33},
-    {"name": "雲朵史萊姆", "emoji": "☁️", "rarity": "SR", "family": "自然系列", "mark": "☁", "theme": "cloud", "gradient": "linear-gradient(145deg,#ffffff,#bcdcf1)", "tagline": "輕飄飄又蓬鬆，像把一小朵雲抱在懷裡。", "weight": 5},
-    {"name": "海洋史萊姆", "emoji": "🌊", "rarity": "SR", "family": "自然系列", "mark": "〰", "theme": "ocean", "gradient": "linear-gradient(145deg,#7de4e5,#367fd0)", "tagline": "透明身體裡像藏著海浪，安靜地一波一波流動。", "weight": 5},
-    {"name": "晚霞史萊姆", "emoji": "🌅", "rarity": "SSR", "family": "夢幻系列", "mark": "✦", "theme": "sunset", "gradient": "linear-gradient(145deg,#ffd36a 0%,#ff8c8d 45%,#b66fe5 100%)", "tagline": "橘粉紫的天空在身體裡流動，邊緣帶著淡金光。", "weight": 2.5},
-    {"name": "星空史萊姆", "emoji": "🌌", "rarity": "SSR", "family": "夢幻系列", "mark": "✧", "theme": "starry", "gradient": "linear-gradient(145deg,#5050a5 0%,#242655 55%,#10172e 100%)", "tagline": "深色身體裡閃著星點，像裝著一小片夜空。", "weight": 2.5},
+{"name":"綠色史萊姆","emoji":"🟢","rarity":"N","theme":"green","tagline":"最經典的 MedSlime 夥伴。","weight":8,"accessory":"嫩芽髮夾"},
+{"name":"藍色史萊姆","emoji":"🔵","rarity":"N","theme":"blue","tagline":"安靜又可靠的讀書夥伴。","weight":8,"accessory":"水滴小帽"},
+{"name":"黃色史萊姆","emoji":"🟡","rarity":"N","theme":"yellow","tagline":"像一顆精神滿滿的小太陽。","weight":8,"accessory":"太陽眼鏡"},
+{"name":"粉色史萊姆","emoji":"🩷","rarity":"N","theme":"pink","tagline":"軟綿綿又親人的陪伴型史萊姆。","weight":8,"accessory":"愛心髮夾"},
+{"name":"拿鐵史萊姆","emoji":"☕","rarity":"R","theme":"latte","tagline":"早八時特別可靠。","weight":6.3333,"accessory":"拉花小帽"},
+{"name":"漢堡史萊姆","emoji":"🍔","rarity":"R","theme":"burger","tagline":"肚子餓時請不要盯太久。","weight":6.3333,"accessory":"薯條髮箍"},
+{"name":"壽司史萊姆","emoji":"🍣","rarity":"R","theme":"sushi","tagline":"頭頂總像多放了一片鮭魚。","weight":6.3333,"accessory":"醬油小瓶"},
+{"name":"珍珠奶茶史萊姆","emoji":"🧋","rarity":"R","theme":"boba","tagline":"移動時珍珠也會跟著晃。","weight":6.3333,"accessory":"粗吸管"},
+{"name":"飯糰史萊姆","emoji":"🍙","rarity":"R","theme":"onigiri","tagline":"樸素但很可靠的補充能量夥伴。","weight":6.3333,"accessory":"海苔披風"},
+{"name":"章魚燒史萊姆","emoji":"🐙","rarity":"R","theme":"takoyaki","tagline":"總是熱呼呼的。","weight":6.3335,"accessory":"柴魚片帽"},
+{"name":"失眠史萊姆","emoji":"🥱","rarity":"SR","theme":"insomnia","tagline":"熬夜讀書的最佳夥伴。","weight":4.5,"accessory":"失眠眼罩"},
+{"name":"融化史萊姆","emoji":"🫠","rarity":"SR","theme":"melted","tagline":"讀到腦袋停止運作時的樣子。","weight":4.5,"accessory":"冰敷袋"},
+{"name":"靈魂出竅史萊姆","emoji":"👻","rarity":"SR","theme":"outofbody","tagline":"身體還在書桌前，靈魂先下課了。","weight":4.5,"accessory":"幽靈光環"},
+{"name":"爆哭史萊姆","emoji":"😭","rarity":"SR","theme":"crying","tagline":"看到錯題數量時通常比你先哭。","weight":4.5,"accessory":"超大面紙"},
+{"name":"404史萊姆","emoji":"💾","rarity":"SR","theme":"error404","tagline":"Knowledge not found.","weight":4.5,"accessory":"404警告牌"},
+{"name":"厭世史萊姆","emoji":"😑","rarity":"SR","theme":"deadinside","tagline":"今天也沒有特別想努力。","weight":4.5,"accessory":"厭世咖啡杯"},
+{"name":"Chill史萊姆","emoji":"😎","rarity":"SSR","theme":"chill","tagline":"不用急，該讀的還是會讀完。","weight":3,"accessory":"Chill墨鏡"},
 ]
 
 SLIME_BY_NAME = {item["name"]: item for item in SLIME_CATALOG}
@@ -1883,7 +1889,7 @@ def slime_markup():
 
 
 def slime_data(name):
-    return SLIME_BY_NAME.get(name, SLIME_BY_NAME["青蘋果史萊姆"])
+    return SLIME_BY_NAME.get(name, SLIME_BY_NAME["綠色史萊姆"])
 
 
 def get_slime_progress(name):
@@ -3122,147 +3128,74 @@ def mistake_subject_page():
 def slime_page():
     topbar()
     render_back_button("返回首頁", "home", "back_slime")
+    names={x["name"] for x in SLIME_CATALOG}
+    st.session_state.collection=[x for x in st.session_state.collection if x in names]
+    if "綠色史萊姆" not in st.session_state.collection: st.session_state.collection.insert(0,"綠色史萊姆")
+    if st.session_state.selected_slime not in st.session_state.collection: st.session_state.selected_slime="綠色史萊姆"
+    st.session_state.setdefault("slime_detail_name",st.session_state.selected_slime)
+    st.session_state.setdefault("slime_sort","稀有度")
+    st.session_state.setdefault("slime_accessories",{})
+    for x in SLIME_CATALOG: st.session_state.slime_progress.setdefault(x["name"],{}).setdefault("fragments",0)
 
-    # Keep legacy sessions valid after removing old prototype species.
-    catalog_names = {item["name"] for item in SLIME_CATALOG}
-    if "青蘋果史萊姆" not in st.session_state.collection:
-        st.session_state.collection.append("青蘋果史萊姆")
-    if st.session_state.selected_slime not in catalog_names or st.session_state.selected_slime not in st.session_state.collection:
-        st.session_state.selected_slime = "青蘋果史萊姆"
+    st.markdown("## 史萊姆圖鑑")
+    st.caption("收集史萊姆、累積專屬碎片並解鎖外觀飾品。史萊姆只提供陪伴與展示，不提供能力 Buff。")
+    a,b=st.columns([2,1])
+    with a:
+        filt=st.radio("稀有度",["全部","N","R","SR","SSR"],horizontal=True,label_visibility="collapsed")
+    with b:
+        sort=st.selectbox("排序",["稀有度","最近取得","是否擁有","碎片數"],label_visibility="collapsed")
+    st.caption(f"🪙 {st.session_state.coins:,}　🎟️ {st.session_state.tickets:,}")
 
-    owned = {name for name in st.session_state.collection if name in catalog_names}
-    current = slime_data(st.session_state.selected_slime)
-    progress = get_slime_progress(current["name"])
-    nickname = get_slime_nickname(current["name"])
+    visible=[x for x in SLIME_CATALOG if filt=="全部" or x["rarity"]==filt]
+    rank={"SSR":0,"SR":1,"R":2,"N":3}
+    if sort=="稀有度": visible.sort(key=lambda x:(rank[x["rarity"]],x["name"]))
+    elif sort=="是否擁有": visible.sort(key=lambda x:(x["name"] not in st.session_state.collection,rank[x["rarity"]]))
+    elif sort=="碎片數": visible.sort(key=lambda x:-st.session_state.slime_progress[x["name"]]["fragments"])
+    elif sort=="最近取得": visible.sort(key=lambda x:(x["name"] not in st.session_state.collection,-st.session_state.collection.index(x["name"]) if x["name"] in st.session_state.collection else 0))
 
-    st.markdown(
-        '<div class="slime-page-header"><div class="eyebrow">MY SLIMES</div>'
-        '<div class="hero-title" style="font-size:2.05rem">我的史萊姆</div>'
-        '<div class="hero-copy">收藏、培養並選擇今天陪你學習的史萊姆。每一隻都有自己的 Lv. 與 EXP。</div></div>',
-        unsafe_allow_html=True,
-    )
+    left,right=st.columns([2.1,1],gap="large")
+    with left:
+        for start in range(0,len(visible),5):
+            cols=st.columns(5)
+            for i,col in enumerate(cols):
+                if start+i>=len(visible): continue
+                x=visible[start+i]; owned=x["name"] in st.session_state.collection
+                title="???" if x["rarity"]=="SSR" and not owned else x["name"]
+                frag=st.session_state.slime_progress[x["name"]]["fragments"]
+                with col:
+                    st.markdown(f"### {'🔒' if not owned else x['emoji']}\n**{title}** · {x['rarity']}")
+                    st.caption("已擁有" if owned else "尚未取得")
+                    if owned: st.progress(min(1.0,frag/30),text=f"碎片 {frag} / 30")
+                    if st.button("查看詳情",key=f"slime_v2_{x['theme']}",use_container_width=True):
+                        st.session_state.slime_detail_name=x["name"]; st.rerun()
+    with right:
+        x=SLIME_BY_NAME.get(st.session_state.slime_detail_name,SLIME_CATALOG[0]); owned=x["name"] in st.session_state.collection
+        title="???" if x["rarity"]=="SSR" and not owned else x["name"]
+        st.markdown(f"# {x['emoji'] if owned else '🔒'}")
+        st.markdown(f"### {title}　`{x['rarity']}`")
+        st.write(x["tagline"] if owned or x["rarity"]!="SSR" else "取得後才會揭曉真正身分。")
+        if owned:
+            if x["name"]==st.session_state.selected_slime: st.button("✓ 目前陪伴中",disabled=True,use_container_width=True)
+            elif st.button("設為陪伴史萊姆",type="primary",use_container_width=True): st.session_state.selected_slime=x["name"]; st.rerun()
+            frag=st.session_state.slime_progress[x["name"]]["fragments"]
+            st.markdown("#### 專屬碎片"); st.progress(min(1.0,frag/30),text=f"{frag} / 30")
+            need=max(0,(30-frag+9)//10)
+            st.caption("已可解鎖專屬飾品" if frag>=30 else f"再取得 {need} 次重複角色即可解鎖專屬飾品")
+            acc=st.session_state.slime_accessories.setdefault(x["name"],False)
+            st.markdown(f"#### 專屬飾品\n✨ **{x['accessory']}**")
+            if not acc:
+                if st.button("解鎖專屬飾品",disabled=frag<30,use_container_width=True):
+                    st.session_state.slime_progress[x["name"]]["fragments"]-=30; st.session_state.slime_accessories[x["name"]]=True; st.rerun()
+            else: st.success("已解鎖")
+        else: st.info("取得這隻史萊姆後，即可累積專屬碎片、設為陪伴並解鎖專屬飾品。")
 
-    action_left, action_right = st.columns(2)
-    with action_left:
-        if st.button("🎰 前往抽卡", use_container_width=True, key="slime_to_gacha"):
-            goto("gacha")
-    with action_right:
-        if st.button("🏆 查看成就", use_container_width=True, key="slime_to_achievements"):
-            goto("achievements")
-
-    rarity_class = f"rarity-{current['rarity']}"
-    with st.container(key="companion_panel_live"):
-        art_col, info_col = st.columns([1, 3], gap="large", vertical_alignment="center")
-        with art_col:
-            st.markdown(
-                f'<div class="companion-art">{slime_avatar_markup(current, size="hero", selected=True)}</div>',
-                unsafe_allow_html=True,
-            )
-        with info_col:
-            st.markdown(
-                f'<div class="companion-topline"><span class="rarity-chip {rarity_class}">{current["rarity"]}</span>'
-                f'<span class="owned-chip">✓ 陪伴中</span></div>',
-                unsafe_allow_html=True,
-            )
-            # The nickname itself is the edit control, exactly where the name is displayed.
-            if st.button(f"{nickname} ✏️", key=f"slime_name_button_{current['theme']}"):
-                st.session_state.slime_name_editing = not st.session_state.slime_name_editing
-                st.rerun()
-            if st.session_state.slime_name_editing:
-                with st.container(key=f"slime_nickname_editor_{current['theme']}"):
-                    new_nickname = st.text_input("史萊姆暱稱", value=nickname, max_chars=16, key=f"nickname_{current['name']}")
-                    save_col, cancel_col = st.columns(2)
-                    with save_col:
-                        if st.button("儲存名字", type="primary", use_container_width=True, key=f"save_nickname_{current['theme']}"):
-                            st.session_state.slime_nicknames[current["name"]] = new_nickname.strip() or current["name"].replace("史萊姆", "")
-                            st.session_state.slime_name_editing = False
-                            st.rerun()
-                    with cancel_col:
-                        if st.button("取消", use_container_width=True, key=f"cancel_nickname_{current['theme']}"):
-                            st.session_state.slime_name_editing = False
-                            st.rerun()
-            st.markdown(
-                f'<div class="companion-species">{current["name"]} · {current["tagline"]}</div>'
-                f'<div class="companion-level-row"><span>Lv.{progress["level"]}</span><span>{progress["exp"]} / 100 EXP</span></div>'
-                f'<div class="companion-xp"><span style="width:{min(100, int(progress["exp"]))}%"></span></div>'
-                f'<div class="companion-meta"><span>🧩 專屬碎片 {progress.get("fragments", 0)}</span><span>🎨 三階段成長：規劃中</span><span>🎩 裝扮：下一階段</span></div>'
-                '<div class="art-placeholder-note">目前角色為介面占位造型；正式美術會在角色設計定稿後替換。</div>',
-                unsafe_allow_html=True,
-            )
-
-    st.markdown(
-        f'<div class="catalog-summary"><div><div class="section-title" style="margin-bottom:.15rem">史萊姆圖鑑</div>'
-        f'<div class="catalog-count">已收集 {len(owned)} / {len(SLIME_CATALOG)} 隻</div></div></div>',
-        unsafe_allow_html=True,
-    )
-
-    dev_preview = st.toggle(
-        "🛠️ 開發者預覽",
-        value=bool(st.session_state.slime_dev_preview),
-        key="slime_dev_preview_toggle",
-        help="只解除圖鑑顯示限制，不會把未獲得史萊姆加入收藏。",
-    )
-    st.session_state.slime_dev_preview = bool(dev_preview)
-    if dev_preview:
-        st.caption("開發者預覽中：所有普通卡池史萊姆會顯示完整造型與名稱，但持有狀態不變。")
-
-    filters = ["全部", "N", "R", "SR", "SSR", "限定"]
-    chosen_filter = st.radio(
-        "圖鑑篩選",
-        filters,
-        index=filters.index(st.session_state.slime_collection_filter) if st.session_state.slime_collection_filter in filters else 0,
-        horizontal=True,
-        label_visibility="collapsed",
-        key="slime_catalog_filter_widget",
-    )
-    st.session_state.slime_collection_filter = chosen_filter
-
-    if chosen_filter == "限定":
-        st.markdown(
-            '<div class="limited-empty"><div class="limited-lock">🏆🔒</div>'
-            '<div class="card-title" style="font-size:1.15rem">限定史萊姆</div>'
-            '<div style="margin-top:.45rem">限定史萊姆不會出現在一般卡池，會和特殊成就直接連動。</div>'
-            '<div class="muted" style="margin-top:.5rem">例如：完成整份國考並達成指定分數後解鎖「學霸史萊姆」。角色與條件會在成就系統階段正式加入。</div></div>',
-            unsafe_allow_html=True,
-        )
-        return
-
-    visible_items = SLIME_CATALOG if chosen_filter == "全部" else [item for item in SLIME_CATALOG if item["rarity"] == chosen_filter]
-    for row_start in range(0, len(visible_items), 3):
-        row = visible_items[row_start:row_start + 3]
-        cols = st.columns(3, gap="medium")
-        for offset, (col, item) in enumerate(zip(cols, row)):
-            index = row_start + offset
-            is_owned = item["name"] in owned
-            is_selected = item["name"] == st.session_state.selected_slime
-            preview_reveal = bool(st.session_state.slime_dev_preview) and not is_owned
-            mystery = (item["rarity"] in ("SR", "SSR")) and not is_owned and not preview_reveal
-            shown_name = "???" if mystery else item["name"]
-            tagline = "抽到後才會揭曉它的真面目。" if mystery else item["tagline"]
-            card_progress = get_slime_progress(item["name"]) if is_owned else None
-            with col:
-                with st.container(key=f"slime_catalog_card_{chosen_filter}_{index}"):
-                    if is_selected:
-                        st.markdown('<div class="catalog-card-selected"></div>', unsafe_allow_html=True)
-                    st.markdown(
-                        f'<div class="catalog-art-shell">{slime_avatar_markup(item, size="card", locked=(not is_owned and not preview_reveal), mystery=mystery, selected=is_selected)}</div>'
-                        f'<div class="catalog-card-head"><div class="catalog-card-name">{shown_name}</div>'
-                        f'<span class="rarity-chip rarity-{item["rarity"]}">{item["rarity"]}</span></div>'
-                        f'<div class="catalog-card-tagline">{tagline}</div>'
-                        f'<div class="catalog-card-meta"><span>{("Lv." + str(card_progress["level"]) + " · 🧩 " + str(card_progress.get("fragments", 0))) if is_owned else ("🛠️ 開發預覽" if preview_reveal else "🔒 尚未獲得")}</span></div>',
-                        unsafe_allow_html=True,
-                    )
-                    if is_selected:
-                        st.button("✓ 陪伴中", disabled=True, use_container_width=True, key=f"slime_selected_{index}_{chosen_filter}")
-                    elif is_owned:
-                        if st.button("設為陪伴", type="primary", use_container_width=True, key=f"slime_select_{item['theme']}_{chosen_filter}"):
-                            st.session_state.selected_slime = item["name"]
-                            get_slime_progress(item["name"])
-                            get_slime_nickname(item["name"])
-                            st.rerun()
-                    else:
-                        locked_label = "🛠️ 預覽中" if preview_reveal else "🔒 尚未獲得"
-                        st.button(locked_label, disabled=True, use_container_width=True, key=f"slime_locked_{item['theme']}_{chosen_filter}")
+    owned=len([x for x in SLIME_CATALOG if x["name"] in st.session_state.collection])
+    st.divider(); st.markdown("### 收藏進度"); st.progress(owned/17,text=f"{owned} / 17")
+    cols=st.columns(4)
+    for c,r in zip(cols,["N","R","SR","SSR"]):
+        got=sum(1 for x in SLIME_CATALOG if x["rarity"]==r and x["name"] in st.session_state.collection); total=sum(1 for x in SLIME_CATALOG if x["rarity"]==r)
+        c.metric(r,f"{got} / {total}")
+    st.caption(f"專屬飾品：{sum(1 for v in st.session_state.slime_accessories.values() if v)} / 17")
 
 
 def achievements_page():
