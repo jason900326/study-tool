@@ -3286,6 +3286,72 @@ def achievements_page():
             )
 
 
+def render_quick_scroll_nav():
+    st.markdown(
+        """
+        <div id="medslime-top"></div>
+        <style>
+        html { scroll-behavior:smooth; }
+        .medslime-quick-nav {
+            position:fixed;
+            left:14px;
+            bottom:calc(env(safe-area-inset-bottom, 0px) + 22px);
+            z-index:999999;
+            display:flex;
+            flex-direction:column;
+            gap:8px;
+        }
+        .medslime-quick-nav a {
+            width:42px;
+            height:42px;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            border-radius:999px;
+            border:1px solid rgba(79,126,102,.22);
+            background:rgba(255,255,255,.92);
+            color:#315b47 !important;
+            text-decoration:none !important;
+            font-size:1.15rem;
+            font-weight:900;
+            line-height:1;
+            box-shadow:0 5px 16px rgba(39,76,57,.14);
+            backdrop-filter:blur(8px);
+            -webkit-backdrop-filter:blur(8px);
+            -webkit-tap-highlight-color:transparent;
+        }
+        .medslime-quick-nav a:hover {
+            background:#f3faf6;
+            color:#244c39 !important;
+            transform:translateY(-1px);
+        }
+        @media (max-width:700px) {
+            .medslime-quick-nav {
+                left:10px;
+                bottom:calc(env(safe-area-inset-bottom, 0px) + 14px);
+                gap:7px;
+            }
+            .medslime-quick-nav a {
+                width:40px;
+                height:40px;
+                font-size:1.08rem;
+                background:rgba(255,255,255,.9);
+            }
+        }
+        </style>
+        <div class="medslime-quick-nav" aria-label="快速頁面導覽">
+            <a href="#medslime-top" aria-label="回到頁面頂部" title="回到頂部">↑</a>
+            <a href="#medslime-bottom" aria-label="前往頁面底部" title="前往底部">↓</a>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_quick_scroll_bottom():
+    st.markdown('<div id="medslime-bottom" style="height:1px"></div>', unsafe_allow_html=True)
+
+
 def gacha_page():
     topbar()
     render_back_button("返回我的史萊姆", "slime", "back_gacha")
@@ -3313,6 +3379,8 @@ def gacha_page():
         msg = (f"重複獲得 · +{result.get('fragments', 0)} 專屬碎片 · +{result.get('refund', 0)} 🪙" if result["duplicate"] else "NEW！已加入收藏")
         st.markdown(f'<div class="gacha-result"><div class="muted">{msg}</div><div style="font-size:5rem">{result["emoji"]}</div><div class="rarity-{result["rarity"]}">{result["rarity"]}</div><div class="card-title">{result["name"]}</div></div>', unsafe_allow_html=True)
 
+
+render_quick_scroll_nav()
 
 page = st.session_state.medslime_page
 if page == "home":
@@ -3352,3 +3420,5 @@ elif page == "achievements":
 else:
     st.session_state.medslime_page = "home"
     st.rerun()
+
+render_quick_scroll_bottom()
