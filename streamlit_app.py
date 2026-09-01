@@ -3126,7 +3126,7 @@ def mistake_subject_page():
 # =========================================================
 
 def slime_page():
-    st.markdown('\n<style>\n.slime-v2-head{display:flex;justify-content:space-between;align-items:flex-end;gap:1rem;margin:.25rem 0 1rem}.slime-v2-title{font-size:2rem;font-weight:950;color:#17372a;letter-spacing:-.04em}.slime-v2-sub{color:#789083;font-size:.9rem;margin-top:.25rem}.slime-v2-res{white-space:nowrap;font-weight:850;color:#315b45}.slime-v2-page-marker{display:none}.slime-v2-card{border:1px solid #dbe9e1;background:rgba(255,255,255,.9);border-radius:20px;padding:.72rem;text-align:center;min-height:205px;box-shadow:0 8px 22px rgba(32,85,54,.05);overflow:hidden}.slime-v2-card.locked{background:#f5f8f6}.slime-v2-card .official-slime-art-card{width:min(100%,128px);max-width:128px;aspect-ratio:1.23/1;height:auto;margin:0 auto}.slime-v2-card .catalog-slime-card{width:min(100%,128px);max-width:128px;aspect-ratio:1.23/1;height:auto;margin:0 auto}.slime-v2-card-name{font-weight:900;color:#1c4130;font-size:.88rem;min-height:2.3rem;margin-top:.25rem}.slime-v2-meta{font-size:.72rem;color:#789083;margin-top:.18rem}.slime-v2-card-companion{display:inline-flex;align-items:center;justify-content:center;margin-top:.35rem;padding:.24rem .55rem;border-radius:999px;background:#e9f8ef;border:1px solid #cfe9da;color:#28754b;font-size:.7rem;font-weight:900}.slime-v2-card-frag{margin-top:.35rem;color:#557768;font-size:.7rem;font-weight:800;line-height:1.35}.slime-v2-detail{border:1px solid #dbe9e1;background:rgba(255,255,255,.94);border-radius:24px;padding:1.25rem;box-shadow:0 12px 28px rgba(32,85,54,.06);position:sticky;top:1rem}.slime-v2-detail-name{font-size:1.35rem;font-weight:950;color:#17372a;text-align:center;margin:.4rem 0}.slime-v2-rarity{text-align:center;color:#57a976;font-weight:900;font-size:.78rem}.slime-v2-companion-badge{display:inline-flex;align-items:center;gap:.3rem;margin:.45rem auto 0;padding:.34rem .72rem;border-radius:999px;background:#e9f8ef;border:1px solid #cfe9da;color:#28754b;font-size:.78rem;font-weight:900}.slime-v2-summary{margin-top:1.5rem;border:1px solid #dbe9e1;background:rgba(255,255,255,.94);border-radius:24px;padding:1.2rem 1.25rem;box-shadow:0 10px 28px rgba(32,85,54,.06)}.slime-v2-summary-title{font-size:1.25rem;font-weight:950;color:#17372a;margin-bottom:.2rem}.slime-v2-summary-main{font-size:1rem;font-weight:850;color:#315b45;margin-bottom:.55rem}.slime-v2-summary-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.65rem;margin-top:1rem}.slime-v2-summary-item{border:1px solid #e0ece5;background:#f8fbf9;border-radius:16px;padding:.8rem .7rem}.slime-v2-summary-label{font-size:.72rem;color:#789083;font-weight:850}.slime-v2-summary-value{font-size:1.1rem;color:#17372a;font-weight:950;margin-top:.16rem}.slime-v2-summary-foot{margin-top:.85rem;color:#789083;font-size:.82rem;font-weight:800}[data-testid="stMainBlockContainer"]:has(.slime-v2-page-marker) h1,[data-testid="stMainBlockContainer"]:has(.slime-v2-page-marker) h2,[data-testid="stMainBlockContainer"]:has(.slime-v2-page-marker) h3,[data-testid="stMainBlockContainer"]:has(.slime-v2-page-marker) h4,[data-testid="stMainBlockContainer"]:has(.slime-v2-page-marker) p,[data-testid="stMainBlockContainer"]:has(.slime-v2-page-marker) label,[data-testid="stMainBlockContainer"]:has(.slime-v2-page-marker) [data-testid="stCaptionContainer"]{color:#244c39!important}[data-testid="stMainBlockContainer"]:has(.slime-v2-page-marker) [data-testid="stCaptionContainer"] p{color:#789083!important}[data-testid="stMainBlockContainer"]:has(.slime-v2-page-marker) [data-testid="stMetricLabel"] p{color:#789083!important}[data-testid="stMainBlockContainer"]:has(.slime-v2-page-marker) [data-testid="stMetricValue"]{color:#17372a!important}@media(max-width:767px){.slime-v2-head{align-items:flex-start;flex-direction:column}.slime-v2-title{font-size:1.65rem}.slime-v2-detail{position:static}.slime-v2-card{min-height:180px;padding:.55rem}.slime-v2-summary{padding:1rem}.slime-v2-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:.55rem}.slime-v2-summary-item{padding:.72rem .68rem}[data-testid="stHorizontalBlock"]:has([class*="st-key-slime_v2_"]) {gap:.55rem!important}}\n</style>\n', unsafe_allow_html=True)
+    st.markdown('\n<style>\n.slime-v2-head{display:flex;justify-content:space-between;align-items:flex-end;gap:1rem;margin:.25rem 0 1rem}.slime-v2-title{font-size:2rem;font-weight:950;color:#17372a;letter-spacing:-.04em}.slime-v2-sub{color:#789083;font-size:.9rem;margin-top:.25rem}.slime-v2-res{white-space:nowrap;font-weight:850;color:#315b45}.slime-v2-page-marker{display:none}.slime-v2-card{border:1px solid #dbe9e1;background:rgba(255,255,255,.9);border-radius:20px;padding:.72rem;text-align:center;min-height:205px;box-shadow:0 8px 22px rgba(32,85,54,.05);overflow:hidden}.slime-v2-card.locked{background:#f5f8f6}.slime-v2-card .official-slime-art-card{width:min(100%,128px);max-width:128px;aspect-ratio:1.23/1;height:auto;margin:0 auto}.slime-v2-card .catalog-slime-card{width:min(100%,128px);max-width:128px;aspect-ratio:1.23/1;height:auto;margin:0 auto}.slime-v2-card-name{font-weight:900;color:#1c4130;font-size:.88rem;min-height:2.3rem;margin-top:.25rem}.slime-v2-meta{font-size:.72rem;color:#789083;margin-top:.18rem}.slime-v2-card-companion{display:inline-flex;align-items:center;justify-content:center;margin-top:.35rem;padding:.24rem .55rem;border-radius:999px;background:#e9f8ef;border:1px solid #cfe9da;color:#28754b;font-size:.7rem;font-weight:900}.slime-v2-card-frag{margin-top:.35rem;color:#557768;font-size:.7rem;font-weight:800;line-height:1.35}.slime-v2-inline-detail{margin:.55rem 0 .2rem;border:1px solid #d8e9df;background:rgba(255,255,255,.98);border-radius:16px;padding:.8rem .75rem;text-align:left;box-shadow:0 10px 24px rgba(32,85,54,.09);animation:slimeDetailPop .22s ease-out both;transform-origin:top center;overflow:hidden}.slime-v2-inline-title{font-size:.88rem;font-weight:950;color:#17372a;margin-bottom:.2rem}.slime-v2-inline-copy{font-size:.72rem;line-height:1.45;color:#6f887b;margin-bottom:.55rem}.slime-v2-inline-row{display:flex;justify-content:space-between;gap:.5rem;align-items:center;font-size:.72rem;color:#557768;margin:.28rem 0}.slime-v2-inline-row strong{color:#244c39}.slime-v2-inline-track{height:6px;border-radius:999px;background:#e6eee9;overflow:hidden;margin:.4rem 0 .5rem}.slime-v2-inline-fill{height:100%;border-radius:999px;background:#55b97b}.slime-v2-inline-accessory{font-size:.72rem;color:#315b45;font-weight:850;margin-top:.45rem}@keyframes slimeDetailPop{from{opacity:0;transform:translateY(-8px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}.slime-v2-detail{border:1px solid #dbe9e1;background:rgba(255,255,255,.94);border-radius:24px;padding:1.25rem;box-shadow:0 12px 28px rgba(32,85,54,.06);position:sticky;top:1rem}.slime-v2-detail-name{font-size:1.35rem;font-weight:950;color:#17372a;text-align:center;margin:.4rem 0}.slime-v2-rarity{text-align:center;color:#57a976;font-weight:900;font-size:.78rem}.slime-v2-companion-badge{display:inline-flex;align-items:center;gap:.3rem;margin:.45rem auto 0;padding:.34rem .72rem;border-radius:999px;background:#e9f8ef;border:1px solid #cfe9da;color:#28754b;font-size:.78rem;font-weight:900}.slime-v2-summary{margin-top:1.5rem;border:1px solid #dbe9e1;background:rgba(255,255,255,.94);border-radius:24px;padding:1.2rem 1.25rem;box-shadow:0 10px 28px rgba(32,85,54,.06)}.slime-v2-summary-title{font-size:1.25rem;font-weight:950;color:#17372a;margin-bottom:.2rem}.slime-v2-summary-main{font-size:1rem;font-weight:850;color:#315b45;margin-bottom:.55rem}.slime-v2-summary-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.65rem;margin-top:1rem}.slime-v2-summary-item{border:1px solid #e0ece5;background:#f8fbf9;border-radius:16px;padding:.8rem .7rem}.slime-v2-summary-label{font-size:.72rem;color:#789083;font-weight:850}.slime-v2-summary-value{font-size:1.1rem;color:#17372a;font-weight:950;margin-top:.16rem}.slime-v2-summary-foot{margin-top:.85rem;color:#789083;font-size:.82rem;font-weight:800}[data-testid="stMainBlockContainer"]:has(.slime-v2-page-marker) h1,[data-testid="stMainBlockContainer"]:has(.slime-v2-page-marker) h2,[data-testid="stMainBlockContainer"]:has(.slime-v2-page-marker) h3,[data-testid="stMainBlockContainer"]:has(.slime-v2-page-marker) h4,[data-testid="stMainBlockContainer"]:has(.slime-v2-page-marker) p,[data-testid="stMainBlockContainer"]:has(.slime-v2-page-marker) label,[data-testid="stMainBlockContainer"]:has(.slime-v2-page-marker) [data-testid="stCaptionContainer"]{color:#244c39!important}[data-testid="stMainBlockContainer"]:has(.slime-v2-page-marker) [data-testid="stCaptionContainer"] p{color:#789083!important}[data-testid="stMainBlockContainer"]:has(.slime-v2-page-marker) [data-testid="stMetricLabel"] p{color:#789083!important}[data-testid="stMainBlockContainer"]:has(.slime-v2-page-marker) [data-testid="stMetricValue"]{color:#17372a!important}@media(max-width:767px){.slime-v2-head{align-items:flex-start;flex-direction:column}.slime-v2-title{font-size:1.65rem}.slime-v2-detail{position:static}.slime-v2-card{min-height:180px;padding:.55rem}.slime-v2-summary{padding:1rem}.slime-v2-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:.55rem}.slime-v2-summary-item{padding:.72rem .68rem}[data-testid="stHorizontalBlock"]:has([class*="st-key-slime_v2_"]) {gap:.55rem!important}}\n</style>\n', unsafe_allow_html=True)
     topbar()
     st.markdown('<div class="slime-v2-page-marker"></div>', unsafe_allow_html=True)
     render_back_button("返回首頁", "home", "back_slime")
@@ -3172,44 +3172,44 @@ def slime_page():
                 st.markdown(f'<div class="slime-v2-card{"" if owned else " locked"}">{avatar}<div class="slime-v2-card-name">{html.escape(title)}</div><div class="slime-v2-meta">{x["rarity"]} · {"已擁有" if owned else "尚未取得"}</div>{companion_line}</div>', unsafe_allow_html=True)
                 if owned and not is_companion:
                     st.progress(min(1.0,frag/30),text=f"碎片 {frag} / 30")
-                if st.button("查看詳情",key=f"slime_v2_{x['theme']}",use_container_width=True):
-                    st.session_state.slime_detail_name=x["name"]
+                detail_open = st.session_state.get("slime_detail_name") == x["name"]
+                if st.button("收起詳情" if detail_open else "查看詳情",key=f"slime_v2_{x['theme']}",use_container_width=True):
+                    st.session_state.slime_detail_name = None if detail_open else x["name"]
                     st.rerun()
-
-    detail_name = st.session_state.get("slime_detail_name")
-    if detail_name in SLIME_BY_NAME:
-        x=SLIME_BY_NAME[detail_name]
-        owned=x["name"] in st.session_state.collection
-        title="???" if x["rarity"]=="SSR" and not owned else x["name"]
-        detail_avatar=slime_avatar_markup(x,size="home",locked=not owned,mystery=(x["rarity"]=="SSR" and not owned))
-        companion_badge='<div style="text-align:center"><span class="slime-v2-companion-badge">✓ 陪伴中</span></div>' if owned and x["name"]==st.session_state.selected_slime else ''
-        st.markdown(f'<div class="slime-v2-detail" style="position:static;margin-top:1rem">{detail_avatar}<div class="slime-v2-detail-name">{html.escape(title)}</div><div class="slime-v2-rarity">{x["rarity"]}</div>{companion_badge}</div>',unsafe_allow_html=True)
-        st.write(x["tagline"] if owned or x["rarity"]!="SSR" else "取得後才會揭曉真正身分。")
-        if owned:
-            if x["name"]!=st.session_state.selected_slime and st.button("設為陪伴史萊姆",type="primary",use_container_width=True,key=f"set_companion_{x['theme']}"):
-                st.session_state.selected_slime=x["name"]
-                st.rerun()
-            frag=st.session_state.slime_progress[x["name"]]["fragments"]
-            st.markdown("#### 專屬碎片")
-            st.progress(min(1.0,frag/30),text=f"{frag} / 30")
-            remain=max(0,30-frag)
-            acc=st.session_state.slime_accessories.setdefault(x["name"],False)
-            if acc:
-                st.caption("專屬飾品已解鎖")
-            elif frag>=30:
-                st.caption("已可解鎖專屬飾品")
-            else:
-                st.caption(f"專屬飾品還差 {remain} 碎片")
-            st.markdown(f"#### 專屬飾品\n✨ **{x['accessory']}**")
-            if not acc:
-                if st.button("解鎖專屬飾品",disabled=frag<30,use_container_width=True,key=f"unlock_accessory_{x['theme']}"):
-                    st.session_state.slime_progress[x["name"]]["fragments"]-=30
-                    st.session_state.slime_accessories[x["name"]]=True
-                    st.rerun()
-            else:
-                st.success("已解鎖")
-        else:
-            st.info("取得這隻史萊姆後，即可累積專屬碎片、設為陪伴並解鎖專屬飾品。")
+                if st.session_state.get("slime_detail_name") == x["name"]:
+                    if owned:
+                        acc=st.session_state.slime_accessories.setdefault(x["name"],False)
+                        remain=max(0,30-frag)
+                        pct=max(0,min(100,round(frag/30*100)))
+                        if acc:
+                            status='專屬飾品已解鎖'
+                        elif frag>=30:
+                            status='已可解鎖專屬飾品'
+                        else:
+                            status=f'專屬飾品還差 {remain} 碎片'
+                        st.markdown(
+                            f'<div class="slime-v2-inline-detail"><div class="slime-v2-inline-title">目前狀態</div>'
+                            f'<div class="slime-v2-inline-copy">{html.escape(x["tagline"])}</div>'
+                            f'<div class="slime-v2-inline-row"><span>專屬碎片</span><strong>{frag} / 30</strong></div>'
+                            f'<div class="slime-v2-inline-track"><div class="slime-v2-inline-fill" style="width:{pct}%"></div></div>'
+                            f'<div class="slime-v2-inline-row"><span>解鎖進度</span><strong>{html.escape(status)}</strong></div>'
+                            f'<div class="slime-v2-inline-accessory">✨ {html.escape(x["accessory"])}</div></div>',
+                            unsafe_allow_html=True,
+                        )
+                        if x["name"]!=st.session_state.selected_slime:
+                            if st.button("設為陪伴",type="primary",use_container_width=True,key=f"set_companion_{x['theme']}"):
+                                st.session_state.selected_slime=x["name"]
+                                st.rerun()
+                        if not acc and st.button("解鎖專屬飾品",disabled=frag<30,use_container_width=True,key=f"unlock_accessory_{x['theme']}"):
+                            st.session_state.slime_progress[x["name"]]["fragments"]-=30
+                            st.session_state.slime_accessories[x["name"]]=True
+                            st.rerun()
+                    else:
+                        locked_copy = "取得後才會揭曉真正身分。" if x["rarity"]=="SSR" else "取得這隻史萊姆後，即可累積專屬碎片、設為陪伴並解鎖專屬飾品。"
+                        st.markdown(
+                            f'<div class="slime-v2-inline-detail"><div class="slime-v2-inline-title">尚未取得</div><div class="slime-v2-inline-copy">{html.escape(locked_copy)}</div></div>',
+                            unsafe_allow_html=True,
+                        )
 
 
 
