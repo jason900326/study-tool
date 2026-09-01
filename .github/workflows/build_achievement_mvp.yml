@@ -1,0 +1,27 @@
+name: Build achievement MVP
+on:
+  push:
+    paths:
+      - 'scripts/build_achievement_mvp.py'
+      - '.github/workflows/build_achievement_mvp.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply achievement MVP patch
+        run: python scripts/build_achievement_mvp.py
+      - name: Syntax check
+        run: python -m py_compile streamlit_app.py
+      - name: Commit app
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add streamlit_app.py
+          git diff --cached --quiet && exit 0
+          git commit -m "Build achievement MVP"
+          git push
