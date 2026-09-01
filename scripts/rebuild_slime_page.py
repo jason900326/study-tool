@@ -26,7 +26,7 @@ catalog='''SLIME_CATALOG = [
 s,n=re.subn(r'SLIME_CATALOG = \[.*?\]\n\nSLIME_BY_NAME =',catalog+'\n\nSLIME_BY_NAME =',s,count=1,flags=re.S)
 assert n==1
 
-page='''def slime_page():
+page=r'''def slime_page():
     topbar()
     render_back_button("返回首頁", "home", "back_slime")
     names={x["name"] for x in SLIME_CATALOG}
