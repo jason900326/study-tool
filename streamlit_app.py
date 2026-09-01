@@ -5,6 +5,7 @@ import json
 import random
 import re
 import time
+from urllib.parse import urlsplit, urlunsplit, parse_qs
 from io import BytesIO
 from pathlib import Path
 from datetime import datetime, timezone
@@ -484,6 +485,7 @@ def _save_mistake_rows(questions, answers, uncertain_map, source_type, meta=None
             "exam_round": exam_round,
             "official_question_number": official_number,
             "source_url": source_url,
+            "source_page": question.get("source_page") if source_type == "national_exam" else question.get("source_page"),
         })
 
     if rows:
@@ -587,7 +589,10 @@ def load_national_exam_paper(exam_year, exam_round, subject):
             "concept": "歷屆國考真題",
             "explanation": "",
             "review_points": [],
-            "source_url": row.get("question_pdf_url") or row.get("source_page_url"),
+            "source_url": pdf_deep_link(row.get("question_pdf_url"), row.get("source_page_url")),
+            "question_pdf_url": row.get("question_pdf_url"),
+            "source_page_url": row.get("source_page_url"),
+            "source_page": _extract_pdf_page_hint(row.get("source_page_url")) or _extract_pdf_page_hint(row.get("question_pdf_url")),
             "official_question_number": number,
             "national_exam_id": row.get("id"),
         })
@@ -1555,7 +1560,9 @@ def national_exam_quiz_page():
     source_link = ""
     if question.get("source_url"):
         safe_url = html.escape(str(question["source_url"]), quote=True)
-        source_link = f'<a class="official-inline-link" href="{safe_url}" target="_blank" rel="noopener noreferrer">官方原題 ↗</a>'
+        page_hint = question.get("source_page")
+        link_label = f"官方原題 · Page {page_hint} ↗" if page_hint else "官方原題 ↗"
+        source_link = f'<a class="official-inline-link" href="{safe_url}" target="_blank" rel="noopener noreferrer">{link_label}</a>'
     safe_exam_question = html.escape(normalize_scientific_notation(question["question"]))
     st.markdown(
         f'<div class="quiz-card"><div class="quiz-meta-row"><div class="eyebrow">{progress_text}</div>{source_link}</div><div class="quiz-question">{safe_exam_question}</div></div>',
@@ -1640,7 +1647,9 @@ def national_exam_result_page():
                 with st.expander("查看解析"):
                     st.markdown(question["explanation"])
             if question.get("source_url"):
-                st.link_button("查看官方原題 ↗", question["source_url"])
+                page_hint = question.get("source_page")
+                label = f"查看官方原題 · Page {page_hint} ↗" if page_hint else "查看官方原題 ↗"
+                st.link_button(label, question["source_url"])
 
     left, right = st.columns(2)
     with left:
@@ -2205,6 +2214,60 @@ def focus_timer_page():
 # Mistake bank
 # =========================================================
 
+
+
+def _extract_pdf_page_hint(url):
+    """Best-effort extraction of a page number from viewer/page URLs."""
+    if not url:
+        return None
+    raw = str(url)
+    patterns = [
+        r"[#&?]page=(\d+)",
+        r"[#&?]p=(\d+)",
+        r"[#&?]pageNumber=(\d+)",
+        r"/page/(\d+)(?:/|$)",
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, raw, flags=re.IGNORECASE)
+        if match:
+            try:
+                page = int(match.group(1))
+                return page if page > 0 else None
+            except Exception:
+                pass
+    try:
+        query = parse_qs(urlsplit(raw).query)
+        for key in ("page", "p", "pageNumber"):
+            if query.get(key):
+                page = int(query[key][0])
+                return page if page > 0 else None
+    except Exception:
+        pass
+    return None
+
+
+def pdf_deep_link(pdf_url, source_page_url=None, explicit_page=None):
+    """Return a PDF URL that opens directly on the best known page."""
+    base = str(pdf_url or source_page_url or "").strip()
+    if not base:
+        return ""
+    page = None
+    try:
+        if explicit_page is not None:
+            page = int(explicit_page)
+    except Exception:
+        page = None
+    if not page:
+        page = _extract_pdf_page_hint(source_page_url) or _extract_pdf_page_hint(pdf_url)
+    if not page:
+        return base
+    try:
+        parts = urlsplit(base)
+        # Replace any old fragment so the page hint is deterministic.
+        return urlunsplit((parts.scheme, parts.netloc, parts.path, parts.query, f"page={page}"))
+    except Exception:
+        separator = "&" if "#" in base else "#"
+        return f"{base}{separator}page={page}"
 
 def _mistake_filter_rows(rows, source_filter):
     if source_filter == "教材":
