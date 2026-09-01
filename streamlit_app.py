@@ -2029,18 +2029,41 @@ def home():
     st.markdown('<div class="section-title">今日任務</div>', unsafe_allow_html=True)
     _task_mark_active_day()
     daily = _task_daily_snapshot()
+    daily_key = _task_day_key()
+    daily_claims = {row.get("task_id") for row in _task_claim_rows("daily", daily_key)}
     cols = st.columns(3, gap="medium")
     for col, task in zip(cols, DAILY_TASKS):
         value = daily.get(task["metric"], 0)
         progress = _task_progress_text(task, value)
         reward = _task_reward_text(task)
         done = value >= task["target"]
+        claimed = task["id"] in daily_claims
+        if claimed:
+            reward_line = "✓ 已領取"
+        elif done:
+            reward_line = f"✓ 已完成 · {reward}"
+        else:
+            reward_line = reward
         with col:
             st.markdown(
                 f'<div class="home-task"><div class="task-icon">{task["icon"]}</div><div class="card-title">{html.escape(task["title"])}</div>'
-                f'<div class="muted">{html.escape(progress)}</div><div class="task-reward">{"✓ 已完成" if done else html.escape(reward)}</div></div>',
+                f'<div class="muted">{html.escape(progress)}</div><div class="task-reward">{html.escape(reward_line)}</div></div>',
                 unsafe_allow_html=True,
             )
+            button_label = "已領取" if claimed else ("領取獎勵" if done else "尚未完成")
+            if st.button(
+                button_label,
+                key=f"home_claim_daily_{task['id']}",
+                disabled=claimed or not done,
+                use_container_width=True,
+                type="primary" if done and not claimed else "secondary",
+            ):
+                ok, message = _task_claim(task, "daily", daily_key, value)
+                if ok:
+                    st.toast(message, icon="🎁")
+                    st.rerun()
+                else:
+                    st.warning(message)
     if st.button("查看每日／每週任務", use_container_width=True, key="home_open_tasks"):
         goto("tasks")
 
@@ -2333,10 +2356,11 @@ def national_exam_result_page():
     if st.session_state.national_exam_elapsed_seconds is None:
         started_at = st.session_state.national_exam_started_at or time.time()
         st.session_state.national_exam_elapsed_seconds = max(0, int(time.time() - started_at))
-    score = round((correct / len(questions)) * 100) if questions else 0
+    score = (correct / len(questions)) * 100 if questions else 0
+    score_text = f"{score:.2f}".rstrip("0").rstrip(".")
     elapsed_label = _format_quiz_elapsed(st.session_state.national_exam_elapsed_seconds)
     subtitle = f'{roc_year_label(meta.get("exam_year", 2026))} · {meta.get("exam_round", "")} · {html.escape(str(meta.get("subject", "")))}'
-    st.markdown(f'<div class="study-header"><div class="eyebrow">RESULT</div><div class="hero-title" style="font-size:2.05rem">完成國考練習</div><div class="hero-copy">{subtitle}<br>真正掌握 {correct} / {len(questions)} 題。</div></div><div class="quiz-result-stats"><div class="quiz-result-stat">分數<br><strong>{score} / 100</strong></div><div class="quiz-result-stat">作答時間<br><strong>{elapsed_label}</strong></div></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="study-header"><div class="eyebrow">RESULT</div><div class="hero-title" style="font-size:2.05rem">完成國考練習</div><div class="hero-copy">{subtitle}<br>真正掌握 {correct} / {len(questions)} 題。</div></div><div class="quiz-result-stats"><div class="quiz-result-stat">分數<br><strong>{score_text} / 100</strong></div><div class="quiz-result-stat">作答時間<br><strong>{elapsed_label}</strong></div></div>', unsafe_allow_html=True)
 
     if not needs_review:
         st.success("這一輪全部掌握！")
@@ -3928,19 +3952,6 @@ def _task_claim(task, period_type, period_key, progress_value, completed_overrid
         return False, "Supabase 任務表尚未連上。"
     user_key = _prototype_user_key()
     try:
-        existing = (
-            client.table("player_task_claims")
-            .select("task_id")
-            .eq("user_key", user_key)
-            .eq("period_type", period_type)
-            .eq("period_key", period_key)
-            .eq("task_id", task["id"])
-            .limit(1)
-            .execute()
-        )
-        if existing.data:
-            return False, "這個任務獎勵已經領取過了。"
-
         client.table("player_task_claims").insert({
             "user_key": user_key,
             "period_type": period_type,
@@ -3951,6 +3962,9 @@ def _task_claim(task, period_type, period_key, progress_value, completed_overrid
             "claimed_at": datetime.now(timezone.utc).isoformat(),
         }).execute()
     except Exception as error:
+        error_text = str(error).lower()
+        if "23505" in error_text or "duplicate" in error_text or "unique" in error_text:
+            return False, "這個任務獎勵已經領取過了。"
         return False, f"Supabase 任務紀錄失敗：{type(error).__name__}"
 
     if task["reward_type"] == "coins":
