@@ -955,7 +955,6 @@ st.markdown(
     [class*="st-key-exam_source_compact_"] button p { font-size:.76rem !important; white-space:nowrap !important; }
     .exam-paper-name { margin-left:auto; color:#789083; font-size:.78rem; font-weight:800; text-align:right; line-height:1.35; max-width:62%; }
     @media (max-width:700px) { .exam-paper-name { max-width:58%; font-size:.7rem; } }
-    .exam-inline-figure-label { color:#6b8275; font-size:.78rem; font-weight:800; text-align:center; margin:.15rem 0 .35rem; }
 
     /* 明確指定測驗互動文字，避免被 Streamlit theme 吃成白色。 */
     [data-testid="stRadio"] [role="radiogroup"] { gap:.5rem; }
@@ -1922,34 +1921,6 @@ def national_exam_quiz_page():
                     on_click=open_pdf_viewer,
                     args=(question, "national_exam_quiz"),
                 )
-    if question.get("has_image_hint"):
-        inline_url = question.get("question_pdf_url") or question.get("source_url")
-        inline_number = question.get("official_question_number")
-        inline_images = []
-        if inline_url and inline_number:
-            try:
-                with st.spinner("正在載入題目圖片…"):
-                    if question.get("image_choice_mode"):
-                        crops, _ = _render_pdf_question_crops(inline_url, inline_number)
-                        inline_images = crops
-                    else:
-                        inline_images = _render_pdf_question_images(inline_url, inline_number)
-            except Exception:
-                inline_images = []
-        if inline_images:
-            for row_start in range(0, len(inline_images), 2):
-                image_row = inline_images[row_start:row_start + 2]
-                cols = st.columns(len(image_row), gap="small")
-                for offset, (col, image_item) in enumerate(zip(cols, image_row)):
-                    with col:
-                        st.image(image_item["png"], use_container_width=True)
-                        if len(inline_images) > 1:
-                            st.markdown(
-                                f'<div class="exam-inline-figure-label">題目圖片 {row_start + offset + 1}</div>',
-                                unsafe_allow_html=True,
-                            )
-        else:
-            st.info("本題含圖片；圖片暫時無法自動載入，可查看官方原題。")
     answer_key = f"exam_answer_{index}"
     uncertain_key = f"exam_uncertain_{index}"
     previous_answer = st.session_state.national_exam_answers.get(index)
