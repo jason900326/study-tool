@@ -586,6 +586,25 @@ def _load_official_answer_key(answer_pdf_url):
         answers = re.findall(r"(?<![A-Za-z])[ABCD](?![A-Za-z])", section.upper())
 
     if len(answers) != 80:
+        # PyMuPDF can split the visual answer rows differently from plain text.
+        # Read individual word tokens; MOEX answer sheets expose the 80 answers
+        # as standalone full-width/ASCII A-D tokens.
+        document = fitz.open(stream=pdf_bytes, filetype="pdf")
+        try:
+            token_answers = []
+            translate = str.maketrans({"Ａ": "A", "Ｂ": "B", "Ｃ": "C", "Ｄ": "D"})
+            for page_index in range(document.page_count):
+                page = document.load_page(page_index)
+                for word in page.get_text("words"):
+                    token = str(word[4] or "").translate(translate).strip().upper()
+                    if token in {"A", "B", "C", "D"}:
+                        token_answers.append(token)
+            if len(token_answers) == 80:
+                answers = token_answers
+        finally:
+            document.close()
+
+    if len(answers) != 80:
         return {}
     return {number: answers[number - 1] for number in range(1, 81)}
 
@@ -637,9 +656,10 @@ def load_national_exam_paper(exam_year, exam_round, subject):
             if len(stored) == 1 and stored[0] in answer_map:
                 official_answer = stored[0]
 
-        if official_answer not in answer_map:
-            excluded.append({"question_number": number, "reason": "官方答案讀取失敗"})
-            continue
+        # Completeness rule: a database row must always remain in the paper.
+        # If an old answer sheet still cannot be parsed, keep the question and
+        # mark it ungraded instead of silently shrinking an 80-question paper.
+        answer_pending = official_answer not in answer_map
 
         source_only_mode = (
             row.get("parse_status") != "ok"
@@ -656,7 +676,8 @@ def load_national_exam_paper(exam_year, exam_round, subject):
         usable.append({
             "question": question_text,
             "options": options,
-            "correct_index": answer_map[official_answer],
+            "correct_index": answer_map.get(official_answer),
+            "answer_pending": answer_pending,
             "subject": subject,
             "concept": "歷屆國考真題",
             "explanation": "",
