@@ -3310,7 +3310,7 @@ def render_quick_scroll_nav():
                     #${NAV_ID} {
                         position:fixed;
                         right:14px;
-                        bottom:calc(env(safe-area-inset-bottom, 0px) + 22px);
+                        bottom:calc(env(safe-area-inset-bottom, 0px) + 80px);
                         z-index:999999;
                     }
                     #${NAV_ID} button {
@@ -3334,7 +3334,7 @@ def render_quick_scroll_nav():
                     @media (max-width:700px) {
                         #${NAV_ID} {
                             right:10px;
-                            bottom:calc(env(safe-area-inset-bottom, 0px) + 14px);
+                            bottom:calc(env(safe-area-inset-bottom, 0px) + 90px);
                         }
                         #${NAV_ID} button {
                             width:40px;
