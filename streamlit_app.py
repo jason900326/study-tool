@@ -576,8 +576,6 @@ def load_national_exam_paper(exam_year, exam_round, subject):
         reason = None
         if row.get("parse_status") != "ok":
             reason = "解析異常"
-        elif row.get("has_image_hint"):
-            reason = "需要圖片"
         elif len(options) != 4:
             reason = "選項不完整"
         elif len(correct_answers) != 1 or correct_answers[0] not in answer_map:
@@ -600,6 +598,7 @@ def load_national_exam_paper(exam_year, exam_round, subject):
             "question_pdf_url": row.get("question_pdf_url"),
             "source_page_url": row.get("source_page_url"),
             "source_page": _extract_pdf_page_hint(row.get("source_page_url")) or _extract_pdf_page_hint(row.get("question_pdf_url")),
+            "has_image_hint": bool(row.get("has_image_hint")),
             "official_question_number": number,
             "national_exam_id": row.get("id"),
         })
@@ -1365,8 +1364,7 @@ def pdf_viewer_page():
     title = st.session_state.pdf_viewer_title or "官方原題"
     st.markdown(
         f'<div class="study-header"><div class="eyebrow">SOURCE</div>'
-        f'<div class="hero-title" style="font-size:2rem">{html.escape(str(title))}</div>'
-        f'<div class="hero-copy">直接顯示原 PDF 的定位頁，不依賴手機瀏覽器的 PDF 跳頁功能。</div></div>',
+        f'<div class="hero-title" style="font-size:2rem">{html.escape(str(title))}</div></div>',
         unsafe_allow_html=True,
     )
     if not url:
@@ -1762,6 +1760,8 @@ def national_exam_quiz_page():
         f'<div class="quiz-card"><div class="quiz-meta-row"><div class="eyebrow">{progress_text}</div></div><div class="quiz-question">{safe_exam_question}</div></div>',
         unsafe_allow_html=True,
     )
+    if question.get("has_image_hint"):
+        st.info("本題含圖片，請查看官方原題後再作答。")
     if question.get("source_url") or question.get("question_pdf_url"):
         page_hint = question.get("source_page")
         source_label = f"📄 查看官方原題 · PDF 第 {page_hint} 頁" if page_hint else "📄 查看官方原題"
