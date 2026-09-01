@@ -78,6 +78,9 @@ DEFAULT_STATE = {
     "quiz_uncertain": {},
     "quiz_finished": False,
     "quiz_finish_pending": False,
+    "material_quiz_started_at": None,
+    "material_quiz_elapsed_seconds": None,
+    "material_quiz_struck": {},
     "national_exam_year": 2026,
     "national_exam_questions": None,
     "national_exam_meta": None,
@@ -87,6 +90,9 @@ DEFAULT_STATE = {
     "national_exam_excluded": [],
     "national_exam_total": 0,
     "national_exam_load_error": None,
+    "national_exam_started_at": None,
+    "national_exam_elapsed_seconds": None,
+    "national_exam_struck": {},
     "national_exam_pending_choice": None,
     "national_exam_picker_version": 0,
     "pdf_viewer_url": None,
@@ -308,6 +314,8 @@ def clear_quiz_answers():
     st.session_state.quiz_index = 0
     st.session_state.quiz_answers = {}
     st.session_state.quiz_uncertain = {}
+    st.session_state.material_quiz_struck = {}
+    st.session_state.material_quiz_elapsed_seconds = None
     st.session_state.quiz_finished = False
     st.session_state.quiz_finish_pending = False
     st.session_state.material_mistakes_saved = False
@@ -700,6 +708,8 @@ def clear_national_exam_answers():
     st.session_state.national_exam_index = 0
     st.session_state.national_exam_answers = {}
     st.session_state.national_exam_uncertain = {}
+    st.session_state.national_exam_struck = {}
+    st.session_state.national_exam_elapsed_seconds = None
     st.session_state.national_exam_mistakes_saved = False
     for i in range(100):
         st.session_state.pop(f"exam_answer_{i}", None)
@@ -718,9 +728,45 @@ def start_national_exam_quiz(questions, exam_year, exam_round, subject, excluded
     st.session_state.national_exam_pending_choice = None
     st.session_state.national_exam_picker_version += 1
     clear_national_exam_answers()
+    st.session_state.national_exam_started_at = time.time()
     st.session_state.medslime_page = "national_exam_quiz"
     st.session_state.menu_open = False
     st.rerun()
+
+
+
+def _format_quiz_elapsed(seconds):
+    seconds = max(0, int(seconds or 0))
+    minutes, secs = divmod(seconds, 60)
+    hours, minutes = divmod(minutes, 60)
+    if hours:
+        return f"{hours} 小時 {minutes} 分 {secs} 秒"
+    if minutes:
+        return f"{minutes} 分 {secs} 秒"
+    return f"{secs} 秒"
+
+
+def _render_strikeable_options(prefix, index, options, answer_store, struck_store):
+    struck = set(struck_store.get(index, []))
+    selected_index = answer_store.get(index)
+    for option_index, option in enumerate(options):
+        circle_col, text_col = st.columns([0.075, 0.925], gap="small")
+        with circle_col:
+            circle = "●" if selected_index == option_index else "○"
+            if st.button(circle, key=f"{prefix}_pick_{index}_{option_index}", help="選擇這個答案"):
+                answer_store[index] = option_index
+                st.rerun()
+        with text_col:
+            is_struck = option_index in struck
+            key_state = "on" if is_struck else "off"
+            label = normalize_scientific_notation(option)
+            if st.button(label, key=f"{prefix}_strike_{key_state}_{index}_{option_index}", use_container_width=True, help="劃掉 / 取消劃掉這個選項"):
+                if is_struck:
+                    struck.discard(option_index)
+                else:
+                    struck.add(option_index)
+                struck_store[index] = sorted(struck)
+                st.rerun()
 
 
 # =========================================================
@@ -1034,6 +1080,15 @@ st.markdown(
     @media (max-width:700px) { .exam-paper-name { max-width:58%; font-size:.7rem; } }
 
     /* 明確指定測驗互動文字，避免被 Streamlit theme 吃成白色。 */
+    [class*="st-key-national_strike_on_"] button p,
+    [class*="st-key-material_strike_on_"] button p { text-decoration:line-through !important; opacity:.42 !important; }
+    [class*="st-key-national_strike_"] button,
+    [class*="st-key-material_strike_"] button { justify-content:flex-start !important; text-align:left !important; background:rgba(255,255,255,.82) !important; color:#244c39 !important; border:1px solid #e0ebe5 !important; box-shadow:none !important; }
+    [class*="st-key-national_pick_"] button,
+    [class*="st-key-material_pick_"] button { min-width:38px !important; width:38px !important; padding:0 !important; border:none !important; background:transparent !important; box-shadow:none !important; font-size:1.15rem !important; }
+    .quiz-result-stats { display:flex; gap:.65rem; flex-wrap:wrap; margin:.9rem 0 1.25rem; }
+    .quiz-result-stat { background:#fff; border:1px solid #dceae2; border-radius:16px; padding:.75rem 1rem; color:#315b47; font-weight:800; }
+    .quiz-result-stat strong { color:#173b2b; font-size:1.18rem; }
     [data-testid="stRadio"] [role="radiogroup"] { gap:.5rem; }
     [data-testid="stRadio"] label { background:rgba(255,255,255,.82); border:1px solid #e0ebe5; border-radius:14px; padding:.62rem .8rem; }
     [data-testid="stRadio"] label p,
@@ -1933,13 +1988,7 @@ def render_national_exam_progress(current_index, question_count):
 
 
 def save_current_national_exam_state(index, options):
-    answer_key = f"exam_answer_{index}"
     uncertain_key = f"exam_uncertain_{index}"
-    selected = st.session_state.get(answer_key)
-    if selected in options:
-        st.session_state.national_exam_answers[index] = options.index(selected)
-    else:
-        st.session_state.national_exam_answers.pop(index, None)
     st.session_state.national_exam_uncertain[index] = bool(st.session_state.get(uncertain_key, False))
 
 
@@ -2006,12 +2055,8 @@ def national_exam_quiz_page():
     if uncertain_key not in st.session_state:
         st.session_state[uncertain_key] = bool(st.session_state.national_exam_uncertain.get(index, False))
 
-    selected = st.radio("選擇答案", options, index=None, key=answer_key, label_visibility="collapsed", format_func=normalize_scientific_notation)
+    _render_strikeable_options("national", index, options, st.session_state.national_exam_answers, st.session_state.national_exam_struck)
     uncertain = st.checkbox("❓ 我不確定這個觀念", key=uncertain_key)
-    if selected in options:
-        st.session_state.national_exam_answers[index] = options.index(selected)
-    else:
-        st.session_state.national_exam_answers.pop(index, None)
     st.session_state.national_exam_uncertain[index] = bool(uncertain)
 
     left, middle, right = st.columns(3)
@@ -2056,10 +2101,15 @@ def national_exam_result_page():
     try:
         save_national_exam_mistakes_if_needed()
     except Exception:
-        st.warning("這次錯題暫時無法同步到錯題庫，但測驗結果仍可正常查看。")
+        pass
 
+    if st.session_state.national_exam_elapsed_seconds is None:
+        started_at = st.session_state.national_exam_started_at or time.time()
+        st.session_state.national_exam_elapsed_seconds = max(0, int(time.time() - started_at))
+    score = round((correct / len(questions)) * 100) if questions else 0
+    elapsed_label = _format_quiz_elapsed(st.session_state.national_exam_elapsed_seconds)
     subtitle = f'{roc_year_label(meta.get("exam_year", 2026))} · {meta.get("exam_round", "")} · {html.escape(str(meta.get("subject", "")))}'
-    st.markdown(f'<div class="study-header"><div class="eyebrow">RESULT</div><div class="hero-title" style="font-size:2.05rem">完成國考練習</div><div class="hero-copy">{subtitle}<br>真正掌握 {correct} / {len(questions)} 題。</div></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="study-header"><div class="eyebrow">RESULT</div><div class="hero-title" style="font-size:2.05rem">完成國考練習</div><div class="hero-copy">{subtitle}<br>真正掌握 {correct} / {len(questions)} 題。</div></div><div class="quiz-result-stats"><div class="quiz-result-stat">分數<br><strong>{score} / 100</strong></div><div class="quiz-result-stat">作答時間<br><strong>{elapsed_label}</strong></div></div>', unsafe_allow_html=True)
 
     if not needs_review:
         st.success("這一輪全部掌握！")
@@ -2154,6 +2204,7 @@ def material_processing_page():
         st.session_state.material_subject = payload.get("subject") or "教材測驗"
         st.session_state.material_questions = payload["questions"]
         clear_quiz_answers()
+        st.session_state.material_quiz_started_at = time.time()
         st.session_state.material_generation_error = None
         st.session_state.material_pending_bytes = None
         st.session_state.material_pending_name = None
@@ -2191,13 +2242,7 @@ def study_material_upload():
 # =========================================================
 
 def save_current_quiz_state(index, options):
-    answer_key = f"material_answer_{index}"
     uncertain_key = f"material_uncertain_{index}"
-    selected = st.session_state.get(answer_key)
-    if selected in options:
-        st.session_state.quiz_answers[index] = options.index(selected)
-    else:
-        st.session_state.quiz_answers.pop(index, None)
     st.session_state.quiz_uncertain[index] = bool(st.session_state.get(uncertain_key, False))
 
 
@@ -2294,13 +2339,8 @@ def material_quiz_page():
     if uncertain_key not in st.session_state:
         st.session_state[uncertain_key] = bool(st.session_state.quiz_uncertain.get(index, False))
 
-    selected = st.radio("選擇答案", options, index=None, key=answer_key, label_visibility="collapsed", format_func=normalize_scientific_notation)
+    _render_strikeable_options("material", index, options, st.session_state.quiz_answers, st.session_state.material_quiz_struck)
     uncertain = st.checkbox("❓ 我不確定這個觀念", key=uncertain_key)
-
-    if selected in options:
-        st.session_state.quiz_answers[index] = options.index(selected)
-    else:
-        st.session_state.quiz_answers.pop(index, None)
     st.session_state.quiz_uncertain[index] = bool(uncertain)
 
     left, middle, right = st.columns([1, 1, 1])
@@ -2350,9 +2390,14 @@ def material_quiz_result():
     try:
         save_material_mistakes_if_needed()
     except Exception:
-        st.warning("這次錯題暫時無法同步到錯題庫，但測驗結果仍可正常查看。")
+        pass
 
-    st.markdown(f'<div class="study-header"><div class="eyebrow">RESULT</div><div class="hero-title" style="font-size:2.05rem">完成 {QUIZ_SIZE} 題測驗</div><div class="hero-copy">真正掌握 {correct} / {QUIZ_SIZE} 題。答對但標記 ❓ 的題目仍會列入複習。</div></div>', unsafe_allow_html=True)
+    if st.session_state.material_quiz_elapsed_seconds is None:
+        started_at = st.session_state.material_quiz_started_at or time.time()
+        st.session_state.material_quiz_elapsed_seconds = max(0, int(time.time() - started_at))
+    score = round((correct / QUIZ_SIZE) * 100) if QUIZ_SIZE else 0
+    elapsed_label = _format_quiz_elapsed(st.session_state.material_quiz_elapsed_seconds)
+    st.markdown(f'<div class="study-header"><div class="eyebrow">RESULT</div><div class="hero-title" style="font-size:2.05rem">完成 {QUIZ_SIZE} 題測驗</div><div class="hero-copy">真正掌握 {correct} / {QUIZ_SIZE} 題。答對但標記 ❓ 的題目仍會列入複習。</div></div><div class="quiz-result-stats"><div class="quiz-result-stat">分數<br><strong>{score} / 100</strong></div><div class="quiz-result-stat">作答時間<br><strong>{elapsed_label}</strong></div></div>', unsafe_allow_html=True)
 
     if not needs_review:
         st.success("全部掌握！這一輪沒有需要複習的題目。")
