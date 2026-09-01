@@ -549,6 +549,47 @@ def load_national_exam_subject_entries(exam_year):
     return sorted(entries, key=lambda item: (item["subject"], item["exam_round"]))
 
 
+@st.cache_data(ttl=86400, show_spinner=False)
+def _load_official_answer_key(answer_pdf_url):
+    """Read the official MOEX answer sheet and return {1: 'A', ..., 80: 'D'}."""
+    raw_url = str(answer_pdf_url or "").strip()
+    if not raw_url:
+        return {}
+
+    pdf_bytes = _download_pdf_for_viewer(raw_url)
+    document = fitz.open(stream=pdf_bytes, filetype="pdf")
+    try:
+        pdf_text = "\n".join(document.load_page(i).get_text("text") for i in range(document.page_count))
+    finally:
+        document.close()
+
+    normalized = pdf_text.translate(str.maketrans({"Ａ": "A", "Ｂ": "B", "Ｃ": "C", "Ｄ": "D"}))
+    if "標準答案" in normalized:
+        normalized = normalized.split("標準答案", 1)[1]
+    if "備" in normalized:
+        normalized = normalized.split("備", 1)[0]
+
+    answers = re.findall(r"(?<![A-Za-z])[ABCD](?![A-Za-z])", normalized.upper())
+    if len(answers) < 80:
+        # Some PDF extractors place the answer letters on lines after the 答案 label.
+        answer_lines = []
+        lines = pdf_text.translate(str.maketrans({"Ａ": "A", "Ｂ": "B", "Ｃ": "C", "Ｄ": "D"})).splitlines()
+        collecting = False
+        for line in lines:
+            if "標準答案" in line:
+                collecting = True
+                continue
+            if collecting and "備" in line:
+                break
+            if collecting:
+                answer_lines.extend(re.findall(r"(?<![A-Za-z])[ABCD](?![A-Za-z])", line.upper()))
+        answers = answer_lines
+
+    if len(answers) < 80:
+        return {}
+    return {number: answers[number - 1] for number in range(1, 81)}
+
+
 def load_national_exam_paper(exam_year, exam_round, subject):
     """Adapter copied from the stable study-tool logic, normalized to correct_index."""
     supabase = get_supabase()
@@ -557,7 +598,8 @@ def load_national_exam_paper(exam_year, exam_round, subject):
         .table("national_exam_questions")
         .select(
             "id, exam_year, exam_round, subject, question_number, question, options, "
-            "correct_answers, source_page_url, question_pdf_url, has_image_hint, parse_status"
+            "correct_answers, source_page_url, question_pdf_url, answer_pdf_url, corrected_answer_pdf_url, "
+            "has_image_hint, parse_status"
         )
         .eq("exam_year", exam_year)
         .eq("exam_round", exam_round)
@@ -570,36 +612,45 @@ def load_national_exam_paper(exam_year, exam_round, subject):
     answer_map = {"A": 0, "B": 1, "C": 2, "D": 3}
     usable, excluded = [], []
 
+    official_answer_cache = {}
+
     for row in rows:
+        number = row.get("question_number")
         options = list(row.get("options") or [])
-        correct_answers = row.get("correct_answers") or []
+        correct_answers = list(row.get("correct_answers") or [])
         has_image_hint = bool(row.get("has_image_hint"))
+        source_only_mode = (
+            row.get("parse_status") != "ok"
+            or len(options) != 4
+            or any(not str(option or "").strip() for option in options)
+        )
+
         valid_answer = len(correct_answers) == 1 and correct_answers[0] in answer_map
-        image_choice_mode = False
-        reason = None
-
-        # A valid official A-D answer is mandatory for every interactive question.
         if not valid_answer:
-            reason = "多答案或答案格式特殊"
-        elif has_image_hint:
-            # Image questions are allowed even when the parser cannot reconstruct
-            # all four option texts. In that case, show the original PDF question
-            # inline and let the learner answer with A / B / C / D.
-            if row.get("parse_status") != "ok" or len(options) != 4:
-                options = ["A", "B", "C", "D"]
-                image_choice_mode = True
-        elif row.get("parse_status") != "ok":
-            reason = "解析異常"
-        elif len(options) != 4:
-            reason = "選項不完整"
+            answer_url = row.get("corrected_answer_pdf_url") or row.get("answer_pdf_url")
+            if answer_url not in official_answer_cache:
+                try:
+                    official_answer_cache[answer_url] = _load_official_answer_key(answer_url)
+                except Exception:
+                    official_answer_cache[answer_url] = {}
+            repaired_answer = official_answer_cache.get(answer_url, {}).get(int(number or 0))
+            if repaired_answer in answer_map:
+                correct_answers = [repaired_answer]
+                valid_answer = True
 
-        if reason:
-            excluded.append({"question_number": row.get("question_number"), "reason": reason})
+        if not valid_answer:
+            excluded.append({"question_number": number, "reason": "官方答案讀取失敗"})
             continue
 
-        number = row.get("question_number")
+        if source_only_mode:
+            options = ["A", "B", "C", "D"]
+
+        question_text = str(row.get("question") or "").strip()
+        if not question_text:
+            question_text = f"官方第 {number} 題（題目內容請查看官方原題）"
+
         usable.append({
-            "question": row.get("question") or "",
+            "question": question_text,
             "options": options,
             "correct_index": answer_map[correct_answers[0]],
             "subject": subject,
@@ -611,7 +662,8 @@ def load_national_exam_paper(exam_year, exam_round, subject):
             "source_page_url": row.get("source_page_url"),
             "source_page": _extract_pdf_page_hint(row.get("source_page_url")) or _extract_pdf_page_hint(row.get("question_pdf_url")),
             "has_image_hint": has_image_hint,
-            "image_choice_mode": image_choice_mode,
+            "image_choice_mode": source_only_mode,
+            "source_only_mode": source_only_mode,
             "official_question_number": number,
             "national_exam_id": row.get("id"),
         })
