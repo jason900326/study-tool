@@ -138,23 +138,23 @@ ACHIEVEMENTS = [
 ]
 
 SLIME_CATALOG = [
-{"name":"綠色史萊姆","emoji":"🟢","rarity":"N","theme":"green","tagline":"最經典的 MedSlime 夥伴。","weight":8,"accessory":"嫩芽髮夾"},
-{"name":"藍色史萊姆","emoji":"🔵","rarity":"N","theme":"blue","tagline":"安靜又可靠的讀書夥伴。","weight":8,"accessory":"水滴小帽"},
-{"name":"黃色史萊姆","emoji":"🟡","rarity":"N","theme":"yellow","tagline":"像一顆精神滿滿的小太陽。","weight":8,"accessory":"太陽眼鏡"},
-{"name":"粉色史萊姆","emoji":"🩷","rarity":"N","theme":"pink","tagline":"軟綿綿又親人的陪伴型史萊姆。","weight":8,"accessory":"愛心髮夾"},
-{"name":"拿鐵史萊姆","emoji":"☕","rarity":"R","theme":"latte","tagline":"早八時特別可靠。","weight":6.3333,"accessory":"拉花小帽"},
-{"name":"漢堡史萊姆","emoji":"🍔","rarity":"R","theme":"burger","tagline":"肚子餓時請不要盯太久。","weight":6.3333,"accessory":"薯條髮箍"},
-{"name":"壽司史萊姆","emoji":"🍣","rarity":"R","theme":"sushi","tagline":"頭頂總像多放了一片鮭魚。","weight":6.3333,"accessory":"醬油小瓶"},
-{"name":"珍珠奶茶史萊姆","emoji":"🧋","rarity":"R","theme":"boba","tagline":"移動時珍珠也會跟著晃。","weight":6.3333,"accessory":"粗吸管"},
-{"name":"飯糰史萊姆","emoji":"🍙","rarity":"R","theme":"onigiri","tagline":"樸素但很可靠的補充能量夥伴。","weight":6.3333,"accessory":"海苔披風"},
-{"name":"章魚燒史萊姆","emoji":"🐙","rarity":"R","theme":"takoyaki","tagline":"總是熱呼呼的。","weight":6.3335,"accessory":"柴魚片帽"},
-{"name":"失眠史萊姆","emoji":"🥱","rarity":"SR","theme":"insomnia","tagline":"熬夜讀書的最佳夥伴。","weight":4.5,"accessory":"失眠眼罩"},
-{"name":"融化史萊姆","emoji":"🫠","rarity":"SR","theme":"melted","tagline":"讀到腦袋停止運作時的樣子。","weight":4.5,"accessory":"冰敷袋"},
-{"name":"靈魂出竅史萊姆","emoji":"👻","rarity":"SR","theme":"outofbody","tagline":"身體還在書桌前，靈魂先下課了。","weight":4.5,"accessory":"幽靈光環"},
-{"name":"爆哭史萊姆","emoji":"😭","rarity":"SR","theme":"crying","tagline":"看到錯題數量時通常比你先哭。","weight":4.5,"accessory":"超大面紙"},
-{"name":"404史萊姆","emoji":"💾","rarity":"SR","theme":"error404","tagline":"Knowledge not found.","weight":4.5,"accessory":"404警告牌"},
-{"name":"厭世史萊姆","emoji":"😑","rarity":"SR","theme":"deadinside","tagline":"今天也沒有特別想努力。","weight":4.5,"accessory":"厭世咖啡杯"},
-{"name":"Chill史萊姆","emoji":"😎","rarity":"SSR","theme":"chill","tagline":"不用急，該讀的還是會讀完。","weight":3,"accessory":"Chill墨鏡"},
+{"name":"綠色史萊姆","emoji":"🟢","rarity":"N","theme":"green","gradient":"linear-gradient(145deg,#a8efb6,#36c978)","tagline":"最經典的 MedSlime 夥伴。","weight":8,"accessory":"嫩芽髮夾"},
+{"name":"藍色史萊姆","emoji":"🔵","rarity":"N","theme":"blue","gradient":"linear-gradient(145deg,#b9defe,#579ce5)","tagline":"安靜又可靠的讀書夥伴。","weight":8,"accessory":"水滴小帽"},
+{"name":"黃色史萊姆","emoji":"🟡","rarity":"N","theme":"yellow","gradient":"linear-gradient(145deg,#fff1a1,#e6ca45)","tagline":"像一顆精神滿滿的小太陽。","weight":8,"accessory":"太陽眼鏡"},
+{"name":"粉色史萊姆","emoji":"🩷","rarity":"N","theme":"pink","gradient":"linear-gradient(145deg,#ffd0df,#ef8fb2)","tagline":"軟綿綿又親人的陪伴型史萊姆。","weight":8,"accessory":"愛心髮夾"},
+{"name":"拿鐵史萊姆","emoji":"☕","rarity":"R","theme":"latte","gradient":"linear-gradient(145deg,#ead6bb,#a87855)","tagline":"早八時特別可靠。","weight":6.3333,"accessory":"拉花小帽"},
+{"name":"漢堡史萊姆","emoji":"🍔","rarity":"R","theme":"burger","gradient":"linear-gradient(145deg,#ffd47d,#c87b3e)","tagline":"肚子餓時請不要盯太久。","weight":6.3333,"accessory":"薯條髮箍"},
+{"name":"壽司史萊姆","emoji":"🍣","rarity":"R","theme":"sushi","gradient":"linear-gradient(145deg,#ffd4cf,#ee8d82)","tagline":"頭頂總像多放了一片鮭魚。","weight":6.3333,"accessory":"醬油小瓶"},
+{"name":"珍珠奶茶史萊姆","emoji":"🧋","rarity":"R","theme":"boba","gradient":"linear-gradient(145deg,#d9b38c,#8a5c3b)","tagline":"移動時珍珠也會跟著晃。","weight":6.3333,"accessory":"粗吸管"},
+{"name":"飯糰史萊姆","emoji":"🍙","rarity":"R","theme":"onigiri","gradient":"linear-gradient(145deg,#f7f7ef,#a7b5a7)","tagline":"樸素但很可靠的補充能量夥伴。","weight":6.3333,"accessory":"海苔披風"},
+{"name":"章魚燒史萊姆","emoji":"🐙","rarity":"R","theme":"takoyaki","gradient":"linear-gradient(145deg,#eaa46f,#a95e38)","tagline":"總是熱呼呼的。","weight":6.3335,"accessory":"柴魚片帽"},
+{"name":"失眠史萊姆","emoji":"🥱","rarity":"SR","theme":"insomnia","gradient":"linear-gradient(145deg,#a8a8c7,#565b78)","tagline":"熬夜讀書的最佳夥伴。","weight":4.5,"accessory":"失眠眼罩"},
+{"name":"融化史萊姆","emoji":"🫠","rarity":"SR","theme":"melted","gradient":"linear-gradient(145deg,#b8d9cc,#6f9e8e)","tagline":"讀到腦袋停止運作時的樣子。","weight":4.5,"accessory":"冰敷袋"},
+{"name":"靈魂出竅史萊姆","emoji":"👻","rarity":"SR","theme":"outofbody","gradient":"linear-gradient(145deg,#d7ccf6,#8d75c9)","tagline":"身體還在書桌前，靈魂先下課了。","weight":4.5,"accessory":"幽靈光環"},
+{"name":"爆哭史萊姆","emoji":"😭","rarity":"SR","theme":"crying","gradient":"linear-gradient(145deg,#b9d8fa,#5f95d6)","tagline":"看到錯題數量時通常比你先哭。","weight":4.5,"accessory":"超大面紙"},
+{"name":"404史萊姆","emoji":"💾","rarity":"SR","theme":"error404","gradient":"linear-gradient(145deg,#92e4d2,#365e61)","tagline":"Knowledge not found.","weight":4.5,"accessory":"404警告牌"},
+{"name":"厭世史萊姆","emoji":"😑","rarity":"SR","theme":"deadinside","gradient":"linear-gradient(145deg,#bbb9b3,#696963)","tagline":"今天也沒有特別想努力。","weight":4.5,"accessory":"厭世咖啡杯"},
+{"name":"Chill史萊姆","emoji":"😎","rarity":"SSR","theme":"chill","gradient":"linear-gradient(145deg,#bcd8c7,#46685d)","tagline":"不用急，該讀的還是會讀完。","weight":3,"accessory":"Chill墨鏡"},
 ]
 
 SLIME_BY_NAME = {item["name"]: item for item in SLIME_CATALOG}
@@ -1937,7 +1937,7 @@ def slime_avatar_markup(item, size="card", locked=False, mystery=False, selected
         classes.append("mystery")
     if selected:
         classes.append("selected")
-    gradient = "linear-gradient(145deg,#66706b,#252d29)" if mystery else item["gradient"]
+    gradient = "linear-gradient(145deg,#66706b,#252d29)" if mystery else item.get("gradient", "linear-gradient(145deg,#9be7b5,#38c77a)")
     mark = "?" if mystery else item.get("mark", "")
     face = "" if mystery else '<span class="catalog-eye eye-left"></span><span class="catalog-eye eye-right"></span><span class="catalog-mouth"></span>'
     lock = '<span class="catalog-lock">🔒</span>' if locked else ""
@@ -3126,6 +3126,7 @@ def mistake_subject_page():
 # =========================================================
 
 def slime_page():
+    st.markdown('\n<style>\n.slime-v2-head{display:flex;justify-content:space-between;align-items:flex-end;gap:1rem;margin:.25rem 0 1rem}.slime-v2-title{font-size:2rem;font-weight:950;color:#17372a;letter-spacing:-.04em}.slime-v2-sub{color:#789083;font-size:.9rem;margin-top:.25rem}.slime-v2-res{white-space:nowrap;font-weight:850;color:#315b45}.slime-v2-card{border:1px solid #dbe9e1;background:rgba(255,255,255,.9);border-radius:20px;padding:.7rem;text-align:center;min-height:210px;box-shadow:0 8px 22px rgba(32,85,54,.05)}.slime-v2-card.locked{background:#f5f8f6}.slime-v2-card-name{font-weight:900;color:#1c4130;font-size:.88rem;min-height:2.3rem;margin-top:.25rem}.slime-v2-meta{font-size:.72rem;color:#789083;margin-top:.18rem}.slime-v2-detail{border:1px solid #dbe9e1;background:rgba(255,255,255,.94);border-radius:24px;padding:1.25rem;box-shadow:0 12px 28px rgba(32,85,54,.06);position:sticky;top:1rem}.slime-v2-detail-name{font-size:1.35rem;font-weight:950;color:#17372a;text-align:center;margin:.4rem 0}.slime-v2-rarity{text-align:center;color:#57a976;font-weight:900;font-size:.78rem}.slime-v2-summary{margin-top:1.5rem;border:1px solid #dbe9e1;background:rgba(255,255,255,.9);border-radius:22px;padding:1.15rem}@media(max-width:767px){.slime-v2-head{align-items:flex-start;flex-direction:column}.slime-v2-title{font-size:1.65rem}.slime-v2-detail{position:static}.slime-v2-card{min-height:180px;padding:.55rem}[data-testid="stHorizontalBlock"]:has([class*="st-key-slime_v2_"]) {gap:.55rem!important}}\n</style>\n', unsafe_allow_html=True)
     topbar()
     render_back_button("返回首頁", "home", "back_slime")
     names={x["name"] for x in SLIME_CATALOG}
@@ -3163,16 +3164,16 @@ def slime_page():
                 title="???" if x["rarity"]=="SSR" and not owned else x["name"]
                 frag=st.session_state.slime_progress[x["name"]]["fragments"]
                 with col:
-                    st.markdown(f"### {'🔒' if not owned else x['emoji']}\n**{title}** · {x['rarity']}")
-                    st.caption("已擁有" if owned else "尚未取得")
+                    avatar = slime_avatar_markup(x, size="card", locked=not owned, mystery=(x["rarity"]=="SSR" and not owned))
+                    st.markdown(f'<div class="slime-v2-card{"" if owned else " locked"}">{avatar}<div class="slime-v2-card-name">{html.escape(title)}</div><div class="slime-v2-meta">{x["rarity"]} · {"已擁有" if owned else "尚未取得"}</div></div>', unsafe_allow_html=True)
                     if owned: st.progress(min(1.0,frag/30),text=f"碎片 {frag} / 30")
                     if st.button("查看詳情",key=f"slime_v2_{x['theme']}",use_container_width=True):
                         st.session_state.slime_detail_name=x["name"]; st.rerun()
     with right:
         x=SLIME_BY_NAME.get(st.session_state.slime_detail_name,SLIME_CATALOG[0]); owned=x["name"] in st.session_state.collection
         title="???" if x["rarity"]=="SSR" and not owned else x["name"]
-        st.markdown(f"# {x['emoji'] if owned else '🔒'}")
-        st.markdown(f"### {title}　`{x['rarity']}`")
+        detail_avatar = slime_avatar_markup(x, size="home", locked=not owned, mystery=(x["rarity"]=="SSR" and not owned))
+        st.markdown(f'<div class="slime-v2-detail">{detail_avatar}<div class="slime-v2-detail-name">{html.escape(title)}</div><div class="slime-v2-rarity">{x["rarity"]}</div></div>', unsafe_allow_html=True)
         st.write(x["tagline"] if owned or x["rarity"]!="SSR" else "取得後才會揭曉真正身分。")
         if owned:
             if x["name"]==st.session_state.selected_slime: st.button("✓ 目前陪伴中",disabled=True,use_container_width=True)
