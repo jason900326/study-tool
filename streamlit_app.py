@@ -130,6 +130,9 @@ DEFAULT_STATE = {
     "slime_accessory_equipped": {},
     "focus_round": 1,
     "focus_last_duration_minutes": 30,
+    "focus_round_token": None,
+    "focus_round_started_at": None,
+    "focus_round_start_coins": 0,
     "slime_collection_filter": "全部",
     "slime_progress": {"綠色史萊姆": {"level": 4, "exp": 72, "fragments": 0}},
     "slime_nicknames": {"綠色史萊姆": "Medi"},
@@ -2699,6 +2702,56 @@ def _timer_remaining_seconds():
     return max(0, int(st.session_state.focus_remaining_seconds or 0))
 
 
+def _focus_new_round_token():
+    seed = f"{_prototype_user_key()}|{time.time_ns()}|{random.random()}|{st.session_state.get('focus_round', 1)}"
+    return hashlib.sha256(seed.encode("utf-8")).hexdigest()[:40]
+
+
+def _focus_record_round(elapsed_seconds, completed=False):
+    token = st.session_state.get("focus_round_token")
+    started_at = st.session_state.get("focus_round_started_at")
+    elapsed_seconds = max(0, int(elapsed_seconds or 0))
+    if not token or not started_at or elapsed_seconds <= 0:
+        return False
+    client = _achievement_supabase_client()
+    if not client:
+        return False
+    earned_coins = max(0, int(st.session_state.get("focus_session_coins", 0) or 0) - int(st.session_state.get("focus_round_start_coins", 0) or 0))
+    try:
+        client.table("focus_sessions").upsert({
+            "user_key": _prototype_user_key(),
+            "session_token": token,
+            "started_at": started_at,
+            "ended_at": datetime.now(timezone.utc).isoformat(),
+            "planned_minutes": max(1, int(st.session_state.get("focus_total_seconds", 0) or 0) // 60),
+            "focused_seconds": elapsed_seconds,
+            "earned_coins": earned_coins,
+            "completed": bool(completed),
+            "slime_name": st.session_state.get("selected_slime") or "綠色史萊姆",
+        }, on_conflict="user_key,session_token").execute()
+        return True
+    except Exception:
+        return False
+
+
+def _focus_recent_sessions(limit=5):
+    client = _achievement_supabase_client()
+    if not client:
+        return []
+    try:
+        response = (
+            client.table("focus_sessions")
+            .select("started_at,focused_seconds,earned_coins,completed,slime_name")
+            .eq("user_key", _prototype_user_key())
+            .order("started_at", desc=True)
+            .limit(max(1, int(limit)))
+            .execute()
+        )
+        return response.data or []
+    except Exception:
+        return []
+
+
 def _focus_elapsed_seconds():
     total = max(0, int(st.session_state.focus_total_seconds or 0))
     return max(0, total - _timer_remaining_seconds())
@@ -2734,6 +2787,9 @@ def start_focus_round(minutes, new_session=False):
     st.session_state.focus_remaining_seconds = minutes * 60
     st.session_state.focus_end_at = time.time() + minutes * 60
     st.session_state.focus_rewarded_blocks = 0
+    st.session_state.focus_round_token = _focus_new_round_token()
+    st.session_state.focus_round_started_at = datetime.now(timezone.utc).isoformat()
+    st.session_state.focus_round_start_coins = int(st.session_state.get("focus_session_coins", 0) or 0)
 
 
 def start_break():
@@ -2774,6 +2830,9 @@ def reset_focus_timer():
     st.session_state.focus_rewarded_blocks = 0
     st.session_state.focus_session_coins = 0
     st.session_state.focus_round = 1
+    st.session_state.focus_round_token = None
+    st.session_state.focus_round_started_at = None
+    st.session_state.focus_round_start_coins = 0
 
 
 def stop_focus_timer():
@@ -2783,6 +2842,7 @@ def stop_focus_timer():
         st.session_state.focus_seconds_today += elapsed
         st.session_state.focus_seconds_total += elapsed
         _task_record_event(focus_seconds=elapsed)
+        _focus_record_round(elapsed, completed=False)
     reset_focus_timer()
 
 
@@ -2850,6 +2910,7 @@ def render_focus_timer_fragment():
             st.session_state.focus_seconds_today += st.session_state.focus_total_seconds
             st.session_state.focus_seconds_total += st.session_state.focus_total_seconds
             _task_record_event(focus_seconds=st.session_state.focus_total_seconds)
+            _focus_record_round(st.session_state.focus_total_seconds, completed=True)
             st.toast("🎉 這一輪專注完成！現在休息 5 分鐘。")
             start_break()
             st.rerun()
@@ -2940,6 +3001,19 @@ def focus_timer_page():
             if st.button("🍅 開始專注", type="primary", use_container_width=True, key="focus_start"):
                 start_focus_round(minutes, new_session=True)
                 st.rerun()
+        recent = _focus_recent_sessions(5)
+        if recent:
+            st.markdown('<div class="section-title">最近專注</div>', unsafe_allow_html=True)
+            for row in recent:
+                seconds = max(0, int(row.get("focused_seconds", 0) or 0))
+                minutes_done = seconds // 60
+                coins = max(0, int(row.get("earned_coins", 0) or 0))
+                status = "完成" if row.get("completed") else "提前結束"
+                started = str(row.get("started_at") or "").replace("T", " ")[:16]
+                st.markdown(
+                    f'<div class="result-card"><strong>{minutes_done} 分鐘</strong> · {status}　<span class="muted">{html.escape(started)}</span><br><span class="muted">獲得 {coins} 🪙</span></div>',
+                    unsafe_allow_html=True,
+                )
         return
 
     # Open the confirmation dialog at app level, not from inside st.fragment.
