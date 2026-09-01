@@ -1,0 +1,27 @@
+name: Fix slime grid details v4
+on:
+  push:
+    paths:
+      - 'scripts/fix_slime_grid_details_v4.py'
+      - '.github/workflows/fix_slime_grid_details_v4.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply patch
+        run: python scripts/fix_slime_grid_details_v4.py
+      - name: Syntax check
+        run: python -m py_compile streamlit_app.py
+      - name: Commit app
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add streamlit_app.py
+          git diff --cached --quiet && exit 0
+          git commit -m "Fix slime grid proportions and details"
+          git push
