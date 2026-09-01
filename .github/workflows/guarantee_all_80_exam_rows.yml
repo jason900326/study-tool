@@ -1,0 +1,30 @@
+name: Guarantee all 80 exam rows
+
+on:
+  push:
+    paths:
+      - 'scripts/guarantee_all_80_exam_rows.py'
+      - '.github/workflows/guarantee_all_80_exam_rows.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply patch
+        run: python scripts/guarantee_all_80_exam_rows.py
+      - name: Syntax check
+        run: python -m py_compile streamlit_app.py
+      - name: Commit app
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add streamlit_app.py
+          git diff --cached --quiet && exit 0
+          git commit -m "Guarantee all 80 exam rows stay in quiz"
+          git push
